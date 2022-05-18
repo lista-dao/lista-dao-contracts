@@ -1,0 +1,28 @@
+{
+    "BSC_MAINNET": "BSC_MAINNET_VARIABLES",
+  
+    "m_ceaBNBc": "0x563282106A5B0538f8673c787B3A16D3Cc1DbF1a", 
+    "m_ceVault": "0x25b21472c073095bebC681001Cbf165f849eEe5E", 
+    "m_cerosRouter": "0xA186D2363E5048D129E0a35E2fddDe767d4dada8", 
+    "m_bnbJoin": "0xfA14F330711A2774eC438856BBCf2c9013c2a6a4", 
+    "m_helioProvider": "0xa835F890Fcde7679e7F7711aBfd515d2A267Ed0B",
+    "m_synclub_stake_manager": "0x1adB950d8bB3dA4bE104211D5AB038628e477fE6",
+    "m_pStake_addressStore": "0x4a6b3127A1D295878d8790F6ece0776F65FEc121",
+    "m_bnbxToken": "0x1bdd3cf7f79cfb8edbb955f20ad99211551ba275",
+    "m_snBnbToken": "0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B",
+    "m_stader_stake_manager": "0x7276241a669489e4bbb76f63d2a43bfe63080f2f",
+  
+    "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
+  
+    "t_ceaBNBc": "0xdEe8bf93F112cb9592c9E30F407469B7A570d03f", 
+    "t_ceVault": "0xc93A4067eB220FB04D9C3798956969716A3C612a", 
+    "t_cerosRouter": "0x85D607F133D8F5d58f1B413713e378420035f5Fc", 
+    "t_bnbJoin": "0x260f8dc1211c70632D0f3d45B434074B052C271F", 
+    "t_helioProvider": "0xB2331d4349F15895b0D8250c394b993a94111e2b",
+    "t_synclub_stake_manager": "0xbF0Db0d1340fdd5DF245613E280856aEAFbF54d1",
+    "t_pStake_addressStore": "0x8bf7bF5945A356106CCbDF9C9c8838eb347Bfb27",
+    "t_bnbxToken": "0x3ECB02c703C815e9cFFd8d9437B7A2F93638d7Cb",
+    "t_snBnbToken": "0xa5e96AaDc66e48Ff000057C0f932a3C4B71403e8",
+    "t_stader_stake_manager": "0xDAdcae6bF110c0e70E5624bCdcCBe206f92A2Df9"
+}
+  
