@@ -50,12 +50,12 @@ contract Usb {
     // --- Math ---
     function add(uint x, uint y) internal pure returns (uint z) {
         unchecked {
-            require((z = x + y) >= x);
+            require((z = x + y) >= x, "Usb/add-overflow");
         }
     }
     function sub(uint x, uint y) internal pure returns (uint z) {
         unchecked {
-            require((z = x - y) <= x);
+            require((z = x - y) <= x, "Usb/sub-overflow");
         }
     }
 
