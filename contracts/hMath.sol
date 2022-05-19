@@ -3,6 +3,8 @@ pragma solidity ^0.8.10;
 
 library hMath {
 
+    uint256 constant ONE = 10 ** 27;
+
     function _add(uint x, int y) internal pure returns (uint z) {
     unchecked {
         z = x + uint(y);

@@ -23,6 +23,8 @@ pragma solidity ^0.8.10;
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
+import "./hMath.sol";
+
 interface VatLike {
     function ilks(bytes32) external returns (
         uint256 Art,   // [wad]
@@ -59,30 +61,6 @@ contract Jug {
     }
 
     // --- Math ---
-    function _rpow(uint x, uint n, uint b) internal pure returns (uint z) {
-      assembly {
-        switch x case 0 {switch n case 0 {z := b} default {z := 0}}
-        default {
-          switch mod(n, 2) case 0 { z := b } default { z := x }
-          let half := div(b, 2)  // for rounding.
-          for { n := div(n, 2) } n { n := div(n,2) } {
-            let xx := mul(x, x)
-            if iszero(eq(div(xx, x), x)) { revert(0,0) }
-            let xxRound := add(xx, half)
-            if lt(xxRound, xx) { revert(0,0) }
-            x := div(xxRound, b)
-            if mod(n,2) {
-              let zx := mul(z, x)
-              if and(iszero(iszero(x)), iszero(eq(div(zx, x), z))) { revert(0,0) }
-              let zxRound := add(zx, half)
-              if lt(zxRound, zx) { revert(0,0) }
-              z := div(zxRound, b)
-            }
-          }
-        }
-      }
-    }
-    uint256 constant ONE = 10 ** 27;
     function _add(uint x, uint y) internal pure returns (uint z) {
         unchecked {
             z = x + y;
@@ -99,7 +77,7 @@ contract Jug {
         unchecked {
             z = x * y;
             require(y == 0 || z / y == x);
-            z = z / ONE;
+            z = z / hMath.ONE;
         }
     }
 
@@ -107,7 +85,7 @@ contract Jug {
     function init(bytes32 ilk) external auth {
         Ilk storage i = ilks[ilk];
         require(i.duty == 0, "Jug/ilk-already-init");
-        i.duty = ONE;
+        i.duty = hMath.ONE;
         i.rho  = block.timestamp;
     }
     function file(bytes32 ilk, bytes32 what, uint data) external auth {
@@ -128,7 +106,7 @@ contract Jug {
     function drip(bytes32 ilk) external returns (uint rate) {
         require(block.timestamp >= ilks[ilk].rho, "Jug/invalid-now");
         (, uint prev) = vat.ilks(ilk);
-        rate = _rmul(_rpow(_add(base, ilks[ilk].duty), block.timestamp - ilks[ilk].rho, ONE), prev);
+        rate = _rmul(hMath.rpow(_add(base, ilks[ilk].duty), block.timestamp - ilks[ilk].rho, hMath.ONE), prev);
         vat.fold(ilk, vow, _diff(rate, prev));
         ilks[ilk].rho = block.timestamp;
     }
