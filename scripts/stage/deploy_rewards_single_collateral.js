@@ -1,21 +1,8 @@
 const hre = require("hardhat");
 
 const { VAT,
-    SPOT,
-    aBNBc,
-    USB,
-    UsbJoin,
-    aBNBcJoin,
-    Oracle,
-    JUG,
-    REAL_ABNBC,
-    ceBNBc,
-    REALaBNBcJoin,
-    REWARDS,
-    HELIO_TOKEN, INTERACTION,
-    COLLATERAL_ABNBC,
-    COLLATERAL_REAL_ABNBC,
-    COLLATERAL_CE_ABNBC,
+    ceBNBc, INTERACTION,
+    COLLATERAL_CE_ABNBC, HELIO_TOKEN,
 } = require('../../addresses-stage.json');
 const {ethers} = require("hardhat");
 
@@ -24,26 +11,31 @@ async function main() {
 
     this.HelioToken = await hre.ethers.getContractFactory("HelioToken");
     this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
+    this.HelioOracle = await hre.ethers.getContractFactory("HelioOracle");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
 
-    const helioToken = await this.HelioToken.deploy();
-    await helioToken.deployed();
+    let interaction = this.Interaction.attach(INTERACTION);
+    // const helioToken = await this.HelioToken.deploy();
+    // await helioToken.deployed();
+    let helioToken = this.HelioToken.attach(HELIO_TOKEN);
     console.log("helioToken deployed to:", helioToken.address);
 
     const rewards = await this.HelioRewards.deploy(VAT);
     await rewards.deployed();
     console.log("Rewards deployed to:", rewards.address);
 
+    const helioOracle = await this.HelioOracle.deploy("100000000000000000");
+    await helioOracle.deployed();
+    console.log("helioOracle deployed to:", helioOracle.address);
+
     console.log('Adding rewards pool');
-    let collateral = ethers.utils.formatBytes32String(COLLATERAL_ABNBC);
-    let collateral2 = ethers.utils.formatBytes32String(COLLATERAL_REAL_ABNBC);
     let collateral3 = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
 
     await helioToken.rely(rewards.address);
     await rewards.setHelioToken(helioToken.address);
-    await rewards.initPool(aBNBc, collateral, "1000000001847694957439350500"); //6%
-    await rewards.initPool(REAL_ABNBC, collateral2, "1000000001847694957439350500"); //6%
     await rewards.initPool(ceBNBc, collateral3, "1000000001847694957439350500"); //6%
-
+    await interaction.setRewards(rewards.address);
+    await rewards.setOracle(helioOracle.address);
     console.log('Validating code');
 
     await hre.run("verify:verify", {
@@ -55,7 +47,12 @@ async function main() {
     await hre.run("verify:verify", {
         address: helioToken.address,
     });
-
+    await hre.run("verify:verify", {
+        address: helioOracle.address,
+        constructorArguments: [
+            "100000000000000000"
+        ],
+    });
     console.log('Finished');
 }
 

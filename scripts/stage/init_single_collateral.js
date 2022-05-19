@@ -11,9 +11,8 @@ const { VAT,
     VOW,
     DOG,
     INTERACTION,
-    REWARDS,
     ABACI,
-    CLIP3,
+    CLIP,
     COLLATERAL_CE_ABNBC,
 } = require('../../addresses-stage.json');
 const {ethers} = require("hardhat");
@@ -84,26 +83,26 @@ async function main() {
     // Initialize Liquidation Module
     console.log("Dog...");
     let dog = this.Dog.attach(DOG);
-    await dog.rely(CLIP3);
+    await dog.rely(CLIP);
     await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
     await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "500" + rad);
     await dog["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("hole"), "250" + rad);
     await dog["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
-    await dog["file(bytes32,bytes32,address)"](collateral3, ethers.utils.formatBytes32String("clip"), CLIP3);
+    await dog["file(bytes32,bytes32,address)"](collateral3, ethers.utils.formatBytes32String("clip"), CLIP);
 
-    console.log("CLIP3");
-    let clip3 = this.Clip.attach(CLIP3);
-    await clip3.rely(DOG);
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-    await clip3["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
-    await clip3["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
-    await clip3["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
-    await clip3["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
-    await clip3["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
+    console.log("CLIP");
+    let clip = this.Clip.attach(CLIP);
+    await clip.rely(DOG);
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
     await abaci["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tau"), "3600"); // Price will reach 0 after this time
 
@@ -115,7 +114,7 @@ async function main() {
         VAT, SPOT, UsbJoin, JUG
     );
     console.log(collateral3);
-    await interaction.setCollateralType(ceBNBc, ceBNBcJoin, collateral3, CLIP3);
+    await interaction.setCollateralType(ceBNBc, ceBNBcJoin, collateral3, CLIP);
     await interaction.drip(ceBNBc);
 
     console.log('Finished');
