@@ -8,8 +8,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 
-
-
     struct Sale {
         uint256 pos;  // Index in active array
         uint256 tab;  // Usb to raise       [rad]
@@ -44,17 +42,16 @@ interface VatLike {
 }
 
 interface GemJoinLike {
-    function join(address usr, uint wad) external;
+    function join(address usr, uint256 wad) external;
 
-    function exit(address usr, uint wad) external;
+    function exit(address usr, uint256 wad) external;
 
     function gem() external view returns (IERC20Upgradeable);
 }
 
 interface UsbGemLike {
-    function join(address usr, uint wad) external;
-
-    function exit(address usr, uint wad) external;
+    function join(address usr, uint256 wad) external;
+    function exit(address usr, uint256 wad) external;
 }
 
 interface UsbLike is IERC20Upgradeable {
@@ -70,9 +67,7 @@ interface SpotLike {
 
 interface JugLike {
     function drip(bytes32 ilk) external returns (uint256);
-
     function ilks(bytes32) external view returns (uint256, uint256);
-
     function base() external view returns (uint256);
 }
 
@@ -157,10 +152,11 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     EnumerableSet.AddressSet private usersInDebt;
 
-    uint256 constant ONE = 10 ** 27;
+    uint256 constant RAD = 10 ** 45;
     uint256 constant RAY = 10 ** 27;
+    uint256 constant YEAR = 365 * 24 * 3600; //seconds
 
-    mapping(address => address) public discs;  // e.g. Auction purchase from ceabnbc to abnbc
+    mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
     function initialize(address vat_,
         address spot_,
@@ -184,8 +180,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
         vat.hope(usbJoin_);
 
-        usb.approve(usbJoin_,
-            115792089237316195423570985008687907853269984665640564039457584007913129639935);
+        usb.approve(usbJoin_, type(uint256).max);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -199,13 +194,11 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
         vat.hope(usbJoin_);
 
-        usb.approve(usbJoin_,
-            115792089237316195423570985008687907853269984665640564039457584007913129639935);
+        usb.approve(usbJoin_, type(uint256).max);
     }
 
     function setUSBApprove() public auth {
-        usb.approve(address(usbJoin),
-            115792089237316195423570985008687907853269984665640564039457584007913129639935);
+        usb.approve(address(usbJoin), type(uint256).max);
     }
 
     function setCollateralType(
@@ -230,8 +223,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         emit CollateralEnabled(token, ilk);
     }
 
-    function setCollateralDisc(address token, address disc) external auth {// address(0) means removal
-        discs[token] = disc;
+    function setHelioProvider(address token, address helioProvider) external auth {
+        helioProviders[token] = helioProvider;
     }
 
     function removeCollateralType(address token) external auth {
@@ -259,9 +252,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     ) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive collateral");
-        if (discs[token] != address(0)) {
+        if (helioProviders[token] != address(0)) {
             require(
-                msg.sender == discs[token],
+                msg.sender == helioProviders[token],
                 "Interaction/only helio provider can deposit for this token"
             );
         }
@@ -312,7 +305,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
         uint256 mulResult = rate * uint256(dart);
-        vat.move(msg.sender, address(this), usbAmount * ONE);
+        vat.move(msg.sender, address(this), usbAmount * RAY);
         usbJoin.exit(msg.sender, usbAmount);
 
         helioRewards.drop(token, msg.sender);
@@ -330,15 +323,15 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         IERC20Upgradeable(usb).safeTransferFrom(msg.sender, address(this), usbAmount);
         usbJoin.join(msg.sender, usbAmount);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        //        int256 dart = int256(hMath.mulDivRoundingUp(usbAmount, 10 ** 27, rate));
+        (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
-        if (uint256(dart) * rate < usbAmount * (10 ** 27)) {
-            dart += 1;
-            //ceiling
+        if (uint256(dart) * rate < usbAmount * (10 ** 27) &&
+            uint256(dart + 1) * rate <= vat.usb(msg.sender)
+        ) {
+            dart += 1; // ceiling
         }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
 
-        (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         if ((int256(rate * art) / 10 ** 27) == dart) {
             EnumerableSet.remove(usersInDebt, msg.sender);
         }
@@ -358,9 +351,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     ) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive collateral");
-        if (discs[token] != address(0)) {
+        if (helioProviders[token] != address(0)) {
             require(
-                msg.sender == discs[token],
+                msg.sender == helioProviders[token],
                 "Interaction/Only helio provider can call this function for this token"
             );
         } else {
@@ -544,12 +537,28 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         require(collateralType.live == 1, "Interaction/inactive collateral");
 
         (uint256 duty,) = jug.ilks(collateralType.ilk);
-        uint256 principal = hMath.rpow((jug.base() + duty), 31536000, ONE);
-        return (principal - ONE) / (10 ** 7);
+        uint256 principal = hMath.rpow((jug.base() + duty), YEAR, RAY);
+        return (principal - RAY) / (10 ** 7);
     }
 
-    function startAuction(address token, address user, address keeper) external returns (uint256) {
-        return dog.bark(collaterals[token].ilk, user, keeper);
+    function startAuction(
+        address token,
+        address user,
+        address keeper
+    ) external returns (uint256 id) {
+        uint256 usbBal = usb.balanceOf(address(this));
+        id = dog.bark(collaterals[token].ilk, user, address(this));
+
+        usbJoin.exit(address(this), vat.usb(address(this)) / RAY);
+        usbBal = usb.balanceOf(address(this)) - usbBal;
+        IERC20Upgradeable(usb).transfer(keeper, usbBal);
+
+        // Burn any derivative token (hBNB incase of ceabnbc collateral)
+        if (helioProviders[token] != address(0)) {
+            CollateralType memory collateral = collaterals[token];
+            uint256 lot = collateral.clip.sales(id).lot;
+            HelioProviderLike(helioProviders[token]).daoBurn(user, lot);
+        }
     }
 
     function buyFromAuction(
@@ -581,12 +590,18 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint restGem = collateral.gem.gem().balanceOf(address(this)) - gemBalanceBefore;
         IERC20Upgradeable(usb).safeTransfer(receiverAddress, restUSB);
 
-        if (discs[token] != address(0)) {
-            address urn = collateral.clip.sales(auctionId).usr;
-            collateral.gem.gem().safeTransfer(discs[token], restGem);
-            CeRouterLike(discs[token]).liquidation(urn, receiverAddress, restGem);
+        if (helioProviders[token] != address(0)) {
+            collateral.gem.gem().safeTransfer(helioProviders[token], gemBal);
+            HelioProviderLike(helioProviders[token]).liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+
+            if (leftover != 0) {
+                // Auction ended with leftover
+                vat.flux(collateral.ilk, urn, address(this), leftover);
+                collateral.gem.exit(helioProviders[token], leftover); // Router (disc) gets the remaining ceabnbc
+                HelioProviderLike(helioProviders[token]).liquidation(urn, leftover); // Router burns them and gives abnbc remaining
+            }
         } else {
-            collateral.gem.gem().safeTransfer(receiverAddress, restGem);
+            collateral.gem.gem().safeTransfer(receiverAddress, gemBal);
         }
     }
 
