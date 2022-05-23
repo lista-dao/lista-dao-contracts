@@ -13,10 +13,10 @@ import "./interfaces/IBinancePool.sol";
 import "./interfaces/ICertToken.sol";
 
 contract CerosRouter is
-    ICerosRouter,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
+ICerosRouter,
+OwnableUpgradeable,
+PausableUpgradeable,
+ReentrancyGuardUpgradeable
 {
     /**
      * Variables
@@ -63,11 +63,11 @@ contract CerosRouter is
      */
 
     function deposit()
-        external
-        payable
-        override
-        nonReentrant
-        returns (uint256 value)
+    external
+    payable
+    override
+    nonReentrant
+    returns (uint256 value)
     {
         uint256 amount = msg.value;
         // get returned amount from Dex
@@ -83,11 +83,7 @@ contract CerosRouter is
         uint256 ratio = _certToken.ratio();
         uint256 poolABNBcAmount;
         if (amount >= minumunStake + relayerFee) {
-            poolABNBcAmount =
-                amount -
-                relayerFee -
-                (amount * (1e18 - ratio)) /
-                1e18;
+            poolABNBcAmount = ((amount - relayerFee) * ratio) / 1e18;
         }
         // compare poolABNBcAmount with dexABNBcAmount from Dex
         // if poolABNBcAmount >= dexABNBcAmount -> stake via BinancePool
@@ -99,7 +95,7 @@ contract CerosRouter is
             _pool.stakeAndClaimCerts{value: amount}();
         } else {
             uint256[] memory amounts = _dex.swapExactETHForTokens{
-                value: amount
+            value: amount
             }(dexABNBcAmount, path, address(this), block.timestamp + 300);
             realAmount = amounts[1];
             if (realAmount > poolABNBcAmount && poolABNBcAmount != 0) {
@@ -109,7 +105,7 @@ contract CerosRouter is
         // let's check balance of CeRouter in aBNBc
         require(
             _certToken.balanceOf(address(this)) >= realAmount,
-            "insufficient amount after withdrawal from vault"
+            "insufficient amount of CerosRouter in CeToken"
         );
         // add profit
         _profits[msg.sender] += profit;
@@ -119,12 +115,11 @@ contract CerosRouter is
     }
 
     function depositABNBc(address owner, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256 value)
+    external
+    override
+    nonReentrant
+    returns (uint256 value)
     {
-        // let's check balance of CeRouter in aBNBc
         _certToken.transferFrom(owner, address(this), amount);
         value = _vault.depositFor(msg.sender, amount);
         emit Deposit(msg.sender, _wBnbAddress, value, 0);
@@ -137,10 +132,10 @@ contract CerosRouter is
 
     // claim yields in aBNBc
     function claim(address recipient)
-        external
-        override
-        nonReentrant
-        returns (uint256 yields)
+    external
+    override
+    nonReentrant
+    returns (uint256 yields)
     {
         yields = _vault.claimYieldsFor(msg.sender, recipient);
         emit Claim(recipient, address(_certToken), yields);
@@ -150,7 +145,7 @@ contract CerosRouter is
     // claim profit in aBNBc
     function claimProfit(address recipient) external nonReentrant {
         uint256 profit = _profits[msg.sender];
-        require(profit > 0, "has not got profit");
+        require(profit > 0, "hasn't got a profit");
         // let's check balance of CeRouter in aBNBc
         require(
             _certToken.balanceOf(address(this)) >= profit,
@@ -167,10 +162,10 @@ contract CerosRouter is
 
     // withdrawal aBNBc
     function withdrawABNBc(address recipient, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256)
+    external
+    override
+    nonReentrant
+    returns (uint256)
     {
         // transfer ceToken from owner to CeRouter
         _vault.withdrawFor(msg.sender, recipient, amount);
@@ -180,10 +175,10 @@ contract CerosRouter is
 
     // withdrawal in BNB via staking pool
     function withdraw(address recipient, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256 realAmount)
+    external
+    override
+    nonReentrant
+    returns (uint256 realAmount)
     {
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
         _pool.unstakeCerts(recipient, realAmount);
@@ -193,10 +188,10 @@ contract CerosRouter is
 
     // withdrawal in BNB via DEX
     function withdrawWithSlippage(address recipient, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256)
+    external
+    override
+    nonReentrant
+    returns (uint256)
     {
         uint256 realAmount = _vault.withdraw(address(this), amount);
         address[] memory path = new address[](2);
@@ -210,7 +205,6 @@ contract CerosRouter is
             recipient,
             block.timestamp + 300
         );
-        //  console.log(); TODO CHECK BALANCE OF ROUTER
         emit Withdrawal(msg.sender, recipient, _wBnbAddress, amounts[1]);
         return amounts[1];
     }

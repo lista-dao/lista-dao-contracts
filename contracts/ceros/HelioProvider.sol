@@ -15,10 +15,10 @@ import "./interfaces/IBinancePool.sol";
 import "./interfaces/ICertToken.sol";
 
 contract HelioProvider is
-    IHelioProvider,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
+IHelioProvider,
+OwnableUpgradeable,
+PausableUpgradeable,
+ReentrancyGuardUpgradeable
 {
     /**
      * Variables
@@ -81,11 +81,11 @@ contract HelioProvider is
      */
 
     function provide()
-        external
-        payable
-        override
-        nonReentrant
-        returns (uint256 value)
+    external
+    payable
+    override
+    nonReentrant
+    returns (uint256 value)
     {
         value = _ceRouter.deposit{value: msg.value}();
         // deposit ceToken as collateral
@@ -95,10 +95,10 @@ contract HelioProvider is
     }
 
     function provideInABNBc(uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256 value)
+    external
+    override
+    nonReentrant
+    returns (uint256 value)
     {
         value = _ceRouter.depositABNBc(msg.sender, amount);
         // deposit ceToken as collateral
@@ -113,11 +113,11 @@ contract HelioProvider is
 
     // claim in aBNBc
     function claimInABNBc(address recipient)
-        external
-        override
-        nonReentrant
-        onlyOperator
-        returns (uint256 yields)
+    external
+    override
+    nonReentrant
+    onlyOperator
+    returns (uint256 yields)
     {
         yields = _ceRouter.claim(recipient);
         emit Claim(recipient, yields);
@@ -130,14 +130,14 @@ contract HelioProvider is
 
     // withdrawal in BNB via staking pool
     function release(address recipient, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256 realAmount)
+    external
+    override
+    nonReentrant
+    returns (uint256 realAmount)
     {
-        uint256 minumunUnstake = _pool.getMinimumStake();
+        uint256 minumumUnstake = _pool.getMinimumStake();
         require(
-            amount >= minumunUnstake,
+            amount >= minumumUnstake,
             "value must be greater than min unstake amount"
         );
         _withdrawCollateral(msg.sender, amount);
@@ -147,10 +147,10 @@ contract HelioProvider is
     }
 
     function releaseInABNBc(address recipient, uint256 amount)
-        external
-        override
-        nonReentrant
-        returns (uint256 value)
+    external
+    override
+    nonReentrant
+    returns (uint256 value)
     {
         _withdrawCollateral(msg.sender, amount);
         _ceRouter.withdrawABNBc(recipient, amount);
@@ -163,28 +163,28 @@ contract HelioProvider is
      */
 
     function liquidation(address recipient, uint256 amount)
-        external
-        override
-        onlyDao
-        nonReentrant
+    external
+    override
+    onlyDao
+    nonReentrant
     {
         _ceRouter.withdrawABNBc(recipient, amount);
     }
 
     function daoBurn(address account, uint256 value)
-        external
-        override
-        onlyDao
-        nonReentrant
+    external
+    override
+    onlyDao
+    nonReentrant
     {
         _collateralToken.burn(account, value);
     }
 
     function daoMint(address account, uint256 value)
-        external
-        override
-        onlyDao
-        nonReentrant
+    external
+    override
+    onlyDao
+    nonReentrant
     {
         _collateralToken.mint(account, value);
     }
