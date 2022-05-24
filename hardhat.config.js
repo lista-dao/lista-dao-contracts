@@ -40,7 +40,6 @@ module.exports = {
             chainId: 97,
             accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
         },
-
     },
 
     etherscan: {
