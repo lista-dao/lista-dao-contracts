@@ -217,20 +217,19 @@ ReentrancyGuardUpgradeable
     function withdrawWithSlippage(
         address recipient,
         uint256 amount,
-        uint256 slippage // [0..1)
+        uint256 outAmount
     ) external override nonReentrant returns (uint256) {
         uint256 realAmount = _vault.withdrawFor(
-            address(this),
+            msg.sender,
             address(this),
             amount
         );
         address[] memory path = new address[](2);
         path[0] = address(_certToken);
         path[1] = _wBnbAddress;
-        uint256[] memory outAmounts = _dex.getAmountsOut(realAmount, path);
         uint256[] memory amounts = _dex.swapExactTokensForETH(
             amount,
-            outAmounts[1] * (1 - slippage),
+            outAmount,
             path,
             recipient,
             block.timestamp + 300
