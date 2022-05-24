@@ -302,7 +302,7 @@ describe('===INTERACTION2-Multicollateral===', function () {
         await interaction.drip(abnbc.address, {from: signer1.address});
 
         availableYear = await interaction.availableToBorrow(abnbc.address, signer1.address, {from: signer1.address});
-        expect(availableYear.toString()).to.equal("573999999958575180431"); //roughly 10 percents less.
+        expect(availableYear.toString()).to.equal("573999999958575180430"); //roughly 10 percents less.
     });
 
     // 100 BNB -> Ankr

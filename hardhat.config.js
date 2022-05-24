@@ -2,6 +2,7 @@ require("dotenv").config();
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 require('@nomiclabs/hardhat-truffle5');
+require('@nomiclabs/hardhat-web3');
 require("hardhat-gas-reporter");
 require('hardhat-contract-sizer');
 require("solidity-coverage");
@@ -27,35 +28,6 @@ module.exports = {
     },
 
     networks: {
-        // hardhat: {
-        // allowUnlimitedContractSize: true,
-        // 	forking: {
-        // 		url: "https://rpc.ftm.tools",
-        // 		accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`],
-        // 		blockNumber: 32968090
-        // 	}
-        // },
-        // hardhat: {
-        // // allowUnlimitedContractSize: true,
-        // 	forking: {
-        // 		url: "https://rpc.ftm.tools",
-        // 		accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`],
-        // 		blockNumber: 32968090
-        // 	}
-        // },
-		// hardhat: {
-		// 	host: "127.0.0.1",
-		// 	port: 7545,
-		// 	network_id: "*"
-		// },
-        	hardhat: {
-          // allowUnlimitedContractSize: true,
-        		forking: {
-        			url: `https://speedy-nodes-nyc.moralis.io/${process.env.MORALIS_PROJECT_ID}/bsc/testnet`,
-        			accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`],
-        			// blockNumber: 18980030
-        		}
-        	},
 
         bsc: {
             url: `https://speedy-nodes-nyc.moralis.io/${process.env.MORALIS_PROJECT_ID}/bsc/mainnet`,
