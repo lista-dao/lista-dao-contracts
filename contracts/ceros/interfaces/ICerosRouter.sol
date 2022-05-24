@@ -42,6 +42,8 @@ interface ICerosRouter {
 
     event ChangeCollateralToken(address collateralToken);
 
+    event ChangeProvider(address provider);
+
     /**
      * Methods
      */
@@ -54,9 +56,11 @@ interface ICerosRouter {
     function deposit() external payable returns (uint256);
 
     // in aBNBc
-    function depositABNBc(address owner, uint256 amount)
-        external
-        returns (uint256);
+    function depositABNBcFrom(address owner, uint256 amount)
+    external
+    returns (uint256);
+
+    function depositABNBc(uint256 amount) external returns (uint256);
 
     /**
      * Claim
@@ -71,16 +75,18 @@ interface ICerosRouter {
 
     // BNB
     function withdraw(address recipient, uint256 amount)
-        external
-        returns (uint256);
+    external
+    returns (uint256);
 
     // BNB
-    function withdrawWithSlippage(address recipient, uint256 amount)
-        external
-        returns (uint256);
+    function withdrawWithSlippage(
+        address recipient,
+        uint256 amount,
+        uint256 slippage
+    ) external returns (uint256);
 
     // aBNBc
     function withdrawABNBc(address recipient, uint256 amount)
-        external
-        returns (uint256);
+    external
+    returns (uint256);
 }
