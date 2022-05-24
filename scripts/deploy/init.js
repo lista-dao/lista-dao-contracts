@@ -36,7 +36,7 @@ async function main() {
     this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
     this.UsbJoin = await hre.ethers.getContractFactory("UsbJoin");
     this.Oracle = await hre.ethers.getContractFactory("Oracle");
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
     this.Jug = await hre.ethers.getContractFactory("Jug");
 
     console.log("Setting permissions");

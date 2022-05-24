@@ -19,7 +19,7 @@ async function main() {
     let collateral = ethers.utils.formatBytes32String("aBNBc");
     let collateral2 = ethers.utils.formatBytes32String("REALaBNBc");
 
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
     let interaction = this.Interaction.attach(INTERACTION);
 
     await interaction.enableCollateralType(aBNBc, aBNBcJoin, collateral);

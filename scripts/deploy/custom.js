@@ -31,7 +31,7 @@ async function main() {
     this.UsbJoin = await hre.ethers.getContractFactory("UsbJoin");
     this.Oracle = await hre.ethers.getContractFactory("Oracle");
     this.Jug = await hre.ethers.getContractFactory("Jug");
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
     let spot = this.Spot.attach(SPOT);

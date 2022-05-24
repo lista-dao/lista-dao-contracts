@@ -4,7 +4,7 @@ const { ethers, network } = require('hardhat');
 const Web3 = require('web3');
 const {ether, expectRevert, BN, expectEvent} = require('@openzeppelin/test-helpers');
 
-const Interaction = artifacts.require('DAOInteraction');
+const Interaction = artifacts.require('Interaction');
 
 ///////////////////////////////////////////
 //Word of Notice: Commented means pending//
@@ -29,7 +29,8 @@ describe('===INTERACTION2-Multicollateral===', function () {
         helio,
         oracle,
         oracle2,
-        helioOracle;
+        helioOracle,
+        auctionProxy;
 
     let interaction;
 
@@ -62,6 +63,7 @@ describe('===INTERACTION2-Multicollateral===', function () {
         this.ClipABNBC = await ethers.getContractFactory("Clipper");
         this.Abaci = await ethers.getContractFactory("LinearDecrease");
         this.Vow = await ethers.getContractFactory("Vow");
+        this.AuctionProxy = await ethers.getContractFactory("AuctionProxy");
         this.HelioOracle = await ethers.getContractFactory("HelioOracle");
         this.Rewards = await ethers.getContractFactory("HelioRewards");
         this.Helio = await ethers.getContractFactory("HelioToken");
@@ -112,6 +114,9 @@ describe('===INTERACTION2-Multicollateral===', function () {
         helio = await this.Helio.connect(deployer).deploy();
         await helio.deployed();
 
+        auctionProxy = await this.AuctionProxy.connect(deployer).deploy();
+        await auctionProxy.deployed();
+
         interaction = await Interaction.new({from: deployer.address});
         await interaction.initialize(
             vat.address,
@@ -120,12 +125,12 @@ describe('===INTERACTION2-Multicollateral===', function () {
             usbJoin.address,
             jug.address,
             dog.address,
-            rewards.address
+            rewards.address,
+            auctionProxy.address,
         );
         //////////////////////////////
         /** Initial Setup -------- **/
         //////////////////////////////
-
 
         await helio.connect(deployer).rely(rewards.address);
         await rewards.connect(deployer).setHelioToken(helio.address);
@@ -209,6 +214,8 @@ describe('===INTERACTION2-Multicollateral===', function () {
         expect(s1Balance).to.equal(ether("5000").toString());
 
         await abnbc2.connect(deployer).mint(signer1.address, ether("400").toString());
+
+        await auctionProxy.connect(deployer).setDao(interaction.address);
     });
 
     it('defaults', async function () {

@@ -15,7 +15,7 @@ const {
 async function main() {
     console.log('Running deploy script');
 
-    let Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    let Interaction = await hre.ethers.getContractFactory("Interaction");
     this.Rewards = await hre.ethers.getContractFactory("HelioRewards");
     let rewards = this.Rewards.attach(REWARDS);
     // const interaction = Interaction.attach(INTERACTION);

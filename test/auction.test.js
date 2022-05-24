@@ -61,7 +61,7 @@ xdescribe("Auction", () => {
     const Vow = await ethers.getContractFactory("Vow");
     const HelioToken = await ethers.getContractFactory("HelioToken");
     const HelioRewards = await ethers.getContractFactory("HelioRewards");
-    const DAOInteraction = await ethers.getContractFactory("DAOInteraction");
+    const DAOInteraction = await ethers.getContractFactory("Interaction");
 
     // Abacus
     abacus = await LinearDecrease.connect(deployer).deploy();

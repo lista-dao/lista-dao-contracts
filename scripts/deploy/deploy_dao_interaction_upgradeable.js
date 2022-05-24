@@ -23,7 +23,7 @@ const {
 async function main() {
     console.log('Running deploy script');
 
-    Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    Interaction = await hre.ethers.getContractFactory("Interaction");
     // const interaction = Interaction.attach(INTERACTION);
     const interaction = await upgrades.deployProxy(Interaction, [
         VAT,

@@ -61,7 +61,7 @@ xdescribe('===MVP1===', function () {
         this.Abaci = await ethers.getContractFactory("LinearDecrease");
         this.Vow = await ethers.getContractFactory("Vow");
         this.Oracle = await ethers.getContractFactory("Oracle"); // Mock Oracle
-        this.Interaction = await ethers.getContractFactory("DAOInteraction"); // Mock Oracle
+        this.Interaction = await ethers.getContractFactory("Interaction"); // Mock Oracle
         this.Rewards = await ethers.getContractFactory("HelioRewards");
         this.Helio = await ethers.getContractFactory("HelioToken");
 

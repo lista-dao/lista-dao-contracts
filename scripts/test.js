@@ -24,7 +24,7 @@ async function main() {
 
     this.VAT = await hre.ethers.getContractFactory("Vat");
 
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
 
     const interactionNew = await upgrades.deployProxy(this.Interaction, [
         VAT,

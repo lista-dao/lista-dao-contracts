@@ -18,7 +18,7 @@ const { VAT,
 async function main() {
     console.log('Running deploy script');
 
-    const Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    const Interaction = await hre.ethers.getContractFactory("Interaction");
     //
     // console.log('Force importing proxy');
     // await upgrades.forceImport(INTERACTION, Interaction);

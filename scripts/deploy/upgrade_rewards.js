@@ -20,7 +20,7 @@ async function main() {
 
     this.HelioToken = await hre.ethers.getContractFactory("HelioToken");
     this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
 
     const helioToken = this.HelioToken.attach(HELIO_TOKEN);
     const interaction = this.Interaction.attach(INTERACTION);

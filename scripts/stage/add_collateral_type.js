@@ -28,7 +28,7 @@ async function main() {
     this.Abaci = await ethers.getContractFactory("LinearDecrease");
     this.Vat = await hre.ethers.getContractFactory("Vat");
     this.Clip = await hre.ethers.getContractFactory("Clipper");
-    this.Interaction = await hre.ethers.getContractFactory("DAOInteraction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction");
     this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
     this.Spot = await hre.ethers.getContractFactory("Spotter");
     this.Rewards = await hre.ethers.getContractFactory("HelioRewards");
