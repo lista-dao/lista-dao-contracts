@@ -100,7 +100,7 @@ ReentrancyGuardUpgradeable
     nonReentrant
     returns (uint256 value)
     {
-        value = _ceRouter.depositABNBc(msg.sender, amount);
+        value = _ceRouter.depositABNBcFrom(msg.sender, amount);
         // deposit ceToken as collateral
         _provideCollateral(msg.sender, value);
         emit Deposit(msg.sender, value);

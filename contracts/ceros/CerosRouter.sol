@@ -33,6 +33,20 @@ ReentrancyGuardUpgradeable
 
     mapping(address => uint256) private _profits;
 
+    address private _provider;
+
+    /**
+     * Modifiers
+     */
+
+    modifier onlyProvider() {
+        require(
+            msg.sender == owner() || msg.sender == _provider,
+            "Dao: not allowed"
+        );
+        _;
+    }
+
     function initialize(
         address certToken,
         address wBnbToken,
@@ -114,13 +128,26 @@ ReentrancyGuardUpgradeable
         return value;
     }
 
-    function depositABNBc(address owner, uint256 amount)
+    function depositABNBcFrom(address owner, uint256 amount)
+    external
+    override
+    onlyProvider
+    nonReentrant
+    returns (uint256 value)
+    {
+        _certToken.transferFrom(owner, address(this), amount);
+        value = _vault.depositFor(msg.sender, amount);
+        emit Deposit(msg.sender, _wBnbAddress, value, 0);
+        return value;
+    }
+
+    function depositABNBc(uint256 amount)
     external
     override
     nonReentrant
     returns (uint256 value)
     {
-        _certToken.transferFrom(owner, address(this), amount);
+        _certToken.transferFrom(msg.sender, address(this), amount);
         value = _vault.depositFor(msg.sender, amount);
         emit Deposit(msg.sender, _wBnbAddress, value, 0);
         return value;
@@ -187,20 +214,23 @@ ReentrancyGuardUpgradeable
     }
 
     // withdrawal in BNB via DEX
-    function withdrawWithSlippage(address recipient, uint256 amount)
-    external
-    override
-    nonReentrant
-    returns (uint256)
-    {
-        uint256 realAmount = _vault.withdraw(address(this), amount);
+    function withdrawWithSlippage(
+        address recipient,
+        uint256 amount,
+        uint256 slippage // [0..1)
+    ) external override nonReentrant returns (uint256) {
+        uint256 realAmount = _vault.withdrawFor(
+            address(this),
+            address(this),
+            amount
+        );
         address[] memory path = new address[](2);
         path[0] = address(_certToken);
         path[1] = _wBnbAddress;
         uint256[] memory outAmounts = _dex.getAmountsOut(realAmount, path);
         uint256[] memory amounts = _dex.swapExactTokensForETH(
             amount,
-            outAmounts[1],
+            outAmounts[1] * (1 - slippage),
             path,
             recipient,
             block.timestamp + 300
@@ -211,6 +241,14 @@ ReentrancyGuardUpgradeable
 
     function getProfitFor(address account) external view returns (uint256) {
         return _profits[account];
+    }
+
+    function getPendingWithdrawalOf(address account)
+    external
+    view
+    returns (uint256)
+    {
+        return _pool.pendingUnstakesOf(account);
     }
 
     function changeVault(address vault) external onlyOwner {
@@ -226,5 +264,10 @@ ReentrancyGuardUpgradeable
     function changePool(address pool) external onlyOwner {
         _pool = IBinancePool(pool);
         emit ChangePool(pool);
+    }
+
+    function changeProvider(address provider) external onlyOwner {
+        _provider = provider;
+        emit ChangeProvider(provider);
     }
 }

@@ -79,6 +79,12 @@ interface CeRouterLike {
     function liquidation(address urn, address recipient, uint256 amount) external;
 }
 
+interface HelioProviderLike {
+    function liquidation(address recipient, uint256 amount) external;
+    function daoBurn(address, uint256) external;
+    function daoMint(address, uint256) external;
+}
+
 interface ClipperLike {
     function ilk() external view returns (bytes32);
 
@@ -570,25 +576,28 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     ) external {
         CollateralType memory collateral = collaterals[token];
 
-        uint usbBalanceBefore = usb.balanceOf(address(this));
-        uint gemBalanceBefore = collateral.gem.gem().balanceOf(address(this));
+        // Balances before
+        uint256 usbBal = usb.balanceOf(address(this));
+        uint256 gemBal = collateral.gem.gem().balanceOf(address(this));
 
-        uint usbMaxAmount = maxPrice * collateralAmount / RAY;
+        uint256 usbMaxAmount = (maxPrice * collateralAmount) / RAY;
 
-
-        IERC20Upgradeable(usb).safeTransferFrom(msg.sender, address(this), usbMaxAmount);
+        IERC20Upgradeable(usb).transferFrom(msg.sender, address(this), usbMaxAmount);
         usbJoin.join(address(this), usbMaxAmount);
 
         vat.hope(address(collateral.clip));
-
+        address urn = collateral.clip.sales(auctionId).usr; // Liquidated address
+        uint256 leftover = vat.gem(collateral.ilk, urn); // userGemBalanceBefore
         collateral.clip.take(auctionId, collateralAmount, maxPrice, address(this), "");
+        leftover = vat.gem(collateral.ilk, urn) - leftover; // leftover
 
         collateral.gem.exit(address(this), vat.gem(collateral.ilk, address(this)));
         usbJoin.exit(address(this), vat.usb(address(this)) / RAY);
 
-        uint restUSB = usb.balanceOf(address(this)) - usbBalanceBefore;
-        uint restGem = collateral.gem.gem().balanceOf(address(this)) - gemBalanceBefore;
-        IERC20Upgradeable(usb).safeTransfer(receiverAddress, restUSB);
+        // Balances rest
+        usbBal = usb.balanceOf(address(this)) - usbBal;
+        gemBal = collateral.gem.gem().balanceOf(address(this)) - gemBal;
+        IERC20Upgradeable(usb).transfer(receiverAddress, usbBal);
 
         if (helioProviders[token] != address(0)) {
             collateral.gem.gem().safeTransfer(helioProviders[token], gemBal);
