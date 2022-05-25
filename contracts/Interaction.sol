@@ -254,7 +254,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 dink
     ) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
+        // _checkIsLive(collateralType.live); Checking in the `drip` function
         if (helioProviders[token] != address(0)) {
             require(
                 msg.sender == helioProviders[token],
@@ -297,14 +297,13 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function borrow(address token, uint256 usbAmount) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
+        // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
         int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
         if (uint256(dart) * rate < usbAmount * (10 ** 27)) {
-            dart += 1;
-            //ceiling
+            dart += 1; //ceiling
         }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
         uint256 mulResult = rate * uint256(dart);
@@ -321,7 +320,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     // N.B. User collateral stays the same.
     function payback(address token, uint256 usbAmount) external returns (int256) {
         CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
+        // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         IERC20Upgradeable(usb).safeTransferFrom(msg.sender, address(this), usbAmount);
         usbJoin.join(msg.sender, usbAmount);
