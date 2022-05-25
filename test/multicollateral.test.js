@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const { BigNumber } = require('ethers');
 const { ethers, network } = require('hardhat');
 const Web3 = require('web3');
-const {ether, expectRevert, BN, expectEvent} = require('@openzeppelin/test-helpers');
+const {ether, expectRevert, BN, expectEvent, constants} = require('@openzeppelin/test-helpers');
 
 const Interaction = artifacts.require('Interaction');
 
@@ -81,14 +81,19 @@ describe('===INTERACTION2-Multicollateral===', function () {
         usbJoin = await this.UsbJoin.connect(deployer).deploy(vat.address, usb.address);
         await usbJoin.deployed();
 
+        const aBNBb = artifacts.require("aBNBb");
+        abnbb = await aBNBb.new();
+        await abnbb.initialize(deployer.address);
+        abnbb2 = await aBNBb.new();
+        await abnbb2.initialize(deployer.address);
         // Collateral module
-        abnbc = await this.ABNBC.connect(deployer).deploy("aBNBc", "Test ABNBC");
-        await abnbc.deployed(); // Collateral
+        abnbc = await this.ABNBC.connect(deployer).deploy();
+        await abnbc.initialize(constants.ZERO_ADDRESS, abnbb.address);
         abnbcJoin = await this.GemJoin.connect(deployer).deploy(vat.address, collateral, abnbc.address);
         await abnbcJoin.deployed();
         // Collateral 2
-        abnbc2 = await this.ABNBC.connect(deployer).deploy("aBNBc2", "Test ABNBC2");
-        await abnbc2.deployed(); // Collateral
+        abnbc2 = await this.ABNBC.connect(deployer).deploy();
+        await abnbc2.initialize(constants.ZERO_ADDRESS, abnbb.address);
         abnbcJoin2 = await this.GemJoin.connect(deployer).deploy(vat.address, collateral2, abnbc2.address);
         await abnbcJoin2.deployed();
 

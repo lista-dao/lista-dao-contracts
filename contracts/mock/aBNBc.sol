@@ -1,31 +1,92 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity ^0.8.6;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-// solhint-disable-next-line contract-name-camelcase
-// Mock ERC20 contract for use as a collateral
-contract aBNBc is ERC20 {
-  address public owner;
+import "../ceros/interfaces/IBondToken.sol";
 
-  constructor(string memory desc, string memory name) ERC20(desc, name) {
-    owner = msg.sender;
+contract aBNBc is OwnableUpgradeable, ERC20Upgradeable {
+  /**
+   * Variables
+   */
+
+  address private _binancePool;
+  address private _bondToken;
+
+  /**
+   * Events
+   */
+
+  event BinancePoolChanged(address indexed binancePool);
+  event BondTokenChanged(address indexed bondToken);
+
+  /**
+   * Modifiers
+   */
+
+  modifier onlyMinter() {
+    require(
+      msg.sender == _binancePool || msg.sender == _bondToken,
+      "Minter: not allowed"
+    );
+    _;
   }
 
-  function mint(address _to, uint256 _amount) external returns (bool) {
-    require(msg.sender == owner, "Forbidden");
-    _mint(_to, _amount);
-    return true;
+  function initialize(address binancePool, address bondToken)
+  public
+  initializer
+  {
+    __Ownable_init();
+    __ERC20_init_unchained("Ankr BNB Reward Bearing Certificate", "aBNBc");
+    _binancePool = binancePool;
+    _bondToken = bondToken;
+    uint256 initSupply = IBondToken(_bondToken).totalSharesSupply();
+    // mint init supply if not inizialized
+    super._mint(address(_bondToken), initSupply);
   }
 
-  function burn(uint256 _amount) external returns (bool) {
-    require(msg.sender == owner, "Forbidden");
-    _burn(msg.sender, _amount);
-    return true;
+  function ratio() public view returns (uint256) {
+    return IBondToken(_bondToken).ratio();
   }
 
-  function mintMe(uint256 _amount) external returns (bool) {
-    _mint(msg.sender, _amount);
-    return true;
+  function burn(address account, uint256 amount) external {
+    _burn(account, amount);
+  }
+
+  function mint(address account, uint256 amount) external {
+    _mint(account, amount);
+  }
+
+  function mintApprovedTo(
+    address account,
+    address spender,
+    uint256 amount
+  ) external {
+    _mint(account, amount);
+    _approve(account, spender, amount);
+  }
+
+  function changeBinancePool(address binancePool) external onlyOwner {
+    _binancePool = binancePool;
+    emit BinancePoolChanged(binancePool);
+  }
+
+  function changeBondToken(address bondToken) external onlyOwner {
+    _bondToken = bondToken;
+    emit BondTokenChanged(bondToken);
+  }
+
+  function balanceWithRewardsOf(address account)
+  public
+  view
+  returns (uint256)
+  {
+    uint256 shares = this.balanceOf(account);
+    return IBondToken(_bondToken).sharesToBonds(shares);
+  }
+
+  function isRebasing() public pure returns (bool) {
+    return false;
   }
 }
