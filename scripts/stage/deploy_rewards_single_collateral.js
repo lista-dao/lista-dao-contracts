@@ -3,7 +3,7 @@ const hre = require("hardhat");
 const { VAT,
     ceBNBc, INTERACTION,
     COLLATERAL_CE_ABNBC, HELIO_TOKEN,
-} = require('../../addresses-stage.json');
+} = require('../../addresses-stage2.json');
 const {ethers} = require("hardhat");
 
 async function main() {
@@ -12,12 +12,12 @@ async function main() {
     this.HelioToken = await hre.ethers.getContractFactory("HelioToken");
     this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
     this.HelioOracle = await hre.ethers.getContractFactory("HelioOracle");
-    this.Interaction = await hre.ethers.getContractFactory("Interaction");
+    // this.Interaction = await hre.ethers.getContractFactory("Interaction");
 
-    let interaction = this.Interaction.attach(INTERACTION);
-    // const helioToken = await this.HelioToken.deploy();
-    // await helioToken.deployed();
-    let helioToken = this.HelioToken.attach(HELIO_TOKEN);
+    // let interaction = this.Interaction.attach(INTERACTION);
+    const helioToken = await this.HelioToken.deploy();
+    await helioToken.deployed();
+    // let helioToken = this.HelioToken.attach(HELIO_TOKEN);
     console.log("helioToken deployed to:", helioToken.address);
 
     const rewards = await this.HelioRewards.deploy(VAT);
@@ -34,7 +34,7 @@ async function main() {
     await helioToken.rely(rewards.address);
     await rewards.setHelioToken(helioToken.address);
     await rewards.initPool(ceBNBc, collateral3, "1000000001847694957439350500"); //6%
-    await interaction.setRewards(rewards.address);
+    // await interaction.setRewards(rewards.address);
     await rewards.setOracle(helioOracle.address);
     console.log('Validating code');
 

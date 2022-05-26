@@ -13,4 +13,6 @@ interface IDao {
         address token,
         uint256 dink
     ) external returns (uint256);
+
+    function auctionProxy() external view returns (address);
 }

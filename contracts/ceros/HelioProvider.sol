@@ -28,6 +28,8 @@ ReentrancyGuardUpgradeable
     ICerosRouter private _ceRouter;
     IDao private _dao;
     IBinancePool private _pool;
+
+    address private _auctionProxy;
     /**
      * Modifiers
      */
@@ -38,9 +40,9 @@ ReentrancyGuardUpgradeable
         );
         _;
     }
-    modifier onlyDao() {
+    modifier onlyAuctionProxy() {
         require(
-            msg.sender == owner() || msg.sender == address(_dao),
+            msg.sender == owner() || msg.sender == address(_auctionProxy),
             "Dao: not allowed"
         );
         _;
@@ -62,6 +64,7 @@ ReentrancyGuardUpgradeable
         _ceToken = ceToken;
         _ceRouter = ICerosRouter(ceRouter);
         _dao = IDao(daoAddress);
+        _auctionProxy = _dao.auctionProxy();
         _pool = IBinancePool(pool);
         IERC20(_ceToken).approve(daoAddress, type(uint256).max);
     }
@@ -145,7 +148,7 @@ ReentrancyGuardUpgradeable
     function liquidation(address recipient, uint256 amount)
     external
     override
-    onlyDao
+    onlyAuctionProxy
     nonReentrant
     {
         _ceRouter.withdrawABNBc(recipient, amount);
@@ -153,7 +156,7 @@ ReentrancyGuardUpgradeable
     function daoBurn(address account, uint256 value)
     external
     override
-    onlyDao
+    onlyAuctionProxy
     nonReentrant
     {
         _collateralToken.burn(account, value);
@@ -161,7 +164,7 @@ ReentrancyGuardUpgradeable
     function daoMint(address account, uint256 value)
     external
     override
-    onlyDao
+    onlyAuctionProxy
     nonReentrant
     {
         _collateralToken.mint(account, value);
@@ -177,6 +180,7 @@ ReentrancyGuardUpgradeable
     function changeDao(address dao) external onlyOwner {
         IERC20(_ceToken).approve(address(_dao), 0);
         _dao = IDao(dao);
+        _auctionProxy = _dao.auctionProxy();
         IERC20(_ceToken).approve(address(_dao), type(uint256).max);
         emit ChangeDao(dao);
     }

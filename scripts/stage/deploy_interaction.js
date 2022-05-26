@@ -9,16 +9,22 @@ const {
     UsbJoin,
     JUG,
     REWARDS,
-    DOG,
-} = require('../../addresses-stage.json');
+    DOG, DEPLOYER,
+} = require('../../addresses-stage2.json');
 
 async function main() {
     console.log('Running deploy script');
 
     let Interaction = await hre.ethers.getContractFactory("Interaction");
     this.Rewards = await hre.ethers.getContractFactory("HelioRewards");
+    this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
     let rewards = this.Rewards.attach(REWARDS);
     // const interaction = Interaction.attach(INTERACTION);
+
+    const auctionProxy = await this.AuctionProxy.deploy();
+    await auctionProxy.deployed();
+    console.log("AuctionProxy deployed to:", auctionProxy.address);
+
     const interaction = await upgrades.deployProxy(Interaction, [
         VAT,
         SPOT,
@@ -27,18 +33,11 @@ async function main() {
         JUG,
         DOG,
         REWARDS,
+        auctionProxy.address
     ], {
         initializer: "initialize"
     });
 
-    // // const interaction = await this.Interaction.deploy(
-    // //     VAT,
-    // //     SPOT,
-    // //     USB,
-    // //     UsbJoin,
-    // //     JUG
-    // // );
-    // await interaction.deployed();
     console.log("interaction deployed to:", interaction.address);
     //
     this.Vat = await hre.ethers.getContractFactory("Vat");
@@ -47,6 +46,8 @@ async function main() {
     let vat = this.Vat.attach(VAT);
     await vat.rely(interaction.address);
     await rewards.rely(interaction.address);
+
+    await auctionProxy.setDao(interaction.address);
 
     console.log('Validating code');
     let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(interaction.address);
@@ -65,7 +66,8 @@ async function main() {
             UsbJoin,
             JUG,
             DOG,
-            REWARDS
+            REWARDS,
+            auctionProxy.address
         ],
     });
 

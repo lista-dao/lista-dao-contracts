@@ -12,7 +12,7 @@ const { VAT,
     REAL_ABNBC, ceBNBc,
     REALaBNBcJoin,COLLATERAL_CE_ABNBC,
     INTERACTION, CLIP1, CLIP2, CLIP3, VOW, ABACI
-} = require('../../addresses-stage.json');
+} = require('../../addresses-stage2.json');
 const {ethers} = require("hardhat");
 
 let wad = "000000000000000000", // 18 Decimals

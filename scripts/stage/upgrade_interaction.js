@@ -4,7 +4,7 @@ require("@nomiclabs/hardhat-etherscan");
 
 const {
     INTERACTION,
-} = require('../../addresses-stage.json');
+} = require('../../addresses-stage2.json');
 
 async function main() {
     console.log('Running deploy script');

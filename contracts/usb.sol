@@ -29,12 +29,12 @@ contract Usb {
     function rely(address guy) external auth { wards[guy] = 1; }
     function deny(address guy) external auth { wards[guy] = 0; }
     modifier auth {
-        require(wards[msg.sender] == 1, "Usb/not-authorized");
+        require(wards[msg.sender] == 1, "Hay/not-authorized");
         _;
     }
 
     // --- ERC20 Data ---
-    string  public constant name     = "Usb Stablecoin";
+    string  public constant name     = "Hay Stablecoin";
     string  public symbol;
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
@@ -50,12 +50,12 @@ contract Usb {
     // --- Math ---
     function add(uint x, uint y) internal pure returns (uint z) {
         unchecked {
-            require((z = x + y) >= x, "Usb/add-overflow");
+            require((z = x + y) >= x, "Hay/add-overflow");
         }
     }
     function sub(uint x, uint y) internal pure returns (uint z) {
         unchecked {
-            require((z = x - y) <= x, "Usb/sub-overflow");
+            require((z = x - y) <= x, "Hay/sub-overflow");
         }
     }
 
@@ -83,9 +83,9 @@ contract Usb {
     function transferFrom(address src, address dst, uint wad)
         public returns (bool)
     {
-        require(balanceOf[src] >= wad, "Usb/insufficient-balance");
+        require(balanceOf[src] >= wad, "Hay/insufficient-balance");
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-            require(allowance[src][msg.sender] >= wad, "Usb/insufficient-allowance");
+            require(allowance[src][msg.sender] >= wad, "Hay/insufficient-allowance");
             allowance[src][msg.sender] = sub(allowance[src][msg.sender], wad);
         }
         balanceOf[src] = sub(balanceOf[src], wad);
@@ -99,9 +99,9 @@ contract Usb {
         emit Transfer(address(0), usr, wad);
     }
     function burn(address usr, uint wad) external {
-        require(balanceOf[usr] >= wad, "Usb/insufficient-balance");
+        require(balanceOf[usr] >= wad, "Hay/insufficient-balance");
         if (usr != msg.sender && allowance[usr][msg.sender] != type(uint256).max) {
-            require(allowance[usr][msg.sender] >= wad, "Usb/insufficient-allowance");
+            require(allowance[usr][msg.sender] >= wad, "Hay/insufficient-allowance");
             allowance[usr][msg.sender] = sub(allowance[usr][msg.sender], wad);
         }
         balanceOf[usr] = sub(balanceOf[usr], wad);
@@ -141,10 +141,10 @@ contract Usb {
                                      allowed))
         ));
 
-        require(holder != address(0), "Usb/invalid-address-0");
-        require(holder == ecrecover(digest, v, r, s), "Usb/invalid-permit");
-        require(expiry == 0 || block.timestamp <= expiry, "Usb/permit-expired");
-        require(nonce == nonces[holder]++, "Usb/invalid-nonce");
+        require(holder != address(0), "Hay/invalid-address-0");
+        require(holder == ecrecover(digest, v, r, s), "Hay/invalid-permit");
+        require(expiry == 0 || block.timestamp <= expiry, "Hay/permit-expired");
+        require(nonce == nonces[holder]++, "Hay/invalid-nonce");
         uint wad = allowed ? type(uint256).max : 0;
         allowance[holder][spender] = wad;
         emit Approval(holder, spender, wad);
