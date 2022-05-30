@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.6;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -36,7 +36,7 @@ ReentrancyGuardUpgradeable
      */
 
     modifier onlyRouter() {
-        require(msg.sender == _router, "Not allowed: your aren't the router");
+        require(msg.sender == _router, "Router: not allowed");
         _;
     }
 
@@ -116,7 +116,7 @@ ReentrancyGuardUpgradeable
     returns (uint256)
     {
         uint256 availableYields = this.getYieldFor(owner);
-        require(availableYields > 0, "hasn't got yields to claim");
+        require(availableYields > 0, "has not got yields to claim");
         // return back aBNBc to recipient
         _claimed[owner] += availableYields;
         _aBNBc.transfer(recipient, availableYields);
