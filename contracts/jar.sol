@@ -136,6 +136,8 @@ contract Jar {
         exitDelay = _exitDelay;
         emit Initialized(USB, spread, exitDelay);
     }
+    
+    // Can be called by anybody. In order to fill the contract with additional funds
     function replenish(uint wad) external update(address(0)) {
         if (block.timestamp >= endTime) {
             rate = wad / spread;
