@@ -19,11 +19,13 @@
 
 pragma solidity ^0.8.10;
 
+import "./interfaces/UsbLike.sol";
+
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
-contract Usb {
+contract Usb is UsbLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address guy) external auth { wards[guy] = 1; }
@@ -43,9 +45,6 @@ contract Usb {
     mapping (address => uint)                      public balanceOf;
     mapping (address => mapping (address => uint)) public allowance;
     mapping (address => uint)                      public nonces;
-
-    event Approval(address indexed src, address indexed guy, uint wad);
-    event Transfer(address indexed src, address indexed dst, uint wad);
 
     // --- Math ---
     function add(uint x, uint y) internal pure returns (uint z) {

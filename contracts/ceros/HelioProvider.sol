@@ -143,7 +143,7 @@ ReentrancyGuardUpgradeable
             "value must be greater than min unstake amount"
         );
         _withdrawCollateral(msg.sender, amount);
-        realAmount = _ceRouter.withdrawFor(recipient, amount);
+        realAmount = _ceRouter.withdraw(recipient, amount);
         emit Withdrawal(msg.sender, recipient, amount);
         return realAmount;
     }
@@ -218,11 +218,11 @@ ReentrancyGuardUpgradeable
         IERC20(_ceToken).approve(address(_dao), type(uint256).max);
         emit ChangeCeToken(ceToken);
     }
-
-    function changeProxy(address auctionProxy) external onlyOwner {
-        _proxy = auctionProxy;
-        emit ChangeProxy(auctionProxy);
-    }
+//
+//    function changeProxy(address auctionProxy) external onlyOwner {
+//        _proxy = auctionProxy;
+//        emit ChangeProxy(auctionProxy);
+//    }
 
     function changeCollateralToken(address collateralToken) external onlyOwner {
         _collateralToken = ICertToken(collateralToken);

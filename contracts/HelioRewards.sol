@@ -5,29 +5,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./hMath.sol";
 
-import "hardhat/console.sol";
-
-interface VatLike {
-    function ilks(bytes32) external view returns (
-        uint256 Art,   // [wad]
-        uint256 rate   // [ray]
-    );
-    function urns(bytes32, address) external view  returns (
-        uint256 ink,   // [wad]
-        uint256 art   // [ray]
-    );
-    function fold(bytes32,address,int) external;
-}
-
-interface MCDOracle {
-    function peek() external view returns (bytes32, bool);
-}
+import "./interfaces/VatLike.sol";
+import "./interfaces/IRewards.sol";
+import "./interfaces/PipLike.sol";
 
 interface Mintable {
     function mint(address _to, uint256 _amount) external returns(bool);
 }
 
-contract HelioRewards {
+contract HelioRewards is IRewards {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { require(live == 1, "Rewards/not-live"); wards[usr] = 1; }
@@ -70,7 +56,7 @@ contract HelioRewards {
 
     VatLike                  public vat; // CDP engine
     address public helioToken;
-    MCDOracle public oracle;
+    PipLike public oracle;
 
     uint256 public rewardsPool;
 
@@ -94,7 +80,7 @@ contract HelioRewards {
     }
 
     function setOracle(address oracle_) external auth {
-        oracle = MCDOracle(oracle_);
+        oracle = PipLike(oracle_);
     }
 
     function setRate(address token, uint256 newRate) external auth {

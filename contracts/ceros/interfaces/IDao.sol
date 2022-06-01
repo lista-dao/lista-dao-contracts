@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../../interfaces/GemJoinLike.sol";
+
+struct CollateralType {
+    GemJoinLike gem;
+    bytes32 ilk;
+    uint32 live;
+    address clip;
+}
+
 interface IDao {
+
     function deposit(
         address participant,
         address token,
@@ -15,4 +25,5 @@ interface IDao {
     ) external returns (uint256);
 
     function auctionProxy() external view returns (address);
+    function dropRewards(address token, address usr) external;
 }

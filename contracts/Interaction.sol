@@ -8,116 +8,20 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 
-    struct Sale {
-        uint256 pos;  // Index in active array
-        uint256 tab;  // HAY to raise       [rad]
-        uint256 lot;  // collateral to sell [wad]
-        address usr;  // Liquidated CDP
-        uint96 tic;  // Auction start time
-        uint256 top;  // Starting price     [ray]
-    }
+import "./interfaces/VatLike.sol";
+import "./interfaces/UsbLike.sol";
+import "./interfaces/UsbGemLike.sol";
+import "./interfaces/GemJoinLike.sol";
+import "./interfaces/JugLike.sol";
+import "./interfaces/PipLike.sol";
+import "./interfaces/SpotLike.sol";
+import "./interfaces/IRewards.sol";
+import "./interfaces/IAuctionProxy.sol";
+import "./ceros/interfaces/IHelioProvider.sol";
+import "./ceros/interfaces/IDao.sol";
 
-interface VatLike {
-    function init(bytes32 ilk) external;
 
-    function hope(address usr) external;
-
-    function rely(address usr) external;
-
-    function move(address src, address dst, uint256 rad) external;
-
-    function behalf(address bit, address usr) external;
-
-    function frob(bytes32 i, address u, address v, address w, int dink, int dart) external;
-
-    function flux(bytes32 ilk, address src, address dst, uint256 wad) external;
-
-    function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
-
-    function gem(bytes32, address) external view returns (uint256);
-
-    function usb(address) external view returns (uint256);
-
-    function urns(bytes32, address) external view returns (uint256, uint256);
-}
-
-interface GemJoinLike {
-    function join(address usr, uint256 wad) external;
-
-    function exit(address usr, uint256 wad) external;
-
-    function gem() external view returns (IERC20Upgradeable);
-}
-
-interface UsbGemLike {
-    function join(address usr, uint256 wad) external;
-
-    function exit(address usr, uint256 wad) external;
-}
-
-interface UsbLike is IERC20Upgradeable {
-}
-
-interface PipLike {
-    function peek() external view returns (bytes32, bool);
-}
-
-interface SpotLike {
-    function ilks(bytes32) external view returns (PipLike, uint256);
-}
-
-interface JugLike {
-    function drip(bytes32 ilk) external returns (uint256);
-
-    function ilks(bytes32) external view returns (uint256, uint256);
-
-    function base() external view returns (uint256);
-}
-
-interface CeRouterLike {
-    function liquidation(address urn, address recipient, uint256 amount) external;
-}
-
-struct CollateralType {
-    GemJoinLike gem;
-    bytes32 ilk;
-    uint32 live;
-    address clip;
-}
-
-interface IAuctionProxy {
-    function startAuction(
-        address user,
-        address keeper,
-        UsbLike usb,
-        UsbGemLike usbJoin,
-        VatLike vat,
-        address dog,
-        address helioProvider,
-        CollateralType calldata collateral
-    ) external returns (uint256 id);
-
-    function buyFromAuction(
-        address user,
-        uint256 auctionId,
-        uint256 collateralAmount,
-        uint256 maxPrice,
-        address receiverAddress,
-        UsbLike usb,
-        UsbGemLike usbJoin,
-        VatLike vat,
-        address helioProvider,
-        CollateralType calldata collateral
-    ) external;
-
-    function getAllActiveAuctionsForClip(address clip) external view returns (Sale[] memory sales);
-}
-
-interface Rewards {
-    function drop(address token, address usr) external;
-}
-
-contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao {
 
     mapping(address => uint) public wards;
 
@@ -142,7 +46,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     UsbGemLike public usbJoin;
     JugLike public jug;
     address public dog;
-    Rewards public helioRewards;
+    IRewards public helioRewards;
     IAuctionProxy public auctionProxy;
 
     mapping(address => uint256) public deposits;
@@ -178,7 +82,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         usbJoin = UsbGemLike(usbJoin_);
         jug = JugLike(jug_);
         dog = dog_;
-        helioRewards = Rewards(rewards_);
+        helioRewards = IRewards(rewards_);
         auctionProxy = IAuctionProxy(auctionProxy_);
 
         vat.hope(usbJoin_);
@@ -310,10 +214,14 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         vat.move(msg.sender, address(this), usbAmount * RAY);
         usbJoin.exit(msg.sender, usbAmount);
 
-        helioRewards.drop(token, msg.sender);
+        dropRewards(token, msg.sender);
 
         emit Borrow(msg.sender, usbAmount);
         return uint256(dart);
+    }
+
+    function dropRewards(address token, address usr) public {
+        helioRewards.drop(token, msg.sender);
     }
 
     // Burn user's HAY.
@@ -339,7 +247,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             EnumerableSet.remove(usersInDebt, msg.sender);
         }
 
-        helioRewards.drop(token, msg.sender);
+        dropRewards(token, msg.sender);
 
         drip(token);
         emit Payback(msg.sender, usbAmount);
@@ -389,7 +297,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function setRewards(address rewards) external auth {
-        helioRewards = Rewards(rewards);
+        helioRewards = IRewards(rewards);
     }
 
     //    /////////////////////////////////

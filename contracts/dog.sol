@@ -19,6 +19,8 @@
 
 pragma solidity ^0.8.10;
 
+import "./interfaces/DogLike.sol";
+
 interface ClipperLike {
     function ilk() external view returns (bytes32);
     function kick(
@@ -50,7 +52,7 @@ interface VowLike {
     function fess(uint256) external;
 }
 
-contract Dog {
+contract Dog is DogLike {
     // --- Auth ---
     mapping (address => uint256) public wards;
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }

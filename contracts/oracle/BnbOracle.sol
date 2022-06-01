@@ -3,8 +3,9 @@
 pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "../interfaces/PipLike.sol";
 
-contract BnbOracle {
+contract BnbOracle is PipLike {
 
     event PriceTokenChanged(address token);
 

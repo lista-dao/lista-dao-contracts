@@ -17,15 +17,10 @@
 
 pragma solidity ^0.8.10;
 
-interface VatLike {
-    function file(bytes32, bytes32, uint) external;
-}
+import "./interfaces/SpotLike.sol";
+import "./interfaces/VatLike.sol";
 
-interface PipLike {
-    function peek() external view returns (bytes32, bool);
-}
-
-contract Spotter {
+contract Spotter is SpotLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address guy) external auth { wards[guy] = 1;  }

@@ -19,6 +19,8 @@
 
 pragma solidity ^0.8.10;
 
+import "./interfaces/ClipperLike.sol";
+
 interface VatLike {
     function move(address,address,uint256) external;
     function flux(bytes32,address,address,uint256) external;
@@ -48,7 +50,7 @@ interface AbacusLike {
     function price(uint256, uint256) external view returns (uint256);
 }
 
-contract Clipper {
+contract Clipper is ClipperLike {
     // --- Auth ---
     mapping (address => uint256) public wards;
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }

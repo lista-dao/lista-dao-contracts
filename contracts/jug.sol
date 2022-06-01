@@ -24,6 +24,7 @@ pragma solidity ^0.8.10;
 // New deployments of this contract will need to include custom events (TO DO).
 
 import "./hMath.sol";
+import "./interfaces/JugLike.sol";
 
 interface VatLike {
     function ilks(bytes32) external returns (
@@ -33,7 +34,7 @@ interface VatLike {
     function fold(bytes32,address,int) external;
 }
 
-contract Jug {
+contract Jug is JugLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { wards[usr] = 1; }

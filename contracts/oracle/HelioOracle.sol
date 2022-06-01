@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.10;
 
-contract HelioOracle {
+import "../interfaces/PipLike.sol";
+
+contract HelioOracle is PipLike {
 
     event PriceChanged(uint256 newPrice);
 

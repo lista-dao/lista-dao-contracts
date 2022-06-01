@@ -19,11 +19,13 @@
 
 pragma solidity ^0.8.10;
 
+import "./interfaces/VatLike.sol";
+
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
-contract Vat {
+contract Vat is VatLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { require(live == 1, "Vat/not-live"); wards[usr] = 1; }
