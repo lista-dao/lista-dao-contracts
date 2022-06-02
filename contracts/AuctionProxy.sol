@@ -17,6 +17,8 @@ uint256 constant RAY = 10**27;
 
 contract AuctionProxy is IAuctionProxy {
   using SafeERC20 for IERC20;
+  using SafeERC20 for GemLike;
+
   mapping(address => uint256) public wards;
 
   function rely(address usr) external auth {
@@ -50,7 +52,7 @@ contract AuctionProxy is IAuctionProxy {
   function startAuction(
     address user,
     address keeper,
-    IERC20 usb,
+    UsbLike usb,
     UsbGemLike usbJoin,
     VatLike vat,
     DogLike dog,
@@ -76,7 +78,7 @@ contract AuctionProxy is IAuctionProxy {
     uint256 collateralAmount,
     uint256 maxPrice,
     address receiverAddress,
-    IERC20 hay,
+    UsbLike hay,
     UsbGemLike hayJoin,
     VatLike vat,
     IHelioProvider helioProvider,
@@ -110,13 +112,13 @@ contract AuctionProxy is IAuctionProxy {
 
     if (address(helioProvider) != address(0)) {
       collateral.gem.gem().safeTransfer(address(helioProvider), gemBal);
-      IHelioProvider(helioProvider).liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+      helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
 
       if (leftover != 0) {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        IHelioProvider(helioProvider).liquidation(urn, leftover); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
       }
     } else {
       collateral.gem.gem().safeTransfer(receiverAddress, gemBal);

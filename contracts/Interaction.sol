@@ -13,6 +13,7 @@ import "./interfaces/UsbLike.sol";
 import "./interfaces/UsbGemLike.sol";
 import "./interfaces/GemJoinLike.sol";
 import "./interfaces/JugLike.sol";
+import "./interfaces/DogLike.sol";
 import "./interfaces/PipLike.sol";
 import "./interfaces/SpotLike.sol";
 import "./interfaces/IRewards.sol";
@@ -465,8 +466,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             usb,
             usbJoin,
             vat,
-            dog,
-            helioProviders[token],
+            DogLike(dog),
+            IHelioProvider(helioProviders[token]),
             collaterals[token]
         );
     }
@@ -479,7 +480,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address receiverAddress
     ) external {
         CollateralType memory collateral = collaterals[token];
-        address helioProvider = helioProviders[token];
+        IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
         auctionProxy.buyFromAuction(
             msg.sender,
             auctionId,
@@ -495,7 +496,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
-        return auctionProxy.getAllActiveAuctionsForClip(collaterals[token].clip);
+        return auctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
     function getUsersInDebt() external view returns (address[] memory) {
