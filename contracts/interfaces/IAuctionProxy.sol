@@ -4,17 +4,10 @@ pragma solidity ^0.8.10;
 import "./UsbLike.sol";
 import "./UsbGemLike.sol";
 import "./VatLike.sol";
+import "./ClipperLike.sol";
+import "./DogLike.sol";
 import { CollateralType } from "./../ceros/interfaces/IDao.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
-
-    struct Sale {
-    uint256 pos; // Index in active array
-    uint256 tab; // Usb to raise       [rad]
-    uint256 lot; // collateral to sell [wad]
-    address usr; // Liquidated CDP
-    uint96 tic; // Auction start time
-    uint256 top; // Starting price     [ray]
-}
 
 interface IAuctionProxy {
 
@@ -24,8 +17,8 @@ interface IAuctionProxy {
         UsbLike usb,
         UsbGemLike usbJoin,
         VatLike vat,
-        address dog,
-        address helioProvider,
+        DogLike dog,
+        IHelioProvider helioProvider,
         CollateralType calldata collateral
     ) external returns (uint256 id);
 
@@ -42,5 +35,5 @@ interface IAuctionProxy {
         CollateralType calldata collateral
     ) external;
 
-    function getAllActiveAuctionsForClip(address clip) external view returns (Sale[] memory sales);
+    function getAllActiveAuctionsForClip(ClipperLike clip) external view returns (Sale[] memory sales);
 }

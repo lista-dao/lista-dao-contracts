@@ -79,15 +79,7 @@ contract Clipper is ClipperLike {
     uint256   public kicks;   // Total auctions
     uint256[] public active;  // Array of active auction ids
 
-    struct Sale {
-        uint256 pos;  // Index in active array
-        uint256 tab;  // Usb to raise       [rad]
-        uint256 lot;  // collateral to sell [wad]
-        address usr;  // Liquidated CDP
-        uint96  tic;  // Auction start time
-        uint256 top;  // Starting price     [ray]
-    }
-    mapping(uint256 => Sale) public sales;
+    mapping(uint256 => Sale) private _sales;
 
     uint256 internal locked;
 
@@ -157,6 +149,10 @@ contract Clipper is ClipperLike {
     modifier isStopped(uint256 level) {
         require(stopped < level, "Clipper/stopped-incorrect");
         _;
+    }
+
+    function sales(uint256 id) override external view returns (Sale memory) {
+        return _sales[id];
     }
 
     // --- Administration ---
@@ -255,17 +251,17 @@ contract Clipper is ClipperLike {
 
         active.push(id);
 
-        sales[id].pos = active.length - 1;
+        _sales[id].pos = active.length - 1;
 
-        sales[id].tab = tab;
-        sales[id].lot = lot;
-        sales[id].usr = usr;
-        sales[id].tic = uint96(block.timestamp);
+        _sales[id].tab = tab;
+        _sales[id].lot = lot;
+        _sales[id].usr = usr;
+        _sales[id].tic = uint96(block.timestamp);
 
         uint256 top;
         top = rmul(getFeedPrice(), buf);
         require(top > 0, "Clipper/zero-top-price");
-        sales[id].top = top;
+        _sales[id].top = top;
 
         // incentive to kick auction
         uint256 _tip  = tip;
@@ -286,9 +282,9 @@ contract Clipper is ClipperLike {
         address kpr  // Address that will receive incentives
     ) external lock isStopped(2) {
         // Read auction data
-        address usr = sales[id].usr;
-        uint96  tic = sales[id].tic;
-        uint256 top = sales[id].top;
+        address usr = _sales[id].usr;
+        uint96  tic = _sales[id].tic;
+        uint256 top = _sales[id].top;
 
         require(usr != address(0), "Clipper/not-running-auction");
 
@@ -297,14 +293,14 @@ contract Clipper is ClipperLike {
         (bool done,) = status(tic, top);
         require(done, "Clipper/cannot-reset");
 
-        uint256 tab   = sales[id].tab;
-        uint256 lot   = sales[id].lot;
-        sales[id].tic = uint96(block.timestamp);
+        uint256 tab   = _sales[id].tab;
+        uint256 lot   = _sales[id].lot;
+        _sales[id].tic = uint96(block.timestamp);
 
         uint256 feedPrice = getFeedPrice();
         top = rmul(feedPrice, buf);
         require(top > 0, "Clipper/zero-top-price");
-        sales[id].top = top;
+        _sales[id].top = top;
 
         // incentive to redo auction
         uint256 _tip  = tip;
@@ -346,15 +342,15 @@ contract Clipper is ClipperLike {
         bytes calldata data   // Data to pass in external call; if length 0, no call is done
     ) external lock isStopped(3) {
 
-        address usr = sales[id].usr;
-        uint96  tic = sales[id].tic;
+        address usr = _sales[id].usr;
+        uint96  tic = _sales[id].tic;
 
         require(usr != address(0), "Clipper/not-running-auction");
 
         uint256 price;
         {
             bool done;
-            (done, price) = status(tic, sales[id].top);
+            (done, price) = status(tic, _sales[id].top);
 
             // Check that auction doesn't need reset
             require(!done, "Clipper/needs-reset");
@@ -363,8 +359,8 @@ contract Clipper is ClipperLike {
         // Ensure price is acceptable to buyer
         require(max >= price, "Clipper/too-expensive");
 
-        uint256 lot = sales[id].lot;
-        uint256 tab = sales[id].tab;
+        uint256 lot = _sales[id].lot;
+        uint256 tab = _sales[id].tab;
         uint256 owe;
 
         {
@@ -422,8 +418,8 @@ contract Clipper is ClipperLike {
             vat.flux(ilk, address(this), usr, lot);
             _remove(id);
         } else {
-            sales[id].tab = tab;
-            sales[id].lot = lot;
+            _sales[id].tab = tab;
+            _sales[id].lot = lot;
         }
 
         emit Take(id, max, price, owe, tab, lot, usr);
@@ -432,12 +428,12 @@ contract Clipper is ClipperLike {
     function _remove(uint256 id) internal {
         uint256 _move    = active[active.length - 1];
         if (id != _move) {
-            uint256 _index   = sales[id].pos;
+            uint256 _index   = _sales[id].pos;
             active[_index]   = _move;
-            sales[_move].pos = _index;
+            _sales[_move].pos = _index;
         }
         active.pop();
-        delete sales[id];
+        delete _sales[id];
     }
 
     // The number of active auctions
@@ -453,15 +449,15 @@ contract Clipper is ClipperLike {
     // Externally returns boolean for if an auction needs a redo and also the current price
     function getStatus(uint256 id) external view returns (bool needsRedo, uint256 price, uint256 lot, uint256 tab) {
         // Read auction data
-        address usr = sales[id].usr;
-        uint96  tic = sales[id].tic;
+        address usr = _sales[id].usr;
+        uint96  tic = _sales[id].tic;
 
         bool done;
-        (done, price) = status(tic, sales[id].top);
+        (done, price) = status(tic, _sales[id].top);
 
         needsRedo = usr != address(0) && done;
-        lot = sales[id].lot;
-        tab = sales[id].tab;
+        lot = _sales[id].lot;
+        tab = _sales[id].tab;
     }
 
     // Internally returns boolean for if an auction needs a redo
@@ -478,9 +474,9 @@ contract Clipper is ClipperLike {
 
     // Cancel an auction during ES or via governance action.
     function yank(uint256 id) external auth lock {
-        require(sales[id].usr != address(0), "Clipper/not-running-auction");
-        dog.digs(ilk, sales[id].tab);
-        vat.flux(ilk, address(this), msg.sender, sales[id].lot);
+        require(_sales[id].usr != address(0), "Clipper/not-running-auction");
+        dog.digs(ilk, _sales[id].tab);
+        vat.flux(ilk, address(this), msg.sender, _sales[id].lot);
         _remove(id);
         emit Yank(id);
     }

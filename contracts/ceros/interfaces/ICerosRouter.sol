@@ -79,6 +79,11 @@ interface ICerosRouter {
     returns (uint256);
 
     // BNB
+    function withdrawFor(address recipient, uint256 amount)
+    external
+    returns (uint256);
+
+    // BNB
     function withdrawWithSlippage(
         address recipient,
         uint256 amount,
