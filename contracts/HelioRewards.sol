@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./hMath.sol";
 
@@ -9,9 +10,6 @@ import "./interfaces/VatLike.sol";
 import "./interfaces/IRewards.sol";
 import "./interfaces/PipLike.sol";
 
-interface Mintable {
-    function mint(address _to, uint256 _amount) external returns(bool);
-}
 
 contract HelioRewards is IRewards {
     // --- Auth ---
@@ -47,6 +45,8 @@ contract HelioRewards is IRewards {
         uint256 amount;
         uint256 ts;
     }
+
+    using SafeERC20 for IERC20;
 
     mapping (address => mapping(address => Pile)) public piles; // usr => token(collateral type) => time last realise
 
@@ -150,7 +150,7 @@ contract HelioRewards is IRewards {
             i++;
         }
         claimedRewards[msg.sender] += amount;
-        Mintable(helioToken).mint(msg.sender, amount);
+        IERC20(helioToken).safeTransfer(msg.sender, amount);
 
         emit Claimed(msg.sender, amount);
     }
