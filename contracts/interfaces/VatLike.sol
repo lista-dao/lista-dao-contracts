@@ -8,6 +8,8 @@ interface VatLike {
 
     function rely(address usr) external;
 
+    function deny(address usr) external;
+
     function move(address src, address dst, uint256 rad) external;
 
     function behalf(address bit, address usr) external;
