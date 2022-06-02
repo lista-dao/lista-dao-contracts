@@ -218,11 +218,11 @@ ReentrancyGuardUpgradeable
         IERC20(_ceToken).approve(address(_dao), type(uint256).max);
         emit ChangeCeToken(ceToken);
     }
-//
-//    function changeProxy(address auctionProxy) external onlyOwner {
-//        _proxy = auctionProxy;
-//        emit ChangeProxy(auctionProxy);
-//    }
+
+    function changeProxy(address auctionProxy) external onlyOwner {
+        _proxy = auctionProxy;
+        emit ChangeProxy(auctionProxy);
+    }
 
     function changeCollateralToken(address collateralToken) external onlyOwner {
         _collateralToken = ICertToken(collateralToken);
