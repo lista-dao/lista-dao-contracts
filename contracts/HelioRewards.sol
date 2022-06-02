@@ -71,6 +71,7 @@ contract HelioRewards is IRewards {
     }
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
+        require(pools[token].rho == 0, "Reward/pool-existed");
         pools[token] = Ilk(rate, block.timestamp, ilk);
         poolsList.push(token);
     }

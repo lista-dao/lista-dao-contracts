@@ -58,9 +58,10 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     EnumerableSet.AddressSet private usersInDebt;
 
-    uint256 constant RAD = 10 ** 45;
+    uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
-    uint256 constant YEAR = 365 * 24 * 3600; //seconds
+    uint256 constant RAD = 10 ** 45;
+    uint256 constant YEAR = 31864500; //seconds in year (365 * 24.25 * 3600)
 
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
@@ -126,7 +127,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address clip
     ) public auth {
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
-        IERC20Upgradeable(token).approve(gemJoin, type(uint256).max);
+        IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
         vat.rely(gemJoin);
         emit CollateralEnabled(token, ilk);
     }
@@ -138,7 +139,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     function removeCollateralType(address token) external auth {
         collaterals[token].live = 0;
         address gemJoin = address(collaterals[token].gem);
-        IERC20Upgradeable(token).approve(gemJoin, 0);
+        vat.deny(gemJoin);
+        IERC20Upgradeable(token).safeApprove(gemJoin, 0);
         emit CollateralDisabled(token, collaterals[token].ilk);
     }
 
@@ -342,7 +344,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     // Total aBNBc deposited nominated in $
     function depositTVL(address token) external view returns (uint256) {
-        return deposits[token] * collateralPrice(token) / 10 ** 18;
+        return deposits[token] * collateralPrice(token) / WAD;
     }
 
     // Total USB borrowed by all users
@@ -350,8 +352,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
-        (uint256 Art,,,,) = vat.ilks(collateralType.ilk);
-        return Art;
+        (uint256 Art, uint256 rate,,,) = vat.ilks(collateralType.ilk);
+        return hMath.mulDiv(Art, rate, RAY);
     }
 
     // Not locked user balance in aBNBc
@@ -412,16 +414,23 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return (int256(collateral) - int256(debt)) / 1e27;
     }
 
+    function liquidationPriceForDebt(bytes32 ilk, address usr, uint256 ink, uint256 art) internal view returns (uint256) {
+        if (ink == 0) {
+            return 0; // no meaningful price if user has no debt
+        }
+        (, uint256 rate,,,) = vat.ilks(ilk);
+        (,uint256 mat) = spotter.ilks(ilk);
+        uint256 backedDebt = (art * rate / 10 ** 36) * mat;
+        return backedDebt / ink;
+    }
+
     // Price of aBNBc when user will be liquidated
     function currentLiquidationPrice(address token, address usr) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, usr);
-        (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        (,uint256 mat) = spotter.ilks(collateralType.ilk);
-        uint256 backedDebt = (art * rate / 10 ** 36) * mat;
-        return backedDebt / ink;
+        return liquidationPriceForDebt(collateralType.ilk, usr, ink, art);
     }
 
     // Price of aBNBc when user will be liquidated with additional amount of aBNBc deposited/withdraw
@@ -436,17 +445,32 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         } else {
             ink += uint256(amount);
         }
-        (, uint256 rate, uint256 spot,,) = vat.ilks(collateralType.ilk);
+        return liquidationPriceForDebt(collateralType.ilk, usr, ink, art);
+    }
+
+    // Price of aBNBc when user will be liquidated with additional amount of HAY borrowed/payback
+    //positive amount mean HAYs are being borrowed. So art(debt) will increase
+    function estimatedLiquidationPriceHAY(address token, address usr, int256 amount) external view returns (uint256) {
+        CollateralType memory collateralType = collaterals[token];
+        _checkIsLive(collateralType.live);
+
+        (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, usr);
+        require(amount >= - (int256(art)), "Cannot withdraw more than current amount");
+        (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 mat) = spotter.ilks(collateralType.ilk);
-        uint256 backedDebt = (art * rate / 10 ** 36) * mat;
-        return backedDebt / ink;
+        uint256 backedDebt = hMath.mulDiv(art, rate, 10 ** 36);
+        if (amount < 0) {
+            backedDebt = uint256(int256(backedDebt) + amount);
+        } else {
+            backedDebt += uint256(amount);
+        }
+        return hMath.mulDiv(backedDebt, mat, ink) / 10 ** 9;
     }
 
     // Returns borrow APR with 20 decimals.
     // I.e. 10% == 10 ethers
     function borrowApr(address token) public view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
         _checkIsLive(collateralType.live);
 
         (uint256 duty,) = jug.ilks(collateralType.ilk);
