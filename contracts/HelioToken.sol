@@ -14,11 +14,11 @@ contract HelioToken is ERC20 {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth {
-        require(user != address(0), "HelioToken/invalid-address");
+        require(usr != address(0), "HelioToken/invalid-address");
         wards[usr] = 1;
     }
     function deny(address usr) external auth {
-        require(user != address(0), "HelioToken/invalid-address");
+        require(usr != address(0), "HelioToken/invalid-address");
         wards[usr] = 0;
     }
     modifier auth {

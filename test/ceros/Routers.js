@@ -31,8 +31,8 @@ describe('Routers(HELIO,CEROS)', () => {
         const wBNB = await ethers.getContractFactory("wBNB");
         wbnb = await wBNB.deploy();
         /* USB */
-        const Usb = await ethers.getContractFactory("USB");
-        usb = await Usb.deploy();
+        const Usb = await ethers.getContractFactory("Usb");
+        usb = await Usb.deploy(97, "USB");
         /* hBNB */
         const hBNB = await ethers.getContractFactory("hBNB");
         hbnb = await hBNB.deploy();
@@ -70,7 +70,7 @@ describe('Routers(HELIO,CEROS)', () => {
         const Jug = await ethers.getContractFactory("Jug");
         const jug = await Jug.deploy(vat.address);
         /* DAO */
-        const ceDao = await ethers.getContractFactory("DAOInteraction");
+        const ceDao = await ethers.getContractFactory("Interaction");
         ce_dao = await ceDao.deploy();
         await ce_dao.initialize(
             vat.address,
@@ -83,6 +83,10 @@ describe('Routers(HELIO,CEROS)', () => {
         );
         // add dao to vat
         await vat.rely(ce_dao.address);
+        await vat.rely(spot.address);
+        await vat.rely(usbJoin.address);
+        await vat.rely(jug.address);
+        await vat.rely(dog.address);
         //
         collateral = ethers.utils.formatBytes32String("ceABNBc");
         /* clip */

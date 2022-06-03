@@ -8,7 +8,7 @@ const { constants } = require('@openzeppelin/test-helpers');
 let owner, staker_1, staker_2,
     amount_1, amount_2, ratio, available_yields, profit,
     abnbc, abnbb, wbnb, usb, ce_Abnbc_join, collateral, clip,
-    ce_vault, ce_token, ce_dao, pool, ce_rot;
+    ce_vault, ce_token, ce_dao, pool, ce_rot, auctionProxy;
 
 
 describe('Ceros Router', () => {
@@ -355,8 +355,8 @@ async function init() {
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
     /* USB */
-    const Usb = await ethers.getContractFactory("USB");
-    usb = await Usb.deploy();
+    const Usb = await ethers.getContractFactory("Usb");
+    usb = await Usb.deploy(97, "USB");
     /* DEX */
     const Factory = await ethers.getContractFactory("PancakeFactory");
     const factory = await Factory.deploy(owner.address);
@@ -389,8 +389,12 @@ async function init() {
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
+    /* Auction */
+    const AuctionProxy = await ethers.getContractFactory("AuctionProxy");
+    auctionProxy = await AuctionProxy.deploy();
+    await auctionProxy.initialize();
     /* DAO */
-    const ceDao = await ethers.getContractFactory("DAOInteraction");
+    const ceDao = await ethers.getContractFactory("Interaction");
     ce_dao = await ceDao.deploy();
     await ce_dao.initialize(
         vat.address,
@@ -399,10 +403,15 @@ async function init() {
         usbJoin.address,
         jug.address,
         dog.address,
-        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1'
+        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1',
+        auctionProxy.address
     );
     // add dao to vat
     await vat.rely(ce_dao.address);
+    await vat.rely(spot.address);
+    await vat.rely(usbJoin.address);
+    await vat.rely(jug.address);
+    await vat.rely(dog.address);
     //
     collateral = ethers.utils.formatBytes32String("ceABNBc");
     /* clip */
