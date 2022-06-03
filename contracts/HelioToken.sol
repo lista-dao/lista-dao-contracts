@@ -6,15 +6,21 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 contract HelioToken is ERC20 {
 
-    event Start();
-    event Stop();
+    event Start(address user);
+    event Stop(address user);
 
     bool public  stopped;
 
     // --- Auth ---
     mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
+    function rely(address usr) external auth {
+        require(user != address(0), "HelioToken/invalid-address");
+        wards[usr] = 1;
+    }
+    function deny(address usr) external auth {
+        require(user != address(0), "HelioToken/invalid-address");
+        wards[usr] = 0;
+    }
     modifier auth {
         require(wards[msg.sender] == 1, "HelioToken/not-authorized");
         _;
@@ -34,18 +40,18 @@ contract HelioToken is ERC20 {
         return true;
     }
 
-    function burn(uint256 _amount) external auth stoppable returns(bool) {
+    function burn(uint256 _amount) external stoppable returns(bool) {
         _burn(msg.sender, _amount);
         return true;
     }
 
     function stop() public auth {
         stopped = true;
-        emit Stop();
+        emit Stop(msg.sender);
     }
 
     function start() public auth {
         stopped = false;
-        emit Start();
+        emit Start(msg.sender);
     }
 }
