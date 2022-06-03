@@ -42,32 +42,32 @@ async function main() {
     let abaci = await this.Abaci.attach(ABACI);
 
     console.log("Setting permissions");
-    //
-    // let oracle = this.Oracle.attach(Oracle);
-    // await oracle.setPrice("400" + wad); // 2$, mat = 80%, 2$ * 80% = 1.6$ With Safety Margin
+
+    let oracle = this.Oracle.attach(Oracle);
+    await oracle.setPrice("400" + wad); // 2$, mat = 80%, 2$ * 80% = 1.6$ With Safety Margin
 
     console.log("Vat rely...");
 
     let vat = this.Vat.attach(VAT);
-    // await vat.rely(ceBNBcJoin);
-    // await vat.rely(SPOT);
-    // await vat.rely(UsbJoin);
-    // await vat.rely(JUG);
-    // await vat.rely(DOG);
-    //
-    // await vat.rely(INTERACTION);
-    //
-    // console.log("Vat config...");
-    // await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);
-    // await vat["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("line"), "50000000" + rad);
-    // await vat["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray);
+    await vat.rely(ceBNBcJoin);
+    await vat.rely(SPOT);
+    await vat.rely(UsbJoin);
+    await vat.rely(JUG);
+    await vat.rely(DOG);
+
+    await vat.rely(INTERACTION);
+
+    console.log("Vat config...");
+    await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);
+    await vat["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("line"), "50000000" + rad);
+    await vat["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray);
 
     console.log("Spot...");
     let spot = this.Spot.attach(SPOT);
-    // await spot["file(bytes32,bytes32,address)"](collateral3, ethers.utils.formatBytes32String("pip"), Oracle);
-    // await spot["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
-    //
-    // await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // It means pegged to 1$
+    await spot["file(bytes32,bytes32,address)"](collateral3, ethers.utils.formatBytes32String("pip"), Oracle);
+    await spot["file(bytes32,bytes32,uint256)"](collateral3, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
+
+    await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // It means pegged to 1$
     await spot.poke(collateral3);
 
     console.log("Jug...");

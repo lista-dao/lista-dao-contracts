@@ -4,12 +4,13 @@ const web3 = require('web3');
 
 const toBN = web3.utils.toBN;
 const { constants } = require('@openzeppelin/test-helpers');
+const {ceBNBcJoin, SPOT, UsbJoin, JUG, DOG} = require("../../addresses-stage2.json");
 
 
 let owner, staker_1, staker_2,
     amount_1, amount_2,
     abnbc, abnbb, wbnb, hbnb, usb, ce_Abnbc_join, collateral, clip,
-    ce_vault, ce_token, ce_dao, pool, h_provider, ce_rot;
+    ce_vault, ce_token, ce_dao, pool, h_provider, ce_rot, auctionProxy;
 
 
 describe('Helio Provider', () => {
@@ -201,8 +202,8 @@ async function init() {
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
     /* USB */
-    const Usb = await ethers.getContractFactory("USB");
-    usb = await Usb.deploy();
+    const Usb = await ethers.getContractFactory("Usb");
+    usb = await Usb.deploy(97, "USB");
     /* hBNB */
     const hBNB = await ethers.getContractFactory("hBNB");
     hbnb = await hBNB.deploy();
@@ -239,8 +240,12 @@ async function init() {
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
+    /* Auction */
+    const AuctionProxy = await ethers.getContractFactory("AuctionProxy");
+    auctionProxy = await AuctionProxy.deploy();
+    await auctionProxy.initialize();
     /* DAO */
-    const ceDao = await ethers.getContractFactory("DAOInteraction");
+    const ceDao = await ethers.getContractFactory("Interaction");
     ce_dao = await ceDao.deploy();
     await ce_dao.initialize(
         vat.address,
@@ -249,10 +254,15 @@ async function init() {
         usbJoin.address,
         jug.address,
         dog.address,
-        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1'
+        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1',
+        auctionProxy.address
     );
     // add dao to vat
     await vat.rely(ce_dao.address);
+    await vat.rely(spot.address);
+    await vat.rely(usbJoin.address);
+    await vat.rely(jug.address);
+    await vat.rely(dog.address);
     //
     collateral = ethers.utils.formatBytes32String("ceABNBc");
     /* clip */
@@ -261,6 +271,7 @@ async function init() {
     /* gemJoin */
     const GemJoin = await ethers.getContractFactory("GemJoin");
     ce_Abnbc_join = await GemJoin.deploy(vat.address, collateral, ce_token.address);
+    await vat.rely(ce_Abnbc_join.address);
     await ce_dao.setCollateralType(ce_token.address, ce_Abnbc_join.address, collateral, clip.address);
     /* BinancePool */
     const BinancePool = await ethers.getContractFactory("BinancePool");

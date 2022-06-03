@@ -76,7 +76,7 @@ contract HelioRewards is IRewards {
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
         require(pools[token].rho == 0, "Reward/pool-existed");
-        require(token != 0, "Reward/invalid-token");
+        require(token != address(0), "Reward/invalid-token");
         pools[token] = Ilk(rate, block.timestamp, ilk);
         poolsList.push(token);
 
@@ -84,17 +84,17 @@ contract HelioRewards is IRewards {
     }
 
     function setHelioToken(address helioToken_) external auth {
-        require(helioToken_ != 0, "Reward/invalid-token");
+        require(helioToken_ != address(0), "Reward/invalid-token");
         helioToken = helioToken_;
 
         emit HelioTokenChanged(helioToken);
     }
 
     function setOracle(address oracle_) external auth {
-        require(oracle_ != 0, "Reward/invalid-oracle");
+        require(oracle_ != address(0), "Reward/invalid-oracle");
         oracle = PipLike(oracle_);
 
-        emit HelioOracleChanged(oracle);
+        emit HelioOracleChanged(address(oracle));
     }
 
     function setRate(address token, uint256 newRate) external auth {
