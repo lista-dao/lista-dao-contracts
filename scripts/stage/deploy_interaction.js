@@ -21,8 +21,7 @@ async function main() {
     let rewards = this.Rewards.attach(REWARDS);
     // const interaction = Interaction.attach(INTERACTION);
 
-    const auctionProxy = await this.AuctionProxy.deploy();
-    await auctionProxy.deployed();
+    const auctionProxy = await upgrades.deployProxy(this.AuctionProxy, []);
     console.log("AuctionProxy deployed to:", auctionProxy.address);
 
     const interaction = await upgrades.deployProxy(Interaction, [

@@ -23,7 +23,7 @@ contract HelioRewards is IRewards {
 
     uint256 constant YEAR = 365 * 24 * 3600; //seconds
     uint256 constant RAD = 10 ** 18; // ray
-    uint256 constant ONE = 10 ** 27; // ray
+    uint256 constant ONE = 10 ** 27; // wad
     uint256 public live;  // Active Flag
 
     // --- Data ---
@@ -70,23 +70,40 @@ contract HelioRewards is IRewards {
         live = 0;
     }
 
+    function start() public auth {
+        live = 1;
+    }
+
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
         require(pools[token].rho == 0, "Reward/pool-existed");
+        require(token != 0, "Reward/invalid-token");
         pools[token] = Ilk(rate, block.timestamp, ilk);
         poolsList.push(token);
+
+        emit PoolInited(token, rate);
     }
 
     function setHelioToken(address helioToken_) external auth {
+        require(helioToken_ != 0, "Reward/invalid-token");
         helioToken = helioToken_;
+
+        emit HelioTokenChanged(helioToken);
     }
 
     function setOracle(address oracle_) external auth {
+        require(oracle_ != 0, "Reward/invalid-oracle");
         oracle = PipLike(oracle_);
+
+        emit HelioOracleChanged(oracle);
     }
 
     function setRate(address token, uint256 newRate) external auth {
+        require(newRate >= ONE, "Reward/negative-rate");
+        require(newRate < 2 * ONE, "Reward/high-rate");
         Ilk storage pool = pools[token];
         pool.rewardRate = newRate;
+
+        emit RateChanged(token, newRate);
     }
 
     // 1 USB is helioPrice() helios

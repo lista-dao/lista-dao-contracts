@@ -96,6 +96,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function setCores(address vat_, address spot_, address usbJoin_,
         address jug_) public auth {
+        // Reset previous approval
+        usb.approve(address(usbJoin), 0);
+
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
         usbJoin = UsbGemLike(usbJoin_);

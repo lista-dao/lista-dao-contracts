@@ -3,6 +3,9 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./interfaces/IAuctionProxy.sol";
 import "./interfaces/ClipperLike.sol";
@@ -15,7 +18,7 @@ import "./ceros/interfaces/IDao.sol";
 
 uint256 constant RAY = 10**27;
 
-contract AuctionProxy is IAuctionProxy {
+contract AuctionProxy is IAuctionProxy, Initializable, UUPSUpgradeable, OwnableUpgradeable {
   using SafeERC20 for IERC20;
   using SafeERC20 for GemLike;
 
@@ -41,9 +44,13 @@ contract AuctionProxy is IAuctionProxy {
     _;
   }
 
-  constructor() {
+  function initialize() public initializer {
+    __Ownable_init();
+
     wards[msg.sender] = 1;
   }
+
+  function _authorizeUpgrade(address) internal override onlyOwner {}
 
   function setDao(address _dao) external auth {
     dao = IDao(_dao);
@@ -113,6 +120,9 @@ contract AuctionProxy is IAuctionProxy {
     if (address(helioProvider) != address(0)) {
       collateral.gem.gem().safeTransfer(address(helioProvider), gemBal);
       helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+
+      // liquidated user, collateral address, amount of collateral bought, price
+      emit Liquidation(urn, address(collateral.gem.gem()), gemBal, maxPrice);
 
       if (leftover != 0) {
         // Auction ended with leftover

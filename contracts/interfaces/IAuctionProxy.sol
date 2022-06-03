@@ -11,6 +11,8 @@ import "../ceros/interfaces/IHelioProvider.sol";
 
 interface IAuctionProxy {
 
+    event Liquidation(address user, address indexed collateral, uint256 amount, uint256 price);
+
     function startAuction(
         address user,
         address keeper,
