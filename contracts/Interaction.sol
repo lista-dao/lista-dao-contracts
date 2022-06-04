@@ -171,7 +171,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
                 "Interaction/only helio provider can deposit for this token"
             );
         }
-
+        require(dink <= type(int256).max, "Interaction/too-much-requested");
         drip(token);
         uint256 preBalance = IERC20Upgradeable(token).balanceOf(address(this));
         IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), dink);
@@ -212,6 +212,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         drip(token);
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
         int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
+        require(dart >= 0, "Interaction/too-much-requested");
+
         if (uint256(dart) * rate < usbAmount * (10 ** 27)) {
             dart += 1; //ceiling
         }
@@ -241,6 +243,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
+        require(dart >= 0, "Interaction/too-much-requested");
+
         if (uint256(dart) * rate < usbAmount * (10 ** 27) &&
             uint256(dart + 1) * rate <= vat.usb(msg.sender)
         ) {
