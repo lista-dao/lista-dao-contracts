@@ -68,10 +68,14 @@ contract HelioRewards is IRewards {
 
     function stop() public auth {
         live = 0;
+
+        emit Stop(msg.sender);
     }
 
     function start() public auth {
         live = 1;
+
+        emit Stop(msg.sender);
     }
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
