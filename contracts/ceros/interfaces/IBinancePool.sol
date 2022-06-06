@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 interface IBinancePool {
     function stakeAndClaimCerts() external payable;
 
-    function unstakeCerts(address recipient, uint256 shares) external;
+    function unstakeCertsFor(address recipient, uint256 shares) external;
 
     function getMinimumStake() external view returns (uint256);
 
