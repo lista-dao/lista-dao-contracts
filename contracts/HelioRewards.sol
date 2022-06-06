@@ -78,6 +78,7 @@ contract HelioRewards is IRewards {
     }
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
+        require(IERC20(helioToken).balanceOf(address(this)) >= poolLimit);
         require(pools[token].rho == 0, "Reward/pool-existed");
         require(token != address(0), "Reward/invalid-token");
         pools[token] = Ilk(rate, block.timestamp, ilk);
@@ -94,6 +95,7 @@ contract HelioRewards is IRewards {
     }
 
     function setRewardsMaxLimit(uint256 newLimit) external auth {
+        require(IERC20(helioToken).balanceOf(address(this)) >= poolLimit);
         poolLimit = newLimit;
 
         emit RewardsLimitChanged(poolLimit);
