@@ -104,7 +104,7 @@ contract GemJoin is GemJoinLike {
         emit Join(usr, wad);
     }
     function exit(address usr, uint wad) external {
-        require(wad <= uint256(type(int256).max), "GemJoin/overflow");
+        require(wad <= (2 ** 255) - 1, "GemJoin/overflow");
         vat.slip(ilk, msg.sender, -int(wad));
         require(gem.transfer(usr, wad), "GemJoin/failed-transfer");
         emit Exit(usr, wad);
