@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./UsbLike.sol";
-import "./UsbGemLike.sol";
+import "./HayLike.sol";
+import "./HayGemLike.sol";
 import "./VatLike.sol";
 import "./ClipperLike.sol";
 import "./DogLike.sol";
@@ -16,8 +16,8 @@ interface IAuctionProxy {
     function startAuction(
         address user,
         address keeper,
-        UsbLike usb,
-        UsbGemLike usbJoin,
+        HayLike usb,
+        HayGemLike usbJoin,
         VatLike vat,
         DogLike dog,
         IHelioProvider helioProvider,
@@ -30,8 +30,8 @@ interface IAuctionProxy {
         uint256 collateralAmount,
         uint256 maxPrice,
         address receiverAddress,
-        UsbLike usb,
-        UsbGemLike usbJoin,
+        HayLike usb,
+        HayGemLike usbJoin,
         VatLike vat,
         IHelioProvider helioProvider,
         CollateralType calldata collateral

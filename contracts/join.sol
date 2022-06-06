@@ -20,7 +20,7 @@
 pragma solidity ^0.8.10;
 
 import "./interfaces/GemJoinLike.sol";
-import "./interfaces/UsbGemLike.sol";
+import "./interfaces/HayGemLike.sol";
 import "./interfaces/GemLike.sol";
 
 // FIXME: This contract was altered compared to the production version.
@@ -111,7 +111,7 @@ contract GemJoin is GemJoinLike {
     }
 }
 
-contract UsbJoin is UsbGemLike {
+contract UsbJoin is HayGemLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth {

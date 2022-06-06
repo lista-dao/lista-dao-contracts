@@ -3,6 +3,10 @@ pragma solidity ^0.8.10;
 
 interface IRewards {
 
+    /**
+     * Events
+     */
+
     event PoolInited(address token, uint256 rate);
 
     event HelioTokenChanged(address newToken);
@@ -14,6 +18,12 @@ interface IRewards {
     event Start(address user);
 
     event Stop(address user);
+
+    event Claimed(address indexed user, uint256 amount);
+
+    /**
+     * Methods
+     */
 
     function drop(address token, address usr) external;
 }

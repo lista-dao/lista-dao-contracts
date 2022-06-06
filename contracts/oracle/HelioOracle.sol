@@ -11,7 +11,7 @@ contract HelioOracle is PipLike {
     address private _owner;
     uint256 private price;
 
-    constructor(uint256 initialPrice) public {
+    constructor(uint256 initialPrice) {
         _owner = msg.sender;
         price = initialPrice;
     }

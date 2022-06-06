@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// vat.sol -- Usb CDP database
+/// vat.sol -- Hay CDP database
 
 // Copyright (C) 2018 Rain <rainbreak@riseup.net>
 //
@@ -60,11 +60,11 @@ contract Vat is VatLike {
     mapping (bytes32 => Ilk)                       public ilks;
     mapping (bytes32 => mapping (address => Urn )) public urns;
     mapping (bytes32 => mapping (address => uint)) public gem;  // [wad]
-    mapping (address => uint256)                   public usb;  // [rad]
+    mapping (address => uint256)                   public hay;  // [rad]
     mapping (address => uint256)                   public sin;  // [rad]
 
-    uint256 public debt;  // Total Usb Issued    [rad]
-    uint256 public vice;  // Total Unbacked Usb  [rad]
+    uint256 public debt;  // Total Hay Issued    [rad]
+    uint256 public vice;  // Total Unbacked Hay  [rad]
     uint256 public Line;  // Total Debt Ceiling  [rad]
     uint256 public live;  // Active Flag
 
@@ -144,8 +144,8 @@ contract Vat is VatLike {
     }
     function move(address src, address dst, uint256 rad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
-        usb[src] = _sub(usb[src], rad);
-        usb[dst] = _add(usb[dst], rad);
+        hay[src] = _sub(hay[src], rad);
+        hay[dst] = _add(hay[dst], rad);
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {
@@ -189,7 +189,7 @@ contract Vat is VatLike {
         require(either(urn.art == 0, tab >= ilk.dust), "Vat/dust");
 
         gem[i][v] = _sub(gem[i][v], dink);
-        usb[w]    = _add(usb[w],    dtab);
+        hay[w]    = _add(hay[w],    dtab);
 
         urns[i][u] = urn;
         ilks[i]    = ilk;
@@ -241,13 +241,13 @@ contract Vat is VatLike {
     function heal(uint rad) external {
         address u = msg.sender;
         sin[u] = _sub(sin[u], rad);
-        usb[u] = _sub(usb[u], rad);
+        hay[u] = _sub(hay[u], rad);
         vice   = _sub(vice,   rad);
         debt   = _sub(debt,   rad);
     }
     function suck(address u, address v, uint rad) external auth {
         sin[u] = _add(sin[u], rad);
-        usb[v] = _add(usb[v], rad);
+        hay[v] = _add(hay[v], rad);
         vice   = _add(vice,   rad);
         debt   = _add(debt,   rad);
     }
@@ -258,7 +258,7 @@ contract Vat is VatLike {
         Ilk storage ilk = ilks[i];
         ilk.rate = _add(ilk.rate, rate);
         int rad  = _mul(ilk.Art, rate);
-        usb[u]   = _add(usb[u], rad);
+        hay[u]   = _add(hay[u], rad);
         debt     = _add(debt,   rad);
     }
 }

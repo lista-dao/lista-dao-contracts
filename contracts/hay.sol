@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// usb.sol -- Usb Stablecoin ERC-20 Token
+/// hay.sol -- hay Stablecoin ERC-20 Token
 
 // Copyright (C) 2017, 2018, 2019 dbrock, rain, mrchico
 
@@ -19,13 +19,13 @@
 
 pragma solidity ^0.8.10;
 
-import "./interfaces/UsbLike.sol";
+import "./interfaces/HayLike.sol";
 
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
-contract Usb is UsbLike {
+contract Hay is HayLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address guy) external auth { wards[guy] = 1; }

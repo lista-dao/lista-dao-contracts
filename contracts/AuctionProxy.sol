@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IAuctionProxy.sol";
 import "./interfaces/ClipperLike.sol";
 import "./interfaces/GemJoinLike.sol";
-import "./interfaces/UsbGemLike.sol";
+import "./interfaces/HayGemLike.sol";
 import "./interfaces/DogLike.sol";
 import "./interfaces/VatLike.sol";
 import "./ceros/interfaces/IHelioProvider.sol";
@@ -59,8 +59,8 @@ contract AuctionProxy is IAuctionProxy, Initializable, UUPSUpgradeable, OwnableU
   function startAuction(
     address user,
     address keeper,
-    UsbLike usb,
-    UsbGemLike usbJoin,
+    HayLike usb,
+    HayGemLike usbJoin,
     VatLike vat,
     DogLike dog,
     IHelioProvider helioProvider,
@@ -69,7 +69,7 @@ contract AuctionProxy is IAuctionProxy, Initializable, UUPSUpgradeable, OwnableU
     uint256 usbBal = usb.balanceOf(address(this));
     id = dog.bark(collateral.ilk, user, address(this));
 
-    usbJoin.exit(address(this), vat.usb(address(this)) / RAY);
+    usbJoin.exit(address(this), vat.hay(address(this)) / RAY);
     usbBal = usb.balanceOf(address(this)) - usbBal;
     usb.transfer(keeper, usbBal);
 
@@ -85,8 +85,8 @@ contract AuctionProxy is IAuctionProxy, Initializable, UUPSUpgradeable, OwnableU
     uint256 collateralAmount,
     uint256 maxPrice,
     address receiverAddress,
-    UsbLike hay,
-    UsbGemLike hayJoin,
+    HayLike hay,
+    HayGemLike hayJoin,
     VatLike vat,
     IHelioProvider helioProvider,
     CollateralType calldata collateral
@@ -110,7 +110,7 @@ contract AuctionProxy is IAuctionProxy, Initializable, UUPSUpgradeable, OwnableU
     leftover = vat.gem(collateral.ilk, urn) - leftover; // leftover
 
     collateral.gem.exit(address(this), vat.gem(collateral.ilk, address(this)));
-    hayJoin.exit(address(this), vat.usb(address(this)) / RAY);
+    hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
 
     // Balances rest
     usbBal = hay.balanceOf(address(this)) - usbBal;

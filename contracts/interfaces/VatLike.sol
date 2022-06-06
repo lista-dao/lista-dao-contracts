@@ -22,7 +22,7 @@ interface VatLike {
 
     function gem(bytes32, address) external view returns (uint256);
 
-    function usb(address) external view returns (uint256);
+    function hay(address) external view returns (uint256);
 
     function urns(bytes32, address) external view returns (uint256, uint256);
 
