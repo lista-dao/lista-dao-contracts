@@ -29,7 +29,7 @@ uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31864500; //seconds in year (365 * 24.25 * 3600)
 
-contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao {
+contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
 
@@ -250,14 +250,12 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             // ceiling
         }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
-
-        if ((int256(rate * art) / 10 ** 27) == dart) {
-            EnumerableSet.remove(usersInDebt, msg.sender);
-        }
-
         dropRewards(token, msg.sender);
 
         drip(token);
+
+        tryRemoveFromDebtList(collateralType.ilk, msg.sender);
+
         emit Payback(msg.sender, hayAmount);
         return dart;
     }
@@ -306,6 +304,13 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function setRewards(address rewards) external auth {
         helioRewards = IRewards(rewards);
+    }
+
+    function tryRemoveFromDebtList(bytes32 ilk, address usr) internal {
+        (, uint256 art) = vat.urns(ilk, usr);
+        if (art == 0) {
+            EnumerableSet.remove(usersInDebt, usr);
+        }
     }
 
     //    /////////////////////////////////
@@ -521,6 +526,10 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             helioProvider,
             collateral
         );
+
+        address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
+        dropRewards(address(hay), urn);
+        tryRemoveFromDebtList(collateral.ilk, urn);
     }
 
     function getAuctionStatus(address token, uint256 auctionId) external view returns(bool, uint256, uint256, uint256) {
@@ -536,7 +545,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     function resetAuction(address token, uint256 auctionId, address keeper) external {
-        AuctionProxy.resetAuction(auctionId, keeper, usb, usbJoin, vat, collaterals[token]);
+        AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
     }
 
     function getUsersInDebt() external view returns (address[] memory) {
