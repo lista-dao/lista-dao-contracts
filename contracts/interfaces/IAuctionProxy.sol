@@ -14,14 +14,9 @@ interface IAuctionProxy {
     event Liquidation(address user, address indexed collateral, uint256 amount, uint256 price);
 
     function startAuction(
+        address token,
         address user,
-        address keeper,
-        HayLike usb,
-        HayGemLike usbJoin,
-        VatLike vat,
-        DogLike dog,
-        IHelioProvider helioProvider,
-        CollateralType calldata collateral
+        address keeper
     ) external returns (uint256 id);
 
     function buyFromAuction(
@@ -29,13 +24,8 @@ interface IAuctionProxy {
         uint256 auctionId,
         uint256 collateralAmount,
         uint256 maxPrice,
-        address receiverAddress,
-        HayLike usb,
-        HayGemLike usbJoin,
-        VatLike vat,
-        IHelioProvider helioProvider,
-        CollateralType calldata collateral
+        address receiverAddress
     ) external;
 
-    function getAllActiveAuctionsForClip(ClipperLike clip) external view returns (Sale[] memory sales);
+    function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales);
 }
