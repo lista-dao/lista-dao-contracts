@@ -22,6 +22,12 @@ import "./interfaces/IAuctionProxy.sol";
 import "./ceros/interfaces/IHelioProvider.sol";
 import "./ceros/interfaces/IDao.sol";
 
+import "./libraries/AuctionProxy.sol";
+
+
+uint256 constant WAD = 10 ** 18;
+uint256 constant RAD = 10 ** 45;
+uint256 constant YEAR = 31864500; //seconds in year (365 * 24.25 * 3600)
 
 contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao {
 
@@ -49,7 +55,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     JugLike public jug;
     address public dog;
     IRewards public helioRewards;
-    IAuctionProxy public auctionProxy;
 
     mapping(address => uint256) public deposits;
     mapping(address => CollateralType) public collaterals;
@@ -59,11 +64,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     EnumerableSet.AddressSet private usersInDebt;
 
-    uint256 constant WAD = 10 ** 18;
-    uint256 constant RAY = 10 ** 27;
-    uint256 constant RAD = 10 ** 45;
-    uint256 constant YEAR = 31864500; //seconds in year (365 * 24.25 * 3600)
-
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
     function initialize(address vat_,
@@ -72,8 +72,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address hayJoin_,
         address jug_,
         address dog_,
-        address rewards_,
-        address auctionProxy_
+        address rewards_
     ) public initializer {
         __Ownable_init();
 
@@ -86,7 +85,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         jug = JugLike(jug_);
         dog = dog_;
         helioRewards = IRewards(rewards_);
-        auctionProxy = IAuctionProxy(auctionProxy_);
 
         vat.hope(hayJoin_);
 
@@ -491,7 +489,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address keeper
     ) external returns (uint256) {
         return
-        auctionProxy.startAuction(
+        AuctionProxy.startAuction(
             user,
             keeper,
             hay,
@@ -512,8 +510,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     ) external {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
-        auctionProxy.buyFromAuction(
-            msg.sender,
+        AuctionProxy.buyFromAuction(
             auctionId,
             collateralAmount,
             maxPrice,
@@ -526,8 +523,20 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         );
     }
 
+    function getAuctionStatus(address token, uint256 auctionId) external view returns(bool, uint256, uint256, uint256) {
+        return ClipperLike(collaterals[token].clip).getStatus(auctionId);
+    }
+
+    function upchostClipper(address token) external {
+        ClipperLike(collaterals[token].clip).upchost();
+    }
+
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
-        return auctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
+        return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
+    }
+
+    function resetAuction(address token, uint256 auctionId, address keeper) external {
+        AuctionProxy.resetAuction(auctionId, keeper, usb, usbJoin, vat, collaterals[token]);
     }
 
     function getUsersInDebt() external view returns (address[] memory) {
