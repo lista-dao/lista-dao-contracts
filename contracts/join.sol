@@ -44,7 +44,7 @@ interface VatLike {
       - `GemJoin`: For well behaved ERC20 tokens, with simple transfer
                    semantics.
       - `ETHJoin`: For native Ether.
-      - `UsbJoin`: For connecting internal Usb balances to an external
+      - `HayJoin`: For connecting internal Usb balances to an external
                    `DSToken` implementation.
     In practice, adapter implementations will be varied and specific to
     individual collateral types, accounting for different transfer
@@ -96,14 +96,14 @@ contract GemJoin is GemJoinLike {
         live = 0;
         emit Cage();
     }
-    function join(address usr, uint wad) external {
+    function join(address usr, uint wad) external auth {
         require(live == 1, "GemJoin/not-live");
         require(int(wad) >= 0, "GemJoin/overflow");
         vat.slip(ilk, usr, int(wad));
         require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         emit Join(usr, wad);
     }
-    function exit(address usr, uint wad) external {
+    function exit(address usr, uint wad) external auth {
         require(wad <= (2 ** 255) - 1, "GemJoin/overflow");
         vat.slip(ilk, msg.sender, -int(wad));
         require(gem.transfer(usr, wad), "GemJoin/failed-transfer");

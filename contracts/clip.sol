@@ -280,7 +280,7 @@ contract Clipper is ClipperLike {
     function redo(
         uint256 id,  // id of the auction to reset
         address kpr  // Address that will receive incentives
-    ) external lock isStopped(2) {
+    ) external auth lock isStopped(2) {
         // Read auction data
         address usr = _sales[id].usr;
         uint96  tic = _sales[id].tic;
@@ -340,7 +340,7 @@ contract Clipper is ClipperLike {
         uint256 max,          // Maximum acceptable price (USB / collateral) [ray]
         address who,          // Receiver of collateral and external call address
         bytes calldata data   // Data to pass in external call; if length 0, no call is done
-    ) external lock isStopped(3) {
+    ) external auth lock isStopped(3) {
 
         address usr = _sales[id].usr;
         uint96  tic = _sales[id].tic;

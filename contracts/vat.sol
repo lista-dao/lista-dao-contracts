@@ -142,7 +142,7 @@ contract Vat is VatLike {
         gem[ilk][src] = _sub(gem[ilk][src], wad);
         gem[ilk][dst] = _add(gem[ilk][dst], wad);
     }
-    function move(address src, address dst, uint256 rad) external {
+    function move(address src, address dst, uint256 rad) external auth {
         require(wish(src, msg.sender), "Vat/not-allowed");
         hay[src] = _sub(hay[src], rad);
         hay[dst] = _add(hay[dst], rad);
@@ -156,7 +156,7 @@ contract Vat is VatLike {
     }
 
     // --- CDP Manipulation ---
-    function frob(bytes32 i, address u, address v, address w, int dink, int dart) external {
+    function frob(bytes32 i, address u, address v, address w, int dink, int dart) external auth {
         // system is live
         require(live == 1, "Vat/not-live");
 
@@ -196,7 +196,7 @@ contract Vat is VatLike {
     }
 
     // --- CDP Fungibility ---
-    function fork(bytes32 ilk, address src, address dst, int dink, int dart) external {
+    function fork(bytes32 ilk, address src, address dst, int dink, int dart) external auth {
         Urn storage u = urns[ilk][src];
         Urn storage v = urns[ilk][dst];
         Ilk storage i = ilks[ilk];

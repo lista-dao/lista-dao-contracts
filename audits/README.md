@@ -1,4 +1,4 @@
-# Helio V2 Audits
+# Helio Audits
 
 This directory the reports of audits performed on Helio smart contracts by different security firms.
 

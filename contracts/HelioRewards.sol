@@ -109,6 +109,8 @@ contract HelioRewards is IRewards {
     }
 
     function setRate(address token, uint256 newRate) external auth {
+        require(pools[token].rho == 0, "Reward/pool-existed");
+        require(token != address(0), "Reward/invalid-token");
         require(newRate >= ONE, "Reward/negative-rate");
         require(newRate < 2 * ONE, "Reward/high-rate");
         Ilk storage pool = pools[token];
