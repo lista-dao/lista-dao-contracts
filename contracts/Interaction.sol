@@ -119,15 +119,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address clip
     ) external auth {
         vat.init(ilk);
-        enableCollateralType(token, gemJoin, ilk, clip);
-    }
-
-    function enableCollateralType(
-        address token,
-        address gemJoin,
-        bytes32 ilk,
-        address clip
-    ) public auth {
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
         IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
         vat.rely(gemJoin);
