@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./hMath.sol";
-import "./mock/dex/libraries/FullMath.sol";
+import "./oracle/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
 import "./interfaces/IRewards.sol";
