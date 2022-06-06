@@ -56,11 +56,13 @@ contract HelioRewards is IRewards {
     PipLike public oracle;
 
     uint256 public rewardsPool;
+    uint256 public poolLimit;
 
-    constructor(address vat_) {
+    constructor(address vat_, uint256 poolLimit_) {
         live = 1;
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
+        poolLimit = poolLimit_;
     }
 
     function stop() public auth {
@@ -89,6 +91,12 @@ contract HelioRewards is IRewards {
         helioToken = helioToken_;
 
         emit HelioTokenChanged(helioToken);
+    }
+
+    function setRewardsMaxLimit(uint256 newLimit) external auth {
+        poolLimit = newLimit;
+
+        emit RewardsLimitChanged(poolLimit);
     }
 
     function setOracle(address oracle_) external auth {
@@ -162,6 +170,7 @@ contract HelioRewards is IRewards {
 
     function claim(uint256 amount) external {
         require(amount <= pendingRewards(msg.sender), "Rewards/not-enough-rewards");
+        require(poolLimit >= amount, "Rewards/rewards-limit-exceeded");
         uint256 i = 0;
         while (i < poolsList.length) {
             drop(poolsList[i], msg.sender);
@@ -170,6 +179,7 @@ contract HelioRewards is IRewards {
         claimedRewards[msg.sender] += amount;
         IERC20(helioToken).safeTransfer(msg.sender, amount);
 
+        poolLimit -= amount;
         emit Claimed(msg.sender, amount);
     }
 }

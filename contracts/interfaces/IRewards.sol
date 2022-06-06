@@ -15,6 +15,8 @@ interface IRewards {
 
     event RateChanged(address token, uint256 newRate);
 
+    event RewardsLimitChanged(uint256 newLimit);
+
     event Start(address user);
 
     event Stop(address user);
