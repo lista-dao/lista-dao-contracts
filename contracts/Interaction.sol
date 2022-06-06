@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
+import "./mock/dex/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
 import "./interfaces/UsbLike.sol";
@@ -211,7 +212,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         drip(token);
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
-        int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
+        int256 dart = int256(FullMath.mulDiv(usbAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
 
         if (uint256(dart) * rate < usbAmount * (10 ** 27)) {
@@ -242,7 +243,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         usbJoin.join(msg.sender, usbAmount);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
-        int256 dart = int256(hMath.mulDiv(usbAmount, 10 ** 27, rate));
+        int256 dart = int256(FullMath.mulDiv(usbAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
 
         if (uint256(dart) * rate < usbAmount * (10 ** 27) &&
@@ -360,7 +361,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         _checkIsLive(collateralType.live);
 
         (uint256 Art, uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        return hMath.mulDiv(Art, rate, RAY);
+        return FullMath.mulDiv(Art, rate, RAY);
     }
 
     // Not locked user balance in aBNBc
@@ -465,13 +466,13 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         require(amount >= - (int256(art)), "Cannot withdraw more than current amount");
         (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 mat) = spotter.ilks(collateralType.ilk);
-        uint256 backedDebt = hMath.mulDiv(art, rate, 10 ** 36);
+        uint256 backedDebt = FullMath.mulDiv(art, rate, 10 ** 36);
         if (amount < 0) {
             backedDebt = uint256(int256(backedDebt) + amount);
         } else {
             backedDebt += uint256(amount);
         }
-        return hMath.mulDiv(backedDebt, mat, ink) / 10 ** 9;
+        return FullMath.mulDiv(backedDebt, mat, ink) / 10 ** 9;
     }
 
     // Returns borrow APR with 20 decimals.

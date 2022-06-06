@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./hMath.sol";
+import "./mock/dex/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
 import "./interfaces/IRewards.sol";
@@ -159,8 +160,8 @@ contract HelioRewards is IRewards {
             return 0;
         }
         uint256 rate = hMath.rpow(pools[token].rewardRate, block.timestamp - last, ONE);
-        uint256 rewards = hMath.mulDiv(rate, usrDebt, 10 ** 27) - usrDebt; //$ amount
-        return hMath.mulDiv(rewards, helioPrice(), 10 ** 18); //helio tokens
+        uint256 rewards = FullMath.mulDiv(rate, usrDebt, 10 ** 27) - usrDebt; //$ amount
+        return FullMath.mulDiv(rewards, helioPrice(), 10 ** 18); //helio tokens
     }
 
     function claim(uint256 amount) external {
