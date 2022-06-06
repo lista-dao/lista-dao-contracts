@@ -171,7 +171,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
                 "Interaction/only helio provider can deposit for this token"
             );
         }
-        require(dink <= type(int256).max, "Interaction/too-much-requested");
+        require(dink <= uint256(type(int256).max), "Interaction/too-much-requested");
         drip(token);
         uint256 preBalance = IERC20Upgradeable(token).balanceOf(address(this));
         IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), dink);
