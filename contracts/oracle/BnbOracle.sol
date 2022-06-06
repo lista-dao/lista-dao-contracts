@@ -12,7 +12,7 @@ contract BnbOracle is PipLike {
     AggregatorV3Interface private _priceFeed;
     address private _owner;
 
-    constructor(address bnbUSD) public {
+    constructor(address bnbUSD) {
         _owner = msg.sender;
         _priceFeed = AggregatorV3Interface(bnbUSD);
     }

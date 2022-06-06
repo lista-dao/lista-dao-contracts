@@ -39,9 +39,6 @@ contract HelioRewards is IRewards {
         _;
     }
 
-    event Claimed(address indexed user, uint256 amount);
-
-
     struct Pile {
         uint256 amount;
         uint256 ts;
@@ -50,7 +47,6 @@ contract HelioRewards is IRewards {
     using SafeERC20 for IERC20;
 
     mapping (address => mapping(address => Pile)) public piles; // usr => token(collateral type) => time last realise
-
     mapping (address => uint256) public claimedRewards;
     mapping (address => Ilk) public pools;
     address[] public poolsList;
@@ -121,7 +117,7 @@ contract HelioRewards is IRewards {
         }
     }
 
-    function rate(address token) public view returns(uint256) {
+    function rewardsRate(address token) public view returns(uint256) {
         return pools[token].rewardRate;
     }
 

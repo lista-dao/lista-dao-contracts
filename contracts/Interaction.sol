@@ -10,8 +10,8 @@ import "./hMath.sol";
 import "./mock/dex/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
-import "./interfaces/UsbLike.sol";
-import "./interfaces/UsbGemLike.sol";
+import "./interfaces/HayLike.sol";
+import "./interfaces/HayGemLike.sol";
 import "./interfaces/GemJoinLike.sol";
 import "./interfaces/JugLike.sol";
 import "./interfaces/DogLike.sol";
@@ -44,8 +44,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     VatLike public vat;
     SpotLike public spotter;
-    UsbLike public usb;
-    UsbGemLike public usbJoin;
+    HayLike public hay;
+    HayGemLike public hayJoin;
     JugLike public jug;
     address public dog;
     IRewards public helioRewards;
@@ -68,8 +68,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function initialize(address vat_,
         address spot_,
-        address usb_,
-        address usbJoin_,
+        address hay_,
+        address hayJoin_,
         address jug_,
         address dog_,
         address rewards_,
@@ -81,37 +81,37 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
-        usb = UsbLike(usb_);
-        usbJoin = UsbGemLike(usbJoin_);
+        hay = HayLike(hay_);
+        hayJoin = HayGemLike(hayJoin_);
         jug = JugLike(jug_);
         dog = dog_;
         helioRewards = IRewards(rewards_);
         auctionProxy = IAuctionProxy(auctionProxy_);
 
-        vat.hope(usbJoin_);
+        vat.hope(hayJoin_);
 
-        usb.approve(usbJoin_, type(uint256).max);
+        hay.approve(hayJoin_, type(uint256).max);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function setCores(address vat_, address spot_, address usbJoin_,
+    function setCores(address vat_, address spot_, address hayJoin_,
         address jug_) public auth {
         // Reset previous approval
-        usb.approve(address(usbJoin), 0);
+        hay.approve(address(hayJoin), 0);
 
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
-        usbJoin = UsbGemLike(usbJoin_);
+        hayJoin = HayGemLike(hayJoin_);
         jug = JugLike(jug_);
 
-        vat.hope(usbJoin_);
+        vat.hope(hayJoin_);
 
-        usb.approve(usbJoin_, type(uint256).max);
+        hay.approve(hayJoin_, type(uint256).max);
     }
 
-    function setUSBApprove() public auth {
-        usb.approve(address(usbJoin), type(uint256).max);
+    function setHayApprove() public auth {
+        hay.approve(address(hayJoin), type(uint256).max);
     }
 
     function setCollateralType(
@@ -206,48 +206,47 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
     }
 
-    function borrow(address token, uint256 usbAmount) external returns (uint256) {
+    function borrow(address token, uint256 hayAmount) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
-        int256 dart = int256(FullMath.mulDiv(usbAmount, 10 ** 27, rate));
+        int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
 
-        if (uint256(dart) * rate < usbAmount * (10 ** 27)) {
+        if (uint256(dart) * rate < hayAmount * (10 ** 27)) {
             dart += 1; //ceiling
         }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
-        uint256 mulResult = rate * uint256(dart);
-        vat.move(msg.sender, address(this), usbAmount * RAY);
-        usbJoin.exit(msg.sender, usbAmount);
+        vat.move(msg.sender, address(this), hayAmount * RAY);
+        hayJoin.exit(msg.sender, hayAmount);
 
         dropRewards(token, msg.sender);
 
-        emit Borrow(msg.sender, usbAmount);
+        emit Borrow(msg.sender, hayAmount);
         return uint256(dart);
     }
 
     function dropRewards(address token, address usr) public {
-        helioRewards.drop(token, msg.sender);
+        helioRewards.drop(token, usr);
     }
 
     // Burn user's HAY.
     // N.B. User collateral stays the same.
-    function payback(address token, uint256 usbAmount) external returns (int256) {
+    function payback(address token, uint256 hayAmount) external returns (int256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
-        IERC20Upgradeable(usb).safeTransferFrom(msg.sender, address(this), usbAmount);
-        usbJoin.join(msg.sender, usbAmount);
+        IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), hayAmount);
+        hayJoin.join(msg.sender, hayAmount);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
-        int256 dart = int256(FullMath.mulDiv(usbAmount, 10 ** 27, rate));
+        int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
 
-        if (uint256(dart) * rate < usbAmount * (10 ** 27) &&
-            uint256(dart + 1) * rate <= vat.usb(msg.sender)
+        if (uint256(dart) * rate < hayAmount * (10 ** 27) &&
+            uint256(dart + 1) * rate <= vat.hay(msg.sender)
         ) {
             dart += 1;
             // ceiling
@@ -261,7 +260,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         dropRewards(token, msg.sender);
 
         drip(token);
-        emit Payback(msg.sender, usbAmount);
+        emit Payback(msg.sender, hayAmount);
         return dart;
     }
 
@@ -330,7 +329,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     // Returns the HAY price in $
-    function usbPrice(address token) external view returns (uint256) {
+    function hayPrice(address token) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
@@ -355,7 +354,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return deposits[token] * collateralPrice(token) / WAD;
     }
 
-    // Total USB borrowed by all users
+    // Total HAY borrowed by all users
     function collateralTVL(address token) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -422,7 +421,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return (int256(collateral) - int256(debt)) / 1e27;
     }
 
-    function liquidationPriceForDebt(bytes32 ilk, address usr, uint256 ink, uint256 art) internal view returns (uint256) {
+    function liquidationPriceForDebt(bytes32 ilk, uint256 ink, uint256 art) internal view returns (uint256) {
         if (ink == 0) {
             return 0; // no meaningful price if user has no debt
         }
@@ -438,7 +437,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         _checkIsLive(collateralType.live);
 
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, usr);
-        return liquidationPriceForDebt(collateralType.ilk, usr, ink, art);
+        return liquidationPriceForDebt(collateralType.ilk, ink, art);
     }
 
     // Price of aBNBc when user will be liquidated with additional amount of aBNBc deposited/withdraw
@@ -453,7 +452,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         } else {
             ink += uint256(amount);
         }
-        return liquidationPriceForDebt(collateralType.ilk, usr, ink, art);
+        return liquidationPriceForDebt(collateralType.ilk, ink, art);
     }
 
     // Price of aBNBc when user will be liquidated with additional amount of HAY borrowed/payback
@@ -495,8 +494,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         auctionProxy.startAuction(
             user,
             keeper,
-            usb,
-            usbJoin,
+            hay,
+            hayJoin,
             vat,
             DogLike(dog),
             IHelioProvider(helioProviders[token]),
@@ -519,8 +518,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             collateralAmount,
             maxPrice,
             receiverAddress,
-            usb,
-            usbJoin,
+            hay,
+            hayJoin,
             vat,
             helioProvider,
             collateral
@@ -536,7 +535,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     function totalPegLiquidity() external view returns (uint256) {
-        return IERC20Upgradeable(usb).totalSupply();
+        return IERC20Upgradeable(hay).totalSupply();
     }
 
     function _checkIsLive(uint256 live) internal pure {
