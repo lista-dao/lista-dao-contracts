@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
-import "./mock/dex/libraries/FullMath.sol";
+import "./oracle/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
 import "./interfaces/HayLike.sol";
