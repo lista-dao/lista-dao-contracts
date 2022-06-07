@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.6;
 interface IVault {
     /**
      * Events
@@ -24,9 +24,7 @@ interface IVault {
      * Methods
      */
     event RatioUpdated(uint256 currentRatio);
-    function deposit(address recipient, uint256 amount)
-    external
-    returns (uint256);
+    function deposit(uint256 amount) external returns (uint256);
     function depositFor(address recipient, uint256 amount)
     external
     returns (uint256);

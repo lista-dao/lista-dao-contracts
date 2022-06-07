@@ -4,14 +4,11 @@ const web3 = require('web3');
 
 const toBN = web3.utils.toBN;
 const { constants } = require('@openzeppelin/test-helpers');
-const {ceBNBcJoin, SPOT, UsbJoin, JUG, DOG} = require("../../addresses-stage2.json");
-
 
 let owner, staker_1, staker_2,
     amount_1, amount_2,
     abnbc, abnbb, wbnb, hbnb, usb, ce_Abnbc_join, collateral, clip,
-    ce_vault, ce_token, ce_dao, pool, h_provider, ce_rot, auctionProxy;
-
+    ce_vault, ce_token, ce_dao, pool, h_provider, ce_rot;
 
 describe('Helio Provider', () => {
     before(async function () {
@@ -63,19 +60,19 @@ describe('Helio Provider', () => {
             await printBalances();
         });
         it('staker_1 releases ABNBc', async () => {
-            console.log();
+            ratio = await abnbb.ratio();
             await abnbc.connect(staker_1).approve(ce_dao.address, amount_2.toString());
             await abnbc.connect(staker_1).approve(ce_rot.address, amount_2.toString());
 
             await ce_token.connect(staker_1).approve(h_provider.address, amount_2.toString());
 
             await expect(
-                h_provider.connect(staker_1).releaseInABNBc(staker_1.address, amount_1.div(toBN(100)).toString())
+                h_provider.connect(staker_1).releaseInABNBc(staker_1.address, amount_1.div(toBN(100)).toString()) // amount in BNB
             ).to.emit(h_provider, "Withdrawal")
                 .withArgs(
                     staker_1.address,
                     staker_1.address,
-                    amount_1.div(toBN(100)).toString()
+                    amount_1.div(toBN(100)).mul(toBN(ratio)).div(toBN(1e18)).toString() // in aBNBc
                 );
 
             console.log(`------- balance after staker_1 released(${amount_1.div(toBN(2)).toString()} aBNBc) -------`);
@@ -202,8 +199,8 @@ async function init() {
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
     /* USB */
-    const Usb = await ethers.getContractFactory("Usb");
-    usb = await Usb.deploy(97, "USB");
+    const Usb = await ethers.getContractFactory("USB");
+    usb = await Usb.deploy();
     /* hBNB */
     const hBNB = await ethers.getContractFactory("hBNB");
     hbnb = await hBNB.deploy();
@@ -240,12 +237,8 @@ async function init() {
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
-    /* Auction */
-    const AuctionProxy = await ethers.getContractFactory("AuctionProxy");
-    auctionProxy = await AuctionProxy.deploy();
-    await auctionProxy.initialize();
     /* DAO */
-    const ceDao = await ethers.getContractFactory("Interaction");
+    const ceDao = await ethers.getContractFactory("DAOInteraction");
     ce_dao = await ceDao.deploy();
     await ce_dao.initialize(
         vat.address,
@@ -254,15 +247,10 @@ async function init() {
         usbJoin.address,
         jug.address,
         dog.address,
-        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1',
-        auctionProxy.address
+        '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1'
     );
     // add dao to vat
     await vat.rely(ce_dao.address);
-    await vat.rely(spot.address);
-    await vat.rely(usbJoin.address);
-    await vat.rely(jug.address);
-    await vat.rely(dog.address);
     //
     collateral = ethers.utils.formatBytes32String("ceABNBc");
     /* clip */
@@ -271,7 +259,6 @@ async function init() {
     /* gemJoin */
     const GemJoin = await ethers.getContractFactory("GemJoin");
     ce_Abnbc_join = await GemJoin.deploy(vat.address, collateral, ce_token.address);
-    await vat.rely(ce_Abnbc_join.address);
     await ce_dao.setCollateralType(ce_token.address, ce_Abnbc_join.address, collateral, clip.address);
     /* BinancePool */
     const BinancePool = await ethers.getContractFactory("BinancePool");
