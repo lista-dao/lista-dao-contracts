@@ -3,11 +3,14 @@ const hre = require("hardhat");
 const {
     ceBNBc, DEPLOYER, COLLATERAL_CE_ABNBC,
     Oracle,
-    ABACI
+    ABACI, SPOT, DOG, VOW, CLIP,
 } = require('../../addresses-stage2.json');
 const {ethers, upgrades} = require("hardhat");
 const {BN, ether} = require("@openzeppelin/test-helpers");
 
+let wad = "000000000000000000", // 18 Decimals
+    ray = "000000000000000000000000000", // 27 Decimals
+    rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
 
 async function main() {
     console.log('Running deploy script');
@@ -143,7 +146,7 @@ async function main() {
 
     console.log("Spot...");
     await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), Oracle);
-    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
 
     await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // It means pegged to 1$
     await spot.poke(collateral);
@@ -166,106 +169,19 @@ async function main() {
     await dog["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("clip"), clip.address);
 
     console.log("CLIP");
-    await clip.rely(dog.address);
+    // let clip = this.Clip.attach(CLIP);
+    await clip.rely(DOG);
+
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
     await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
-    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), spot.address);
-    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), dog.address);
-    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
     await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
-
-    await abaci["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tau"), "3600"); // Price will reach 0 after this time
-
-    // CODE VERIFICATION
-    console.log('Validating code');
-    await hre.run("verify:verify", {
-        address: vat.address
-    });
-    await hre.run("verify:verify", {
-        address: spot.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: hayJoin.address,
-        constructorArguments: [
-            vat.address,
-            hay.address,
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: bnbJoin.address,
-        constructorArguments: [
-            vat.address,
-            collateral,
-            ceBNBc,
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: jug.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: vow.address,
-        constructorArguments: [
-            vat.address,
-            ethers.constants.AddressZero,
-            ethers.constants.AddressZero,
-            DEPLOYER
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: dog.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: clip.address,
-        constructorArguments: [
-            vat.address,
-            spot.address,
-            dog.address,
-            collateral
-        ],
-    });
-    // Rewards
-    await hre.run("verify:verify", {
-        address: rewards.address,
-    });
-    await hre.run("verify:verify", {
-        address: helioOracle.address,
-    });
-    await hre.run("verify:verify", {
-        address: helioToken.address,
-        constructorArguments: [
-            "100000000",
-            rewards.address
-        ],
-    });
-
-    // Interaction
-    await hre.run("verify:verify", {
-        address: auctionProxy.address,
-    });
-
-    await hre.run("verify:verify", {
-        address: interaction.address,
-    });
-
-    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(interaction.address);
-    console.log("Interaction implementation: ", interactionImplAddress);
-
-    await hre.run("verify:verify", {
-        address: interactionImplAddress,
-    });
 
     console.log('Finished');
 }
