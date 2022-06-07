@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
 
@@ -12,7 +13,7 @@ import "./interfaces/IRewards.sol";
 import "./interfaces/PipLike.sol";
 
 
-contract HelioRewards is IRewards {
+contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgradeable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { require(live == 1, "Rewards/not-live"); wards[usr] = 1; }
@@ -44,7 +45,7 @@ contract HelioRewards is IRewards {
         uint256 ts;
     }
 
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     mapping (address => mapping(address => Pile)) public piles; // usr => token(collateral type) => time last realise
     mapping (address => uint256) public claimedRewards;
@@ -58,12 +59,17 @@ contract HelioRewards is IRewards {
     uint256 public rewardsPool;
     uint256 public poolLimit;
 
-    constructor(address vat_, uint256 poolLimit_) {
+    function initialize(address vat_,
+                        uint256 poolLimit_ ) public initializer {
+        __Ownable_init();
+
         live = 1;
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
         poolLimit = poolLimit_;
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stop() public auth {
         live = 0;
@@ -78,7 +84,7 @@ contract HelioRewards is IRewards {
     }
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
-        require(IERC20(helioToken).balanceOf(address(this)) >= poolLimit);
+        require(IERC20Upgradeable(helioToken).balanceOf(address(this)) >= poolLimit, "Reward/not-enough-reward-token");
         require(pools[token].rho == 0, "Reward/pool-existed");
         require(token != address(0), "Reward/invalid-token");
         pools[token] = Ilk(rate, block.timestamp, ilk);
@@ -95,7 +101,7 @@ contract HelioRewards is IRewards {
     }
 
     function setRewardsMaxLimit(uint256 newLimit) external auth {
-        require(IERC20(helioToken).balanceOf(address(this)) >= poolLimit);
+        require(IERC20Upgradeable(helioToken).balanceOf(address(this)) >= poolLimit, "Reward/not-enough-reward-token");
         poolLimit = newLimit;
 
         emit RewardsLimitChanged(poolLimit);
@@ -181,7 +187,7 @@ contract HelioRewards is IRewards {
             i++;
         }
         claimedRewards[msg.sender] += amount;
-        IERC20(helioToken).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(helioToken).safeTransfer(msg.sender, amount);
 
         poolLimit -= amount;
         emit Claimed(msg.sender, amount);
