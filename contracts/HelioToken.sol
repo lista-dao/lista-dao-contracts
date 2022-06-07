@@ -8,8 +8,10 @@ contract HelioToken is ERC20 {
 
     event Start(address user);
     event Stop(address user);
+    event MintedRewardsSupply(address rewardsContract, uint256 amount);
 
     bool public  stopped;
+    address public rewards;
 
     // --- Auth ---
     mapping (address => uint) public wards;
@@ -31,11 +33,16 @@ contract HelioToken is ERC20 {
         _;
     }
 
-    constructor() ERC20("Helio Reward token", "HELIO"){
+    constructor(uint256 rewardsSupply_, address rewards_) ERC20("Helio Reward token", "HELIO"){
         wards[msg.sender] = 1;
+        rewards = rewards_;
+        _mint(rewards, rewardsSupply_);
+
+        emit MintedRewardsSupply(rewards, rewardsSupply_);
     }
 
     function mint(address _to, uint256 _amount) external auth stoppable returns(bool) {
+        require(_to != rewards, "HelioToken/rewards-oversupply");
         _mint(_to, _amount);
         return true;
     }
