@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../interfaces/ClipperLike.sol";
 import "../interfaces/GemJoinLike.sol";
@@ -16,8 +16,8 @@ import { CollateralType } from  "../ceros/interfaces/IDao.sol";
 uint256 constant RAY = 10**27;
 
 library AuctionProxy {
-  using SafeERC20 for IERC20;
-  using SafeERC20 for GemLike;
+  using SafeERC20Upgradeable for IERC20Upgradeable;
+  using SafeERC20Upgradeable for GemLike;
 
   function startAuction(
     address user,
@@ -95,7 +95,7 @@ library AuctionProxy {
     hay.transfer(receiverAddress, hayBal);
 
     if (address(helioProvider) != address(0)) {
-      collateral.gem.gem().safeTransfer(address(helioProvider), gemBal);
+      IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
       helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
 
       // TODO: emit in the Interaction. Return liquidated amount from here
@@ -109,7 +109,7 @@ library AuctionProxy {
         helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
       }
     } else {
-      collateral.gem.gem().safeTransfer(receiverAddress, gemBal);
+      IERC20Upgradeable(collateral.gem.gem()).safeTransfer(receiverAddress, gemBal);
     }
   }
 

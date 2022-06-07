@@ -111,7 +111,7 @@ contract GemJoin is GemJoinLike {
     }
 }
 
-contract UsbJoin is HayGemLike {
+contract HayJoin is HayGemLike {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth {
@@ -123,7 +123,7 @@ contract UsbJoin is HayGemLike {
         emit Deny(usr);
     }
     modifier auth {
-        require(wards[msg.sender] == 1, "UsbJoin/not-authorized");
+        require(wards[msg.sender] == 1, "HayJoin/not-authorized");
         _;
     }
 
@@ -154,13 +154,13 @@ contract UsbJoin is HayGemLike {
             require(y == 0 || (z = x * y) / y == x);
         }
     }
-    function join(address usr, uint wad) external {
+    function join(address usr, uint wad) external auth {
         vat.move(address(this), usr, mul(ONE, wad));
         usb.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
-    function exit(address usr, uint wad) external {
-        require(live == 1, "UsbJoin/not-live");
+    function exit(address usr, uint wad) external auth {
+        require(live == 1, "HayJoin/not-live");
         vat.move(msg.sender, address(this), mul(ONE, wad));
         usb.mint(usr, wad);
         emit Exit(usr, wad);
