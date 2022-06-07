@@ -33,18 +33,18 @@ async function main() {
     this.Spot = await hre.ethers.getContractFactory("Spotter");
     this.Rewards = await hre.ethers.getContractFactory("HelioRewards");
     this.Dog = await hre.ethers.getContractFactory("Dog");
-    //
-    // const clip = await this.Clip.deploy(VAT, SPOT, DOG, newCollateral);
-    // await clip.deployed();
-    // console.log("Clip deployed to:", clip.address);
-    //
-    // const tokenJoin = await this.GemJoin.deploy(VAT, newCollateral, ceBNBc);
-    // await tokenJoin.deployed();
-    // console.log("tokenJoin deployed to:", tokenJoin.address);
-    //
-    let tokenJoin = "0x92F66Ea0eBFeB88A5619aaBcAB4Cd0d3e0722C01";
-    let clip = "0xCaB362bb0268128Ca0e04afeC91006C9E0E02957";
-    //
+
+    const clip = await this.Clip.deploy(VAT, SPOT, DOG, newCollateral);
+    await clip.deployed();
+    console.log("Clip deployed to:", clip.address);
+
+    const tokenJoin = await this.GemJoin.deploy(VAT, newCollateral, ceBNBc);
+    await tokenJoin.deployed();
+    console.log("tokenJoin deployed to:", tokenJoin.address);
+    // //
+    // let tokenJoin = "0x92F66Ea0eBFeB88A5619aaBcAB4Cd0d3e0722C01";
+    // let clip = "0xCaB362bb0268128Ca0e04afeC91006C9E0E02957";
+    // //
     let interaction = this.Interaction.attach(INTERACTION);
 
     // await interaction.setCollateralType(tokenAddress, tokenJoin, newCollateral, clip);
@@ -60,7 +60,7 @@ async function main() {
     console.log("Spot...");
     let spot = this.Spot.attach(SPOT);
     await spot["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("pip"), Oracle);
-    await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
     await spot.poke(newCollateral);
 
     console.log("Rewards...");
@@ -70,12 +70,11 @@ async function main() {
 
     console.log("Dog...");
     let dog = this.Dog.attach(DOG);
-    await dog.rely(clip);
+    await dog.rely(clip.address);
     await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("hole"), "250" + rad);
     await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
-    await dog["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("clip"), clip);
+    await dog["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("clip"), clip.address);
 
-    let abaci = await this.Abaci.attach(ABACI);
     console.log("clip");
     let clipC = this.Clip.attach(clip);
     await clipC.rely(DOG);

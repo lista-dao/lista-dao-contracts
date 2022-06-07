@@ -31,7 +31,7 @@ describe('Routers(HELIO,CEROS)', () => {
         const wBNB = await ethers.getContractFactory("wBNB");
         wbnb = await wBNB.deploy();
         /* USB */
-        const Usb = await ethers.getContractFactory("Usb");
+        const Usb = await ethers.getContractFactory("Hay");
         usb = await Usb.deploy(97, "USB");
         /* hBNB */
         const hBNB = await ethers.getContractFactory("hBNB");
@@ -64,7 +64,7 @@ describe('Routers(HELIO,CEROS)', () => {
         const Spot = await ethers.getContractFactory("Spotter");
         const spot = await Spot.deploy(vat.address);
         /* usbJoin */
-        const UsbJoin = await ethers.getContractFactory("UsbJoin");
+        const UsbJoin = await ethers.getContractFactory("HayJoin");
         const usbJoin = await UsbJoin.deploy(vat.address, usb.address);
         /* jug */
         const Jug = await ethers.getContractFactory("Jug");
@@ -79,7 +79,6 @@ describe('Routers(HELIO,CEROS)', () => {
             usbJoin.address,
             jug.address,
             dog.address,
-            '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1'
         );
         // add dao to vat
         await vat.rely(ce_dao.address);

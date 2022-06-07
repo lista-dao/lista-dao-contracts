@@ -3,8 +3,7 @@ const { BigNumber } = require('ethers');
 const { ethers, network } = require('hardhat');
 const Web3 = require('web3');
 const {ether, expectRevert, BN, expectEvent, constants} = require('@openzeppelin/test-helpers');
-
-const Interaction = artifacts.require('Interaction');
+const hre = require("hardhat");
 
 ///////////////////////////////////////////
 //Word of Notice: Commented means pending//
@@ -16,12 +15,12 @@ describe('===INTERACTION2-Multicollateral===', function () {
 
     let vat,
         spot,
-        usb,
+        hay,
         abnbc,
         abnbcJoin,
         abnbc2,
         abnbcJoin2,
-        usbJoin,
+        hayJoin,
         jug,
         dog,
         clipABNBC,
@@ -53,10 +52,10 @@ describe('===INTERACTION2-Multicollateral===', function () {
 
         this.Vat = await ethers.getContractFactory("Vat");
         this.Spot = await ethers.getContractFactory("Spotter");
-        this.Usb = await ethers.getContractFactory("Usb");
+        this.Hay = await ethers.getContractFactory("Hay");
         this.ABNBC = await ethers.getContractFactory("aBNBc");
         this.GemJoin = await ethers.getContractFactory("GemJoin");
-        this.UsbJoin = await ethers.getContractFactory("UsbJoin");
+        this.HayJoin = await ethers.getContractFactory("HayJoin");
         this.Jug = await ethers.getContractFactory("Jug");
         this.Oracle = await ethers.getContractFactory("Oracle"); // Mock Oracle
         this.Dog = await ethers.getContractFactory("Dog");
@@ -64,22 +63,23 @@ describe('===INTERACTION2-Multicollateral===', function () {
         this.Abaci = await ethers.getContractFactory("LinearDecrease");
         this.Vow = await ethers.getContractFactory("Vow");
         this.AuctionProxy = await ethers.getContractFactory("AuctionProxy");
-        this.HelioOracle = await ethers.getContractFactory("HelioOracle");
-        this.Rewards = await ethers.getContractFactory("HelioRewards");
         this.Helio = await ethers.getContractFactory("HelioToken");
+        const HelioOracle = await ethers.getContractFactory('HelioOracle');
+        const HelioRewards = await ethers.getContractFactory('HelioRewards');
+
 
         // Core module
         vat = await this.Vat.connect(deployer).deploy();
-        await vat.deployed();
+        await vat.initialize();
 
         spot = await this.Spot.connect(deployer).deploy(vat.address);
         await spot.deployed();
 
-        // Usb module
-        usb = await this.Usb.connect(deployer).deploy(97, "testUSB");
-        await usb.deployed(); // Stable Coin
-        usbJoin = await this.UsbJoin.connect(deployer).deploy(vat.address, usb.address);
-        await usbJoin.deployed();
+        // Hay module
+        hay = await this.Hay.connect(deployer).deploy(97, "testHAY");
+        await hay.deployed(); // Stable Coin
+        hayJoin = await this.HayJoin.connect(deployer).deploy(vat.address, hay.address);
+        await hayJoin.deployed();
 
         const aBNBb = artifacts.require("aBNBb");
         abnbb = await aBNBb.new();
@@ -112,26 +112,31 @@ describe('===INTERACTION2-Multicollateral===', function () {
         clipABNBC = await this.ClipABNBC.connect(deployer).deploy(vat.address, spot.address, dog.address, collateral);
         await clipABNBC.deployed();
 
-        helioOracle = await this.HelioOracle.connect(deployer).deploy("100000000000000000");
-        await helioOracle.deployed();
-        rewards = await this.Rewards.connect(deployer).deploy(vat.address);
-        await rewards.deployed();
-        helio = await this.Helio.connect(deployer).deploy();
+        helioOracle = await HelioOracle.connect(deployer).deploy();
+        await helioOracle.initialize("100000000000000000");
+        rewards = await HelioRewards.connect(deployer).deploy();
+        await rewards.initialize(vat.address, ether("100000000").toString());
+        helio = await this.Helio.connect(deployer).deploy(ether("100000000").toString(), rewards.address);
         await helio.deployed();
 
         auctionProxy = await this.AuctionProxy.connect(deployer).deploy();
         await auctionProxy.deployed();
 
-        interaction = await Interaction.new({from: deployer.address});
+        const Interaction = await hre.ethers.getContractFactory("Interaction", {
+            unsafeAllow: ['external-library-linking'],
+            libraries: {
+                AuctionProxy: auctionProxy.address
+            },
+        });
+        interaction = await Interaction.deploy();
         await interaction.initialize(
             vat.address,
             spot.address,
-            usb.address,
-            usbJoin.address,
+            hay.address,
+            hayJoin.address,
             jug.address,
             dog.address,
             rewards.address,
-            auctionProxy.address,
         );
         //////////////////////////////
         /** Initial Setup -------- **/
@@ -152,13 +157,16 @@ describe('===INTERACTION2-Multicollateral===', function () {
         // Initialize Core Module
         // await vat.connect(deployer).init(collateral);
         // await vat.connect(deployer).rely(abnbcJoin.address);
-        await vat.connect(deployer).rely(usbJoin.address);
+        await vat.connect(deployer).rely(hayJoin.address);
         await vat.connect(deployer).rely(spot.address);
         await vat.connect(deployer).rely(jug.address);
         await vat.connect(deployer).rely(interaction.address);
+        await vat.connect(deployer).rely(dog.address);
+        await vat.connect(deployer).rely(abnbcJoin.address);
+        await vat.connect(deployer).rely(abnbcJoin2.address);
 
         // await vat.connect(deployer).rely(jug.address);
-        await vat.connect(deployer)["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "20000" + rad); // Normalized USB
+        await vat.connect(deployer)["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "20000" + rad); // Normalized HAY
         await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("line"), "2000" + rad);
         // await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("spot"), "500" + rad);
         await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray); //0.1 rad
@@ -178,8 +186,8 @@ describe('===INTERACTION2-Multicollateral===', function () {
         await spot.connect(deployer).poke(collateral2);
 
 
-        // Initialize Usb Module
-        await usb.connect(deployer).rely(usbJoin.address);
+        // Initialize HAY Module
+        await hay.connect(deployer).rely(hayJoin.address);
 
         // Stability fees
         //calculate base rate
@@ -207,8 +215,12 @@ describe('===INTERACTION2-Multicollateral===', function () {
 
         await jug.connect(deployer)["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), mockVow.address);
 
-        await interaction.setCollateralType(abnbc.address, abnbcJoin.address, collateral, clipABNBC.address, {from: deployer.address});
-        await interaction.setCollateralType(abnbc2.address, abnbcJoin2.address, collateral2, clipABNBC.address, {from: deployer.address});
+        await interaction.connect(deployer).setCollateralType(abnbc.address, abnbcJoin.address, collateral, clipABNBC.address);
+        await interaction.connect(deployer).setCollateralType(abnbc2.address, abnbcJoin2.address, collateral2, clipABNBC.address);
+        await abnbcJoin.connect(deployer).rely(interaction.address);
+        await abnbcJoin2.connect(deployer).rely(interaction.address);
+        await clipABNBC.connect(deployer).rely(interaction.address);
+        await hayJoin.connect(deployer).rely(interaction.address);
 
         let s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal("0");
@@ -219,32 +231,30 @@ describe('===INTERACTION2-Multicollateral===', function () {
         expect(s1Balance).to.equal(ether("5000").toString());
 
         await abnbc2.connect(deployer).mint(signer1.address, ether("400").toString());
-
-        await auctionProxy.connect(deployer).setDao(interaction.address);
     });
 
     it('defaults', async function () {
 
         // let ilk = await interaction.connect(deployer).ilk(abnbc.address);
         // console.log("Ilk: " + ilk);
-        let abnbcPrice = await interaction.collateralPrice(abnbc.address, {from: signer1.address});
+        let abnbcPrice = await interaction.connect(signer1).collateralPrice(abnbc.address);
         expect(abnbcPrice.toString()).to.equal(ether("400").toString());
-        let abnbcPrice2 = await interaction.collateralPrice(abnbc2.address, {from: signer1.address});
+        let abnbcPrice2 = await interaction.connect(signer1).collateralPrice(abnbc2.address);
         expect(abnbcPrice2.toString()).to.equal(ether("300").toString());
 
-        let rate1 = await interaction.collateralRate(abnbc.address, {from: signer1.address});
+        let rate1 = await interaction.connect(signer1).collateralRate(abnbc.address);
         expect(rate1.toString()).to.equal("800000000000000000"); //80%
-        let rate2 = await interaction.collateralRate(abnbc2.address, {from: signer1.address});
+        let rate2 = await interaction.connect(signer1).collateralRate(abnbc2.address);
         expect(rate2.toString()).to.equal("800000000000000000");
 
         // Check initial state
-        let free = await interaction.free(abnbc.address, signer1.address, {from: signer1.address});
+        let free = await interaction.connect(signer1).free(abnbc.address, signer1.address);
         expect(free.toString()).to.equal("0");
-        let locked = await interaction.locked(abnbc.address, signer1.address, {from: signer1.address});
+        let locked = await interaction.connect(signer1).locked(abnbc.address, signer1.address);
         expect(locked.toString()).to.equal("0");
 
-        let borrowApr = await interaction.borrowApr(abnbc.address, {from: signer1.address});
-        expect(borrowApr.toString()).to.equal("10000000069041365947");
+        let borrowApr = await interaction.connect(signer1).borrowApr(abnbc.address);
+        expect(borrowApr.toString()).to.equal("10109263881221893942");
 
         let rewardPool = await rewards.rewardsPool();
         expect(rewardPool.toString()).to.equal("0");
@@ -256,58 +266,58 @@ describe('===INTERACTION2-Multicollateral===', function () {
 
         await abnbc.connect(signer1).approve(interaction.address, dink);
         // Deposit collateral(aBNBc) to the interaction contract
-        await interaction.deposit(signer1.address, abnbc.address, dink, {from: signer1.address});
+        await interaction.connect(signer1).deposit(signer1.address, abnbc.address, dink);
 
         let s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal(ether("4998").toString());
 
-        let s1USBBalance = (await usb.balanceOf(signer1.address)).toString();
-        expect(s1USBBalance).to.equal("0");
+        let s1HAYBalance = (await hay.balanceOf(signer1.address)).toString();
+        expect(s1HAYBalance).to.equal("0");
 
-        let free = await interaction.free(abnbc.address, signer1.address, {from: signer1.address});
+        let free = await interaction.connect(signer1).free(abnbc.address, signer1.address);
         expect(free.toString()).to.equal("0");
-        let locked = await interaction.locked(abnbc.address, signer1.address, {from: signer1.address});
+        let locked = await interaction.connect(signer1).locked(abnbc.address, signer1.address);
         expect(locked.toString()).to.equal(ether("2").toString());
 
-        // Locking collateral and borrowing USB
-        // We want to draw 60 USB == `dart`
+        // Locking collateral and borrowing HAY
+        // We want to draw 60 HAY == `dart`
         // Maximum available for borrow = (2 * 400 ) * 0.8 = 640
         let dart = ether("60").toString();
-        await interaction.borrow(abnbc.address, dart, {from: signer1.address});
+        await interaction.connect(signer1).borrow(abnbc.address, dart);
 
-        s1USBBalance = (await usb.balanceOf(signer1.address)).toString();
-        expect(s1USBBalance).to.equal(dart);
+        s1HAYBalance = (await hay.balanceOf(signer1.address)).toString();
+        expect(s1HAYBalance).to.equal(dart);
 
-        free = await interaction.free(abnbc.address, signer1.address, {from: signer1.address});
+        free = await interaction.connect(signer1).free(abnbc.address, signer1.address);
         expect(free.toString()).to.equal("0");
-        locked = await interaction.locked(abnbc.address, signer1.address, {from: signer1.address});
+        locked = await interaction.connect(signer1).locked(abnbc.address, signer1.address);
         expect(locked.toString()).to.equal(dink);
-        s1USBBalance = (await usb.balanceOf(signer1.address)).toString();
-        expect(s1USBBalance).to.equal(dart);
+        s1HAYBalance = (await hay.balanceOf(signer1.address)).toString();
+        expect(s1HAYBalance).to.equal(dart);
 
         // User locked 2 aBNBc with price 400 and rate 0.8 == 640$ collateral worth
         // Borrowed 60$ => available should equal to 640 - 60 = 580.
-        let available = await interaction.availableToBorrow(abnbc.address, signer1.address, {from: signer1.address});
+        let available = await interaction.connect(signer1).availableToBorrow(abnbc.address, signer1.address);
         expect(available.toString()).to.equal("579999999999999999999");
 
         // 2 * 37.5 * 0.8 == 60$
-        let liquidationPrice = await interaction.currentLiquidationPrice(abnbc.address, signer1.address, {from: signer1.address});
+        let liquidationPrice = await interaction.connect(signer1).currentLiquidationPrice(abnbc.address, signer1.address);
         expect(liquidationPrice.toString()).to.equal(ether("37.5").toString());
         // console.log("Liq.price is: " + liquidationPrice.toString());
 
         // ( 2 + 1 ) * 25 * 0.8 == 60$
-        let estLiquidationPrice = await interaction.estimatedLiquidationPrice(
-            abnbc.address, signer1.address, ether("1").toString(), {from: signer1.address}
+        let estLiquidationPrice = await interaction.connect(signer1).estimatedLiquidationPrice(
+            abnbc.address, signer1.address, ether("1").toString()
         );
         expect(estLiquidationPrice.toString()).to.equal(ether("25").toString());
         console.log("Est.Liq.price is: " + estLiquidationPrice.toString());
 
         // Update Stability Fees
         await network.provider.send("evm_increaseTime", [31536000]); // Jump 1 Year
-        await interaction.drip(abnbc.address, {from: signer1.address});
+        await interaction.connect(signer1).drip(abnbc.address);
 
-        availableYear = await interaction.availableToBorrow(abnbc.address, signer1.address, {from: signer1.address});
-        expect(availableYear.toString()).to.equal("573999999958575180430"); //roughly 10 percents less.
+        availableYear = await interaction.connect(signer1).availableToBorrow(abnbc.address, signer1.address);
+        expect(availableYear.toString()).to.equal("573999999958575180431"); //roughly 10 percents less.
     });
 
     // 100 BNB -> Ankr
@@ -324,46 +334,46 @@ describe('===INTERACTION2-Multicollateral===', function () {
         //deposit&borrow
         let dink = ether("2").toString();
         await abnbc.connect(signer1).approve(interaction.address, dink);
-        await interaction.deposit(signer1.address, abnbc.address, dink, {from: signer1.address});
+        await interaction.connect(signer1).deposit(signer1.address, abnbc.address, dink);
         let dart = ether("60").toString();
-        await interaction.borrow(abnbc.address, dart, {from: signer1.address});
+        await interaction.connect(signer1).borrow(abnbc.address, dart);
 
         let s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal(ether("4998").toString());
-        let s1USBBalance = (await usb.balanceOf(signer1.address)).toString();
-        expect(s1USBBalance).to.equal(dart);
+        let s1HAYBalance = (await hay.balanceOf(signer1.address)).toString();
+        expect(s1HAYBalance).to.equal(dart);
 
-        await usb.connect(signer1).approve(interaction.address, dart);
-        await interaction.payback(abnbc.address, dart, {from: signer1.address});
+        await hay.connect(signer1).approve(interaction.address, dart);
+        await interaction.connect(signer1).payback(abnbc.address, dart);
 
-        s1USBBalance = (await usb.balanceOf(signer1.address)).toString();
-        expect(s1USBBalance).to.equal("0");
+        s1HAYBalance = (await hay.balanceOf(signer1.address)).toString();
+        expect(s1HAYBalance).to.equal("0");
         // let ilk = await vat.connect(signer1).ilks(collateral);
         // console.log(ilk);
 
         // vatState = await vat.connect(signer1).urns(collateral, signer1.address);
         // console.log(vatState);
 
-        let available = await interaction.availableToBorrow(abnbc.address, signer1.address, {from: signer1.address});
+        let available = await interaction.connect(signer1).availableToBorrow(abnbc.address, signer1.address);
         expect(available.toString()).to.equal(ether("640").toString());
 
-        let willBeAvailable = await interaction.willBorrow(
-            abnbc.address, signer1.address, ether("1").toString(), {from: signer1.address}
+        let willBeAvailable = await interaction.connect(signer1).willBorrow(
+            abnbc.address, signer1.address, ether("1").toString()
         );
         expect(willBeAvailable.toString()).to.equal(ether("960").toString());
 
-        // USB are burned, now we have to withdraw collateral
+        // HAY are burned, now we have to withdraw collateral
         // We will always withdraw all available collateral
         s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal(ether("4998").toString());
 
-        let free = await interaction.free(abnbc.address, signer1.address, {from: signer1.address});
+        let free = await interaction.connect(signer1).free(abnbc.address, signer1.address);
         expect(free.toString()).to.equal("0");
 
-        expectRevert(interaction.withdraw(signer1.address, abnbc.address, ether("1").toString(), {from: signer2.address}),
+        expectRevert(interaction.connect(signer2).withdraw(signer1.address, abnbc.address, ether("1").toString()),
             "Interaction/Caller must be the same address as participant");
 
-        await interaction.withdraw(signer1.address, abnbc.address, ether("1").toString(), {from: signer1.address});
+        await interaction.connect(signer1).withdraw(signer1.address, abnbc.address, ether("1").toString());
 
         s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal(ether("4999").toString());
@@ -373,32 +383,32 @@ describe('===INTERACTION2-Multicollateral===', function () {
         //deposit&borrow
         let dink = ether("2").toString();
         await abnbc.connect(signer1).approve(interaction.address, dink);
-        await interaction.deposit(signer1.address, abnbc.address, dink, {from: signer1.address});
+        await interaction.connect(signer1).deposit(signer1.address, abnbc.address, dink);
         let dart = ether("60").toString();
-        await interaction.borrow(abnbc.address, dart, {from: signer1.address});
+        await interaction.connect(signer1).borrow(abnbc.address, dart);
 
-        let borrowed = await interaction.borrowed(abnbc.address, signer1.address, {from: signer1.address});
+        let borrowed = await interaction.connect(signer1).borrowed(abnbc.address, signer1.address);
         expect(borrowed.toString()).to.equal(dart);
 
         await network.provider.send("evm_increaseTime", [86400]); // Jump 1 Day
-        await interaction.drip(abnbc.address, {from: signer1.address});
+        await interaction.connect(signer1).drip(abnbc.address);
 
         await abnbc.connect(signer2).approve(interaction.address, dink);
-        await interaction.deposit(signer2.address, abnbc.address, dink, {from: signer2.address});
-        await interaction.borrow(abnbc.address, dart, {from: signer2.address});
-        let borrowed2 = await interaction.borrowed(abnbc.address, signer2.address, {from: signer2.address});
+        await interaction.connect(signer2).deposit(signer2.address, abnbc.address, dink);
+        await interaction.connect(signer2).borrow(abnbc.address, dart);
+        let borrowed2 = await interaction.connect(signer2).borrowed(abnbc.address, signer2.address);
         expect(borrowed2.toString()).to.equal(dart);
 
         // await network.provider.send("evm_increaseTime", [86400]); // Jump 1 Day
         // await interaction.drip(abnbc.address, {from: signer1.address});
 
-        await usb.connect(signer2).approve(interaction.address, dart);
-        await interaction.payback(abnbc.address, dart, {from: signer2.address});
+        await hay.connect(signer2).approve(interaction.address, dart);
+        await interaction.connect(signer2).payback(abnbc.address, dart);
 
-        borrowed2 = await interaction.borrowed(abnbc.address, signer2.address, {from: signer2.address});
+        borrowed2 = await interaction.connect(signer2).borrowed(abnbc.address, signer2.address);
         expect(borrowed2.toString()).to.equal("0");
 
-        await interaction.borrowed(abnbc.address, signer1.address, {from: signer1.address});
+        await interaction.connect(signer2).borrowed(abnbc.address, signer1.address);
         expect(borrowed.toString()).to.equal(dart);
     });
 
@@ -406,14 +416,14 @@ describe('===INTERACTION2-Multicollateral===', function () {
         //deposit&borrow
         let dink = ether("2").toString();
         await abnbc.connect(signer1).approve(interaction.address, dink);
-        await interaction.deposit(signer1.address, abnbc.address, dink, {from: signer1.address});
+        await interaction.connect(signer1).deposit(signer1.address, abnbc.address, dink);
         let dart = ether("200").toString();
-        await interaction.borrow(signer1.address, abnbc.address, dart, {from: signer1.address});
+        await interaction.connect(signer1).borrow(signer1.address, abnbc.address, dart);
 
         let claimable = await rewards.claimable(abnbc.address, signer1.address);
         expect(claimable.toString()).to.equal("0");
 
-        let borrowed = await interaction.borrowed(abnbc.address, signer1.address, {from: signer1.address});
+        let borrowed = await interaction.connect(signer1).borrowed(abnbc.address, signer1.address);
         expect(borrowed.toString()).to.equal(dart);
 
         await network.provider.send("evm_increaseTime", [31536000]); // Jump 1 Day
