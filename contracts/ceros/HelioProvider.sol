@@ -87,6 +87,7 @@ ReentrancyGuardUpgradeable
     payable
     override
     nonReentrant
+    whenNotPaused
     returns (uint256 value)
     {
         value = _ceRouter.deposit{value: msg.value}();
@@ -135,6 +136,7 @@ ReentrancyGuardUpgradeable
     external
     override
     nonReentrant
+    whenNotPaused
     returns (uint256 realAmount)
     {
         uint256 minumumUnstake = _pool.getMinimumStake();
@@ -227,5 +229,13 @@ ReentrancyGuardUpgradeable
     function changeCollateralToken(address collateralToken) external onlyOwner {
         _collateralToken = ICertToken(collateralToken);
         emit ChangeCollateralToken(collateralToken);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
