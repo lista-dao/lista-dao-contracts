@@ -101,7 +101,7 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
     }
 
     function setRewardsMaxLimit(uint256 newLimit) external auth {
-        require(IERC20Upgradeable(helioToken).balanceOf(address(this)) >= poolLimit, "Reward/not-enough-reward-token");
+        require(IERC20Upgradeable(helioToken).balanceOf(address(this)) >= newLimit, "Reward/not-enough-reward-token");
         poolLimit = newLimit;
 
         emit RewardsLimitChanged(poolLimit);
