@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 const {
     ceBNBc, DEPLOYER, COLLATERAL_CE_ABNBC,
-    Oracle,
+    Oracle, HELIO_PROVIDER,
     ABACI, SPOT, DOG, VOW, CLIP,
 } = require('../../addresses-stage2.json');
 const {ethers, upgrades} = require("hardhat");
@@ -138,11 +138,12 @@ async function main() {
     await hayJoin.rely(interaction.address);
     await dog.rely(interaction.address);
     await jug.rely(interaction.address);
+    await interaction.setHelioProvider(ceBNBc, HELIO_PROVIDER);
 
     console.log("Vat config...");
     await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);
     await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("line"), "50000000" + rad);
-    await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray);
+    await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("dust"), "1" + ray);
 
     console.log("Spot...");
     await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), Oracle);
