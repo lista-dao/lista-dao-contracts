@@ -8,9 +8,18 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract PriceOracle is Initializable, UUPSUpgradeable, OwnableUpgradeable {
-  address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; // WBNB MAINNET
-  address public constant USD = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56; // BUSD MAINNET
+contract PriceOracleTestnet is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+  // FIXME: Uncomment for mainnet
+  // address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; // WBNB MAINNET
+  // address public constant USD = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56; // BUSD MAINNET
+  // address public constant USD = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d; // USDC MAINNET
+  ///////////////////////////////////////////////////////
+
+  // FIXME: need to be removed for mainnet
+  address public constant WBNB = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd; // WBNB TESTNET
+  address public constant USD = 0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7; // BUSD TESTNET
+  // address public constant USD = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd; // USDT TESTNET
+  ///////////////////////////////////////////////////////
 
   address public tokenIn;
   bool public useBNBPath;
