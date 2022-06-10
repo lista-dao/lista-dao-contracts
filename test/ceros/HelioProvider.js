@@ -7,7 +7,7 @@ const { constants } = require('@openzeppelin/test-helpers');
 
 let owner, staker_1, staker_2,
     amount_1, amount_2,
-    abnbc, abnbb, wbnb, hbnb, usb, ce_Abnbc_join, collateral, clip,
+    abnbc, abnbb, wbnb, hbnb, hay, ce_Abnbc_join, collateral, clip,
     ce_vault, ce_token, ce_dao, pool, h_provider, ce_rot;
 
 describe('Helio Provider', () => {
@@ -198,9 +198,9 @@ async function init() {
     /* wBNB */
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
-    /* USB */
-    const Usb = await ethers.getContractFactory("USB");
-    usb = await Usb.deploy();
+    /* HAY */
+    const Hay = await ethers.getContractFactory("HAY");
+    hay = await Hay.deploy();
     /* hBNB */
     const hBNB = await ethers.getContractFactory("hBNB");
     hbnb = await hBNB.deploy();
@@ -233,7 +233,7 @@ async function init() {
     const spot = await Spot.deploy(vat.address);
     /* usbJoin */
     const UsbJoin = await ethers.getContractFactory("UsbJoin");
-    const usbJoin = await UsbJoin.deploy(vat.address, usb.address);
+    const usbJoin = await UsbJoin.deploy(vat.address, hay.address);
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
@@ -243,7 +243,7 @@ async function init() {
     await ce_dao.initialize(
         vat.address,
         spot.address,
-        usb.address,
+        hay.address,
         usbJoin.address,
         jug.address,
         dog.address,

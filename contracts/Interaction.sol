@@ -173,7 +173,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         vat.frob(collateralType.ilk, participant, participant, participant, int256(dink), 0);
 
         deposits[token] += dink;
-        EnumerableSet.add(usersInDebt, participant);
 
         emit Deposit(participant, dink);
         return dink;
@@ -213,6 +212,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         dropRewards(token, msg.sender);
 
+        if (!EnumerableSet.contains(usersInDebt, msg.sender)) {
+            EnumerableSet.add(usersInDebt, msg.sender);
+        }
         emit Borrow(msg.sender, hayAmount);
         return uint256(dart);
     }
