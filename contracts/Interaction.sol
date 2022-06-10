@@ -118,6 +118,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         bytes32 ilk,
         address clip
     ) external auth {
+        require(collaterals[token].live == 0, "Interaction/token-already-init");
         vat.init(ilk);
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
         IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
@@ -199,6 +200,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
+        dropRewards(token, msg.sender);
+
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
         int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
@@ -209,8 +212,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
         vat.move(msg.sender, address(this), hayAmount * RAY);
         hayJoin.exit(msg.sender, hayAmount);
-
-        dropRewards(token, msg.sender);
 
         if (!EnumerableSet.contains(usersInDebt, msg.sender)) {
             EnumerableSet.add(usersInDebt, msg.sender);
