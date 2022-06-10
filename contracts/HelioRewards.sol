@@ -80,7 +80,7 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
     function start() public auth {
         live = 1;
 
-        emit Stop(msg.sender);
+        emit Start(msg.sender);
     }
 
     function initPool(address token, bytes32 ilk, uint256 rate) external auth {
