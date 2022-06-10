@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.6;
-
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./interfaces/IVault.sol";
 import "./interfaces/IDex.sol";
 import "./interfaces/IDao.sol";
@@ -13,7 +11,6 @@ import "./interfaces/ICerosRouter.sol";
 import "./interfaces/IHelioProvider.sol";
 import "./interfaces/IBinancePool.sol";
 import "./interfaces/ICertToken.sol";
-
 contract HelioProvider is
 IHelioProvider,
 OwnableUpgradeable,
@@ -23,24 +20,18 @@ ReentrancyGuardUpgradeable
     /**
      * Variables
      */
-
     address private _operator;
-
     // Tokens
     address private _certToken;
     address private _ceToken;
     ICertToken private _collateralToken; // (default hBNB)
-
     ICerosRouter private _ceRouter;
     IDao private _dao;
     IBinancePool private _pool;
-
     address private _proxy;
-
     /**
      * Modifiers
      */
-
     modifier onlyOperator() {
         require(
             msg.sender == owner() || msg.sender == _operator,
@@ -48,7 +39,6 @@ ReentrancyGuardUpgradeable
         );
         _;
     }
-
     modifier onlyProxy() {
         require(
             msg.sender == owner() || msg.sender == _proxy,
@@ -56,7 +46,6 @@ ReentrancyGuardUpgradeable
         );
         _;
     }
-
     function initialize(
         address collateralToken,
         address certToken,
@@ -77,17 +66,15 @@ ReentrancyGuardUpgradeable
         _pool = IBinancePool(pool);
         IERC20(_ceToken).approve(daoAddress, type(uint256).max);
     }
-
     /**
      * DEPOSIT
      */
-
     function provide()
     external
     payable
     override
-    nonReentrant
     whenNotPaused
+    nonReentrant
     returns (uint256 value)
     {
         value = _ceRouter.deposit{value: msg.value}();
@@ -96,7 +83,6 @@ ReentrancyGuardUpgradeable
         emit Deposit(msg.sender, value);
         return value;
     }
-
     function provideInABNBc(uint256 amount)
     external
     override
@@ -109,11 +95,9 @@ ReentrancyGuardUpgradeable
         emit Deposit(msg.sender, value);
         return value;
     }
-
     /**
      * CLAIM
      */
-
     // claim in aBNBc
     function claimInABNBc(address recipient)
     external
@@ -126,17 +110,15 @@ ReentrancyGuardUpgradeable
         emit Claim(recipient, yields);
         return yields;
     }
-
     /**
      * RELEASE
      */
-
     // withdrawal in BNB via staking pool
     function release(address recipient, uint256 amount)
     external
     override
-    nonReentrant
     whenNotPaused
+    nonReentrant
     returns (uint256 realAmount)
     {
         uint256 minumumUnstake = _pool.getMinimumStake();
@@ -149,7 +131,6 @@ ReentrancyGuardUpgradeable
         emit Withdrawal(msg.sender, recipient, amount);
         return realAmount;
     }
-
     function releaseInABNBc(address recipient, uint256 amount)
     external
     override
@@ -161,11 +142,9 @@ ReentrancyGuardUpgradeable
         emit Withdrawal(msg.sender, recipient, value);
         return value;
     }
-
     /**
      * DAO FUNCTIONALITY
      */
-
     function liquidation(address recipient, uint256 amount)
     external
     override
@@ -174,7 +153,6 @@ ReentrancyGuardUpgradeable
     {
         _ceRouter.withdrawABNBc(recipient, amount);
     }
-
     function daoBurn(address account, uint256 value)
     external
     override
@@ -183,7 +161,6 @@ ReentrancyGuardUpgradeable
     {
         _collateralToken.burn(account, value);
     }
-
     function daoMint(address account, uint256 value)
     external
     override
@@ -192,50 +169,44 @@ ReentrancyGuardUpgradeable
     {
         _collateralToken.mint(account, value);
     }
-
     function _provideCollateral(address account, uint256 amount) internal {
         _dao.deposit(account, address(_ceToken), amount);
         _collateralToken.mint(account, amount);
     }
-
     function _withdrawCollateral(address account, uint256 amount) internal {
         _dao.withdraw(account, address(_ceToken), amount);
         _collateralToken.burn(account, amount);
     }
-
+    /**
+     * PAUSABLE FUNCTIONALITY
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+    function unPause() external onlyOwner {
+        _unpause();
+    }
     /**
      * UPDATING FUNCTIONALITY
      */
-
     function changeDao(address dao) external onlyOwner {
         IERC20(_ceToken).approve(address(_dao), 0);
         _dao = IDao(dao);
         IERC20(_ceToken).approve(address(_dao), type(uint256).max);
         emit ChangeDao(dao);
     }
-
     function changeCeToken(address ceToken) external onlyOwner {
         IERC20(_ceToken).approve(address(_dao), 0);
         _ceToken = ceToken;
         IERC20(_ceToken).approve(address(_dao), type(uint256).max);
         emit ChangeCeToken(ceToken);
     }
-
     function changeProxy(address auctionProxy) external onlyOwner {
         _proxy = auctionProxy;
         emit ChangeProxy(auctionProxy);
     }
-
     function changeCollateralToken(address collateralToken) external onlyOwner {
         _collateralToken = ICertToken(collateralToken);
         emit ChangeCollateralToken(collateralToken);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 }

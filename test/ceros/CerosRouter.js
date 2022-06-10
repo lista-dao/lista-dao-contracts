@@ -7,7 +7,7 @@ const { constants } = require('@openzeppelin/test-helpers');
 
 let owner, staker_1, staker_2,
     amount_1, amount_2, ratio, available_yields, profit,
-    abnbc, abnbb, wbnb, usb, ce_Abnbc_join, collateral, clip,
+    abnbc, abnbb, wbnb, hay, ce_Abnbc_join, collateral, clip,
     ce_vault, ce_token, ce_dao, pool, ce_rot, auctionProxy;
 
 
@@ -354,9 +354,9 @@ async function init() {
     /* wBNB */
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
-    /* USB */
-    const Usb = await ethers.getContractFactory("Usb");
-    usb = await Usb.deploy(97, "USB");
+    /* HAY */
+    const Hay = await ethers.getContractFactory("Hay");
+    hay = await Hay.deploy(97, "HAY");
     /* DEX */
     const Factory = await ethers.getContractFactory("PancakeFactory");
     const factory = await Factory.deploy(owner.address);
@@ -383,9 +383,9 @@ async function init() {
     /* spot */
     const Spot = await ethers.getContractFactory("Spotter");
     const spot = await Spot.deploy(vat.address);
-    /* usbJoin */
-    const UsbJoin = await ethers.getContractFactory("UsbJoin");
-    const usbJoin = await UsbJoin.deploy(vat.address, usb.address);
+    /* hayJoin */
+    const HayJoin = await ethers.getContractFactory("HayJoin");
+    const hayJoin = await HayJoin.deploy(vat.address, hay.address);
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
@@ -399,8 +399,8 @@ async function init() {
     await ce_dao.initialize(
         vat.address,
         spot.address,
-        usb.address,
-        usbJoin.address,
+        hay.address,
+        hayJoin.address,
         jug.address,
         dog.address,
         '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1',
@@ -409,7 +409,7 @@ async function init() {
     // add dao to vat
     await vat.rely(ce_dao.address);
     await vat.rely(spot.address);
-    await vat.rely(usbJoin.address);
+    await vat.rely(hayJoin.address);
     await vat.rely(jug.address);
     await vat.rely(dog.address);
     //
