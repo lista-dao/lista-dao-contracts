@@ -25,14 +25,7 @@ pragma solidity ^0.8.10;
 
 import "./hMath.sol";
 import "./interfaces/JugLike.sol";
-
-interface VatLike {
-    function ilks(bytes32) external returns (
-        uint256 Art,   // [wad]
-        uint256 rate   // [ray]
-    );
-    function fold(bytes32,address,int) external;
-}
+import "./interfaces/VatLike.sol";
 
 contract Jug is JugLike {
     // --- Auth ---
@@ -106,7 +99,7 @@ contract Jug is JugLike {
     // --- Stability Fee Collection ---
     function drip(bytes32 ilk) external returns (uint rate) {
         require(block.timestamp >= ilks[ilk].rho, "Jug/invalid-now");
-        (, uint prev) = vat.ilks(ilk);
+        (, uint prev,,,) = vat.ilks(ilk);
         rate = _rmul(hMath.rpow(_add(base, ilks[ilk].duty), block.timestamp - ilks[ilk].rho, hMath.ONE), prev);
         vat.fold(ilk, vow, _diff(rate, prev));
         ilks[ilk].rho = block.timestamp;

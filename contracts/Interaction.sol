@@ -120,6 +120,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     ) external auth {
         require(collaterals[token].live == 0, "Interaction/token-already-init");
         vat.init(ilk);
+        jug.init(ilk);
+        jug.file(ilk, "duty", 0);
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
         IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
         vat.rely(gemJoin);
@@ -487,6 +489,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address user,
         address keeper
     ) external returns (uint256) {
+        dropRewards(token, user);
         return
         AuctionProxy.startAuction(
             user,

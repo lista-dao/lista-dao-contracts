@@ -20,6 +20,8 @@ interface VatLike {
 
     function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
 
+    function fold(bytes32 i, address u, int rate) external;
+
     function gem(bytes32, address) external view returns (uint256);
 
     function hay(address) external view returns (uint256);
