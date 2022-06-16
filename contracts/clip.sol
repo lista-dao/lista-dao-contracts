@@ -20,13 +20,7 @@
 pragma solidity ^0.8.10;
 
 import "./interfaces/ClipperLike.sol";
-
-interface VatLike {
-    function move(address,address,uint256) external;
-    function flux(bytes32,address,address,uint256) external;
-    function ilks(bytes32) external returns (uint256, uint256, uint256, uint256, uint256);
-    function suck(address,address,uint256) external;
-}
+import "./interfaces/VatLike.sol";
 
 interface PipLike {
     function peek() external returns (bytes32, bool);
@@ -318,7 +312,7 @@ contract Clipper is ClipperLike {
     }
 
     // Buy up to `amt` of collateral from the auction indexed by `id`.
-    // 
+    //
     // Auctions will not collect more USB than their assigned USB target,`tab`;
     // thus, if `amt` would cost more USB than `tab` at the current price, the
     // amount of collateral purchased will instead be just enough to collect `tab` USB.

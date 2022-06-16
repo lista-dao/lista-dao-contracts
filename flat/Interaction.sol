@@ -1822,7 +1822,7 @@ interface IHelioProvider {
 
 interface IAuctionProxy {
 
-    event Liquidation(address user, address indexed collateral, uint256 amount, uint256 price);
+    event Liquidation(address indexed user, address indexed collateral, uint256 amount, uint256 leftover);
 
     function startAuction(
         address token,
@@ -1889,12 +1889,12 @@ library AuctionProxy {
   ) public {
     uint256 hayBal = hay.balanceOf(address(this));
     ClipperLike(collateral.clip).redo(auctionId, keeper);
-    
+
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
     hay.transfer(keeper, hayBal);
-  } 
+  }
 
   function buyFromAuction(
     uint256 auctionId,

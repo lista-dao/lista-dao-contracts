@@ -10,7 +10,7 @@ const hre = require("hardhat");
 //The test will be updated on daily basis//
 ///////////////////////////////////////////
 
-describe('===INTERACTION2-Multicollateral===', function () {
+describe('===INTERACTION-Multicollateral===', function () {
     let deployer, signer1, signer2, mockVow;
 
     let vat,
@@ -147,6 +147,7 @@ describe('===INTERACTION2-Multicollateral===', function () {
         await rewards.connect(deployer).setOracle(helioOracle.address);
         await rewards.connect(deployer).initPool(abnbc.address, collateral, "1000000001847694957439350500"); //6%
         await rewards.connect(deployer).rely(interaction.address);
+        await jug.connect(deployer).rely(interaction.address);
 
         // Initialize External
         // 2.000000000000000000000000000 ($) * 0.8 (80%) = 1.600000000000000000000000000,
@@ -206,12 +207,8 @@ describe('===INTERACTION2-Multicollateral===', function () {
         // evm does not support stopping time for now == rho, so we create a mock contract which calls both functions to set duty
         let proxyLike = await (await (await ethers.getContractFactory("ProxyLike")).connect(deployer).deploy(jug.address, vat.address)).deployed();
         await jug.connect(deployer).rely(proxyLike.address);
-        await proxyLike.connect(deployer).jugInitFile(collateral, ethers.utils.formatBytes32String("duty"), "0");
-        await proxyLike.connect(deployer).jugInitFile(collateral2, ethers.utils.formatBytes32String("duty"), "0000000000312410000000000000"); // 1% Yearly Factored
-
-        expect(await(await jug.base()).toString()).to.be.equal(BR);
-        expect(await(await(await jug.ilks(collateral)).duty).toString()).to.be.equal("0");
-        expect(await(await(await jug.ilks(collateral2)).duty).toString()).to.be.equal("312410000000000000");
+        // await proxyLike.connect(deployer).jugInitFile(collateral, ethers.utils.formatBytes32String("duty"), "0");
+        // await proxyLike.connect(deployer).jugInitFile(collateral2, ethers.utils.formatBytes32String("duty"), "0000000000312410000000000000"); // 1% Yearly Factored
 
         await jug.connect(deployer)["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), mockVow.address);
 
@@ -221,6 +218,10 @@ describe('===INTERACTION2-Multicollateral===', function () {
         await abnbcJoin2.connect(deployer).rely(interaction.address);
         await clipABNBC.connect(deployer).rely(interaction.address);
         await hayJoin.connect(deployer).rely(interaction.address);
+
+        expect(await(await jug.base()).toString()).to.be.equal(BR);
+        expect(await(await(await jug.ilks(collateral)).duty).toString()).to.be.equal("0");
+        expect(await(await(await jug.ilks(collateral2)).duty).toString()).to.be.equal("0");
 
         let s1Balance = (await abnbc.balanceOf(signer1.address)).toString();
         expect(s1Balance).to.equal("0");
@@ -254,7 +255,7 @@ describe('===INTERACTION2-Multicollateral===', function () {
         expect(locked.toString()).to.equal("0");
 
         let borrowApr = await interaction.connect(signer1).borrowApr(abnbc.address);
-        expect(borrowApr.toString()).to.equal("10109263881221893942");
+        expect(borrowApr.toString()).to.equal("10006965766471151936");
 
         let rewardPool = await rewards.rewardsPool();
         expect(rewardPool.toString()).to.equal("0");
@@ -317,7 +318,7 @@ describe('===INTERACTION2-Multicollateral===', function () {
         await interaction.connect(signer1).drip(abnbc.address);
 
         availableYear = await interaction.connect(signer1).availableToBorrow(abnbc.address, signer1.address);
-        expect(availableYear.toString()).to.equal("573999999958575180431"); //roughly 10 percents less.
+        expect(availableYear.toString()).to.equal("573999999759105624305"); //roughly 10 percents less.
     });
 
     // 100 BNB -> Ankr

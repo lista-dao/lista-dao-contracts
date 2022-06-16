@@ -78,15 +78,17 @@ async function main() {
 
     let interaction = this.Interaction.attach(INTERACTION);
 
-    let hayBalance = await vat.hay(MIKHAIL);
-    console.log(hayBalance);
+    // let hayBalance = await vat.hay(MIKHAIL);
+    // console.log(hayBalance);
 
-    let amount = "700000000000000000000";
-    await hay.connect(signer).approve(interaction.address, amount);
+    // let amount = "700000000000000000000";
+    // await hay.connect(signer).approve(interaction.address, amount);
     // await interactionNew.connect(signer).payback("0x37a7d129df800a4c75d13b2d94e1afc024a54fed",
     //     "0x24308Ca3B62129D51ecfA99410d6B59e0E6c7bfD",
     //     "5000000000000000000")
-    await interaction.connect(signer).payback(ceBNBc, amount);
+    let liq = "0x1b32BBb3798BFB848be2FA213350d23fE23Db8e3";
+
+    await interaction.connect(signer).startAuction(ceBNBc, liq, MIKHAIL);
 
     await hre.network.provider.request({
         method: "hardhat_stopImpersonatingAccount",
