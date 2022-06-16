@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// vow.sol -- Usb settlement module
+/// vow.sol -- Hay settlement module
 
 // Copyright (C) 2018 Rain <rainbreak@riseup.net>
 //
@@ -35,14 +35,7 @@ interface FlapLike {
     function live() external returns (uint);
 }
 
-interface VatLike {
-    function usb (address) external view returns (uint);
-    function sin (address) external view returns (uint);
-    function move(address src, address dst, uint256 rad) external;
-    function heal(uint256) external;
-    function hope(address) external;
-    function nope(address) external;
-}
+import "./interfaces/VatLike.sol";
 
 contract Vow {
     // --- Auth ---
@@ -58,7 +51,7 @@ contract Vow {
     VatLike public vat;          // CDP Engine
     FlapLike public flapper;     // Surplus Auction House
     FlopLike public flopper;     // Debt Auction House
-    address public multisig;     // Surplus multisig 
+    address public multisig;     // Surplus multisig
 
     mapping (uint256 => uint256) public sin;  // debt queue
     uint256 public Sin;   // Queued debt            [rad]
@@ -137,13 +130,13 @@ contract Vow {
 
     // Debt settlement
     function heal(uint rad) external {
-        require(rad <= vat.usb(address(this)), "Vow/insufficient-surplus");
+        require(rad <= vat.hay(address(this)), "Vow/insufficient-surplus");
         require(rad <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
         vat.heal(rad);
     }
     function kiss(uint rad) external {
         require(rad <= Ash, "Vow/not-enough-ash");
-        require(rad <= vat.usb(address(this)), "Vow/insufficient-surplus");
+        require(rad <= vat.hay(address(this)), "Vow/insufficient-surplus");
         Ash = sub(Ash, rad);
         vat.heal(rad);
     }
@@ -151,20 +144,20 @@ contract Vow {
     // Debt auction
     function flop() external returns (uint id) {
         require(sump <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
-        require(vat.usb(address(this)) == 0, "Vow/surplus-not-zero");
+        require(vat.hay(address(this)) == 0, "Vow/surplus-not-zero");
         Ash = add(Ash, sump);
         id = flopper.kick(address(this), dump, sump);
     }
     // Surplus auction or send surplus to multisig
     function flap() external returns (uint id) {
         if (lever != 0) {
-            require(vat.usb(address(this)) >= add(add(vat.sin(address(this)), bump), hump), "Vow/insufficient-surplus");
+            require(vat.hay(address(this)) >= add(add(vat.sin(address(this)), bump), hump), "Vow/insufficient-surplus");
             require(sub(sub(vat.sin(address(this)), Sin), Ash) == 0, "Vow/debt-not-zero");
             id = flapper.kick(bump, 0);
-        } else { 
-            require(vat.usb(address(this)) >= add(vat.sin(address(this)), hump), "Vow/insufficient-surplus");
+        } else {
+            require(vat.hay(address(this)) >= add(vat.sin(address(this)), hump), "Vow/insufficient-surplus");
             require(sub(vat.sin(address(this)), Sin) == 0, "Vow/debt-not-zero");
-            uint rad = sub(vat.usb(address(this)), add(vat.sin(address(this)), hump));
+            uint rad = sub(vat.hay(address(this)), add(vat.sin(address(this)), hump));
             vat.move(address(this), multisig, rad);
         }
     }
@@ -174,8 +167,8 @@ contract Vow {
         live = 0;
         Sin = 0;
         Ash = 0;
-        flapper.cage(vat.usb(address(flapper)));
+        flapper.cage(vat.hay(address(flapper)));
         flopper.cage();
-        vat.heal(min(vat.usb(address(this)), vat.sin(address(this))));
+        vat.heal(min(vat.hay(address(this)), vat.sin(address(this))));
     }
 }

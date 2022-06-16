@@ -392,9 +392,13 @@ async function init() {
     /* Auction */
     const AuctionProxy = await ethers.getContractFactory("AuctionProxy");
     auctionProxy = await AuctionProxy.deploy();
-    await auctionProxy.initialize();
     /* DAO */
-    const ceDao = await ethers.getContractFactory("Interaction");
+    const ceDao = await ethers.getContractFactory("Interaction", {
+        unsafeAllow: ['external-library-linking'],
+            libraries: {
+            AuctionProxy: auctionProxy.address
+        },
+    });
     ce_dao = await ceDao.deploy();
     await ce_dao.initialize(
         vat.address,

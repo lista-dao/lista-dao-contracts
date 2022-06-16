@@ -199,7 +199,7 @@ async function init() {
     const wBNB = await ethers.getContractFactory("wBNB");
     wbnb = await wBNB.deploy();
     /* HAY */
-    const Hay = await ethers.getContractFactory("HAY");
+    const Hay = await ethers.getContractFactory("Hay");
     hay = await Hay.deploy();
     /* hBNB */
     const hBNB = await ethers.getContractFactory("hBNB");
@@ -231,20 +231,28 @@ async function init() {
     /* spot */
     const Spot = await ethers.getContractFactory("Spotter");
     const spot = await Spot.deploy(vat.address);
-    /* usbJoin */
-    const UsbJoin = await ethers.getContractFactory("UsbJoin");
-    const usbJoin = await UsbJoin.deploy(vat.address, hay.address);
+    /* hayJoin */
+    const HayJoin = await ethers.getContractFactory("HayJoin");
+    const hayJoin = await HayJoin.deploy(vat.address, hay.address);
     /* jug */
     const Jug = await ethers.getContractFactory("Jug");
     const jug = await Jug.deploy(vat.address);
+    /* Auction */
+    const AuctionProxy = await ethers.getContractFactory("AuctionProxy");
+    auctionProxy = await AuctionProxy.deploy();
     /* DAO */
-    const ceDao = await ethers.getContractFactory("DAOInteraction");
+    const ceDao = await ethers.getContractFactory("Interaction", {
+        unsafeAllow: ['external-library-linking'],
+        libraries: {
+            AuctionProxy: auctionProxy.address
+        },
+    });
     ce_dao = await ceDao.deploy();
     await ce_dao.initialize(
         vat.address,
         spot.address,
         hay.address,
-        usbJoin.address,
+        hayJoin.address,
         jug.address,
         dog.address,
         '0x76c2f516E814bC6B785Dfe466760346a5aa7bbD1'

@@ -27,7 +27,7 @@ import "./libraries/AuctionProxy.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
-uint256 constant YEAR = 31864500; //seconds in year (365 * 24.25 * 3600)
+uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
 contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao, IAuctionProxy {
 
@@ -40,13 +40,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         require(wards[msg.sender] == 1, "Interaction/not-authorized");
         _;
     }
-
-    event Deposit(address indexed user, uint256 amount);
-    event Borrow(address indexed user, uint256 amount);
-    event Payback(address indexed user, uint256 amount);
-    event Withdraw(address indexed user, uint256 amount);
-    event CollateralEnabled(address token, bytes32 ilk);
-    event CollateralDisabled(address token, bytes32 ilk);
 
     VatLike public vat;
     SpotLike public spotter;
@@ -62,7 +55,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet private usersInDebt;
+    EnumerableSet.AddressSet private usersInDebt; // todo: remove on launch - not used
 
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
@@ -205,7 +198,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         dropRewards(token, msg.sender);
 
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
-        int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
+        int256 dart = int256(hayAmount * 10 ** 27 / rate);
         require(dart >= 0, "Interaction/too-much-requested");
 
         if (uint256(dart) * rate < hayAmount * (10 ** 27)) {
@@ -215,9 +208,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         vat.move(msg.sender, address(this), hayAmount * RAY);
         hayJoin.exit(msg.sender, hayAmount);
 
-        if (!EnumerableSet.contains(usersInDebt, msg.sender)) {
-            EnumerableSet.add(usersInDebt, msg.sender);
-        }
         emit Borrow(msg.sender, hayAmount);
         return uint256(dart);
     }
@@ -249,8 +239,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         dropRewards(token, msg.sender);
 
         drip(token);
-
-        tryRemoveFromDebtList(collateralType.ilk, msg.sender);
 
         emit Payback(msg.sender, hayAmount);
         return dart;
@@ -300,13 +288,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function setRewards(address rewards) external auth {
         helioRewards = IRewards(rewards);
-    }
-
-    function tryRemoveFromDebtList(bytes32 ilk, address usr) internal {
-        (, uint256 art) = vat.urns(ilk, usr);
-        if (art == 0) {
-            EnumerableSet.remove(usersInDebt, usr);
-        }
     }
 
     //    /////////////////////////////////
@@ -490,8 +471,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address keeper
     ) external returns (uint256) {
         dropRewards(token, user);
-        return
-        AuctionProxy.startAuction(
+
+        uint256 auctionAmount = AuctionProxy.startAuction(
             user,
             keeper,
             hay,
@@ -501,6 +482,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             IHelioProvider(helioProviders[token]),
             collaterals[token]
         );
+
+        emit AuctionStarted(token, user);
+        return auctionAmount;
     }
 
     function buyFromAuction(
@@ -512,7 +496,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     ) external {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
-        AuctionProxy.buyFromAuction(
+        uint256 leftover = AuctionProxy.buyFromAuction(
             auctionId,
             collateralAmount,
             maxPrice,
@@ -526,7 +510,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
         dropRewards(address(hay), urn);
-        tryRemoveFromDebtList(collateral.ilk, urn);
+
+        emit Liquidation(urn, token, collateralAmount, leftover);
     }
 
     function getAuctionStatus(address token, uint256 auctionId) external view returns(bool, uint256, uint256, uint256) {
@@ -543,10 +528,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function resetAuction(address token, uint256 auctionId, address keeper) external {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
-    }
-
-    function getUsersInDebt() external view returns (address[] memory) {
-        return EnumerableSet.values(usersInDebt);
     }
 
     function totalPegLiquidity() external view returns (uint256) {

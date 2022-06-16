@@ -13,6 +13,8 @@ const {
   printSale,
 } = require("./helpers/utils");
 const {VAT} = require("../addresses.json");
+const hre = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -26,17 +28,17 @@ const wad = ten.pow(18);
 const ray = ten.pow(27);
 const rad = ten.pow(45);
 
-xdescribe("Auction", () => {
+describe("Auction", () => {
   const networkSnapshotter = new NetworkSnapshotter();
 
   let deployer, signer1, signer2, signer3;
   let abacus;
   let vat;
   let spot;
-  let usb;
+  let hay;
   let abnbc;
   let abnbcJoin;
-  let usbJoin;
+  let hayJoin;
   let jug;
   let oracle;
   let clip;
@@ -49,10 +51,10 @@ xdescribe("Auction", () => {
   const deployContracts = async () => {
     const Vat = await ethers.getContractFactory("Vat");
     const Spot = await ethers.getContractFactory("Spotter");
-    const Usb = await ethers.getContractFactory("Usb");
+    const Hay = await ethers.getContractFactory("Hay");
     const ABNBC = await ethers.getContractFactory("aBNBc");
     const GemJoin = await ethers.getContractFactory("GemJoin");
-    const UsbJoin = await ethers.getContractFactory("UsbJoin");
+    const HayJoin = await ethers.getContractFactory("HayJoin");
     const Jug = await ethers.getContractFactory("Jug");
     const Oracle = await ethers.getContractFactory("Oracle"); // Mock Oracle
     const Dog = await ethers.getContractFactory("Dog");
@@ -61,7 +63,16 @@ xdescribe("Auction", () => {
     const Vow = await ethers.getContractFactory("Vow");
     const HelioToken = await ethers.getContractFactory("HelioToken");
     const HelioRewards = await ethers.getContractFactory("HelioRewards");
-    const DAOInteraction = await ethers.getContractFactory("Interaction");
+    this.AuctionProxy = await ethers.getContractFactory("AuctionProxy");
+    auctionProxy = await this.AuctionProxy.connect(deployer).deploy();
+    await auctionProxy.deployed();
+
+    const Interaction = await hre.ethers.getContractFactory("Interaction", {
+      unsafeAllow: ['external-library-linking'],
+      libraries: {
+        AuctionProxy: auctionProxy.address
+      },
+    });
 
     // Abacus
     abacus = await LinearDecrease.connect(deployer).deploy();
@@ -73,20 +84,20 @@ xdescribe("Auction", () => {
     spot = await Spot.connect(deployer).deploy(vat.address);
     await spot.deployed();
 
-    const helioToken = await HelioToken.connect(deployer).deploy();
-    await helioToken.deployed();
     const rewards = await HelioRewards.connect(deployer).deploy(vat.address);
     await rewards.deployed();
+    const helioToken = await HelioToken.connect(deployer).deploy(ether("100000000").toString(), rewards.address);
+    await helioToken.deployed();
 
     await helioToken.rely(rewards.address);
     await rewards.setHelioToken(helioToken.address);
     await rewards.initPool(collateral, "1000000001847694957439350500"); //6%
 
-    // Usb module
-    usb = await Usb.connect(deployer).deploy(97);
-    await usb.deployed(); // Stable Coin
-    usbJoin = await UsbJoin.connect(deployer).deploy(vat.address, usb.address);
-    await usbJoin.deployed();
+    // Hay module
+    hay = await Hay.connect(deployer).deploy(97);
+    await hay.deployed(); // Stable Coin
+    hayJoin = await HayJoin.connect(deployer).deploy(vat.address, hay.address);
+    await hayJoin.deployed();
 
     // Collateral module
     abnbc = await ABNBC.connect(deployer).deploy();
@@ -126,12 +137,12 @@ xdescribe("Auction", () => {
     await vow.deployed();
 
     interaction = await upgrades.deployProxy(
-      DAOInteraction,
+      Interaction,
       [
         vat.address,
         spot.address,
-        usb.address,
-        usbJoin.address,
+        hay.address,
+        hayJoin.address,
         jug.address,
         dog.address,
         rewards.address,
@@ -150,7 +161,7 @@ xdescribe("Auction", () => {
   };
 
   const configureVat = async () => {
-    await vat.connect(deployer).rely(usbJoin.address);
+    await vat.connect(deployer).rely(hayJoin.address);
     await vat.connect(deployer).rely(spot.address);
     await vat.connect(deployer).rely(jug.address);
     await vat.connect(deployer).rely(interaction.address);
@@ -158,7 +169,7 @@ xdescribe("Auction", () => {
     await vat.connect(deployer).rely(clip.address);
     await vat
       .connect(deployer)
-      ["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000")); // Normalized USB
+      ["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000")); // Normalized HAY
     await vat
       .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
@@ -196,9 +207,9 @@ xdescribe("Auction", () => {
     await spot.connect(deployer).poke(collateral);
   };
 
-  const configureUSB = async () => {
-    // Initialize Usb Module
-    await usb.connect(deployer).rely(usbJoin.address);
+  const configureHAY = async () => {
+    // Initialize HAY Module
+    await hay.connect(deployer).rely(hayJoin.address);
   };
 
   const configureDog = async () => {
@@ -301,7 +312,7 @@ xdescribe("Auction", () => {
     await configureOracles();
     await configureVat();
     await configureSpot();
-    await configureUSB();
+    await configureHAY();
     await configureDog();
     await configureClippers();
     await configureVow();
@@ -325,8 +336,8 @@ xdescribe("Auction", () => {
     let s1Balance = await abnbc.balanceOf(signer1.address);
     expect(s1Balance).to.equal(toWad("9000"));
 
-    let s1USBBalance = await usb.balanceOf(signer1.address);
-    expect(s1USBBalance).to.equal("0");
+    let s1HAYBalance = await hay.balanceOf(signer1.address);
+    expect(s1HAYBalance).to.equal("0");
 
     let free = await interaction
       .connect(signer1)
@@ -337,8 +348,8 @@ xdescribe("Auction", () => {
       .locked(abnbc.address, signer1.address);
     expect(locked).to.equal(toWad("1000"));
 
-    // Locking collateral and borrowing USB
-    // We want to draw 60 USB == `dart`
+    // Locking collateral and borrowing HAY
+    // We want to draw 60 HAY == `dart`
     // Maximum available for borrow = (1000 * 400) * 0.8 = 320000
     let dart = toWad("70");
     await interaction.connect(signer1).borrow(abnbc.address, dart);
@@ -351,8 +362,8 @@ xdescribe("Auction", () => {
       .connect(signer1)
       .locked(abnbc.address, signer1.address);
     expect(locked).to.equal(dink);
-    s1USBBalance = await usb.balanceOf(signer1.address);
-    expect(s1USBBalance).to.equal(dart);
+    s1HAYBalance = await hay.balanceOf(signer1.address);
+    expect(s1HAYBalance).to.equal(dart);
 
     // User locked 1000 aBNBc with price 400 and rate 0.8 == 320000$ collateral worth
     // Borrowed 70$ => available should equal to 320000 - 70 = 319930.
@@ -446,14 +457,14 @@ xdescribe("Auction", () => {
     await vat.connect(signer2).hope(clip.address);
     await vat.connect(signer3).hope(clip.address);
 
-    await usb
+    await hay
       .connect(signer2)
-      .approve(usbJoin.address, ethers.constants.MaxUint256);
-    await usb
+      .approve(hayJoin.address, ethers.constants.MaxUint256);
+    await hay
       .connect(signer3)
-      .approve(usbJoin.address, ethers.constants.MaxUint256);
-    await usbJoin.connect(signer2).join(signer2.address, toWad("5000"));
-    await usbJoin.connect(signer3).join(signer3.address, toWad("5000"));
+      .approve(hayJoin.address, ethers.constants.MaxUint256);
+    await hayJoin.connect(signer2).join(signer2.address, toWad("5000"));
+    await hayJoin.connect(signer3).join(signer3.address, toWad("5000"));
 
     await clip
       .connect(signer2)
@@ -507,8 +518,8 @@ xdescribe("Auction", () => {
     await vat.connect(signer2).hope(clip.address);
     await vat.connect(signer3).hope(clip.address);
 
-    await usb.connect(signer2).approve(interaction.address, toWad("700"));
-    await usb.connect(signer3).approve(interaction.address, toWad("700"));
+    await hay.connect(signer2).approve(interaction.address, toWad("700"));
+    await hay.connect(signer3).approve(interaction.address, toWad("700"));
 
     await advanceTime(1000);
 
@@ -543,7 +554,7 @@ xdescribe("Auction", () => {
 
     expect(abnbcSigner2BalanceAfter.sub(abnbcSigner2BalanceBefore)).to.be.equal(toWad("7"));
     expect(abnbcSigner3BalanceAfter.sub(abnbcSigner3BalanceBefore)).to.be.equal(toWad("3"));
-    
+
     const sale = await clip.sales(auctionId);
     expect(sale.pos).to.equal(0);
     expect(sale.tab).to.equal(0);

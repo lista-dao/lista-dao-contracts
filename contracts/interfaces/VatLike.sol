@@ -6,6 +6,8 @@ interface VatLike {
 
     function hope(address usr) external;
 
+    function nope(address usr) external;
+
     function rely(address usr) external;
 
     function deny(address usr) external;
@@ -29,4 +31,10 @@ interface VatLike {
     function urns(bytes32, address) external view returns (uint256, uint256);
 
     function file(bytes32, bytes32, uint) external;
+
+    function sin(address) external view returns (uint256);
+
+    function heal(uint rad) external;
+
+    function suck(address u, address v, uint rad) external;
 }

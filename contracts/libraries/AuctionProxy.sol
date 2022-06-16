@@ -10,6 +10,7 @@ import "../interfaces/HayLike.sol";
 import "../interfaces/DogLike.sol";
 import "../interfaces/VatLike.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
+import "../oracle/libraries/FullMath.sol";
 
 import { CollateralType } from  "../ceros/interfaces/IDao.sol";
 
@@ -52,13 +53,14 @@ library AuctionProxy {
   ) public {
     uint256 hayBal = hay.balanceOf(address(this));
     ClipperLike(collateral.clip).redo(auctionId, keeper);
-    
+
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
     hay.transfer(keeper, hayBal);
-  } 
+  }
 
+  // Returns lefotver from auction
   function buyFromAuction(
     uint256 auctionId,
     uint256 collateralAmount,
@@ -69,12 +71,12 @@ library AuctionProxy {
     VatLike vat,
     IHelioProvider helioProvider,
     CollateralType calldata collateral
-  ) public {
+  ) public returns (uint256 leftover) {
     // Balances before
     uint256 hayBal = hay.balanceOf(address(this));
     uint256 gemBal = collateral.gem.gem().balanceOf(address(this));
 
-    uint256 hayMaxAmount = (maxPrice * collateralAmount) / RAY;
+    uint256 hayMaxAmount = FullMath.mulDiv(maxPrice, collateralAmount, RAY);
 
     hay.transferFrom(msg.sender, address(this), hayMaxAmount);
     hayJoin.join(address(this), hayMaxAmount);
@@ -82,7 +84,7 @@ library AuctionProxy {
     vat.hope(address(collateral.clip));
     address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
 
-    uint256 leftover = vat.gem(collateral.ilk, urn); // userGemBalanceBefore
+    leftover = vat.gem(collateral.ilk, urn); // userGemBalanceBefore
     ClipperLike(collateral.clip).take(auctionId, collateralAmount, maxPrice, address(this), "");
     leftover = vat.gem(collateral.ilk, urn) - leftover; // leftover
 
@@ -94,13 +96,11 @@ library AuctionProxy {
     gemBal = collateral.gem.gem().balanceOf(address(this)) - gemBal;
     hay.transfer(receiverAddress, hayBal);
 
+    vat.nope(address(collateral.clip));
+
     if (address(helioProvider) != address(0)) {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
       helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
-
-      // TODO: emit in the Interaction. Return liquidated amount from here
-      // // liquidated user, collateral address, amount of collateral bought, price
-      // emit Liquidation(urn, address(collateral.gem.gem()), gemBal, maxPrice);
 
       if (leftover != 0) {
         // Auction ended with leftover

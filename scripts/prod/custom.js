@@ -25,6 +25,7 @@ async function main() {
     let collateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
+    this.Dog = await hre.ethers.getContractFactory("Dog");
     this.Spot = await hre.ethers.getContractFactory("Spotter");
     // this.Usb = await hre.ethers.getContractFactory("Usb");
     // this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
@@ -33,9 +34,11 @@ async function main() {
     // this.Jug = await hre.ethers.getContractFactory("Jug");
     // this.Interaction = await hre.ethers.getContractFactory("Interaction");
     // this.Clip = await hre.ethers.getContractFactory("Clipper");
+    console.log("Dog...");
 
-    let vat = this.Vat.attach(VAT);
-    await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("dust"), "1" + ray);
+    let dog = this.Dog.attach(DOG);
+    // await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "500" + rad);
+    await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
 }
 
 main()
