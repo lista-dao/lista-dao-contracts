@@ -30,6 +30,8 @@ library AuctionProxy {
     IHelioProvider helioProvider,
     CollateralType calldata collateral
   ) public returns (uint256 id) {
+    ClipperLike _clip = ClipperLike(collateral.clip);
+    _clip.upchost();
     uint256 hayBal = hay.balanceOf(address(this));
     id = dog.bark(collateral.ilk, user, address(this));
 
@@ -39,7 +41,7 @@ library AuctionProxy {
 
     // Burn any derivative token (hBNB incase of ceabnbc collateral)
     if (address(helioProvider) != address(0)) {
-      helioProvider.daoBurn(user, ClipperLike(collateral.clip).sales(id).lot);
+      helioProvider.daoBurn(user, _clip.sales(id).lot);
     }
   }
 
@@ -51,8 +53,9 @@ library AuctionProxy {
     VatLike vat,
     CollateralType calldata collateral
   ) public {
+    ClipperLike _clip = ClipperLike(collateral.clip);
     uint256 hayBal = hay.balanceOf(address(this));
-    ClipperLike(collateral.clip).redo(auctionId, keeper);
+    _clip.redo(auctionId, keeper);
 
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
