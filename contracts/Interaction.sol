@@ -323,9 +323,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         _checkIsLive(collateralType.live);
 
         (,uint256 mat) = spotter.ilks(collateralType.ilk);
-
-        //        (,,uint256 spot,,) = vat.ilks(collateralType.ilk);
-        //        return spot / 10**9;
+        require(mat != 0, "Interaction/spot-not-init");
         return 10 ** 45 / mat;
     }
 
