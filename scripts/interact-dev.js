@@ -42,6 +42,7 @@ async function main() {
     let spot = this.SPOT.attach(SPOT);
     this.HayFactory = await ethers.getContractFactory("Hay");
     let hay = this.HayFactory.attach(HAY);
+    let abnbc = this.HayFactory.attach(aBNBc);
 
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
@@ -51,9 +52,13 @@ async function main() {
 
     let interaction = this.Interaction.attach(INTERACTION);
 
+
+    // await abnbc.connect(signer).approve(interaction.address, ether("1000").toString());
     // await interaction.connect(signer).deposit(ME, aBNBc, ether("1").toString());
     await interaction.connect(signer).borrow(aBNBc, ether("1").toString());
 
+    await hay.connect(signer).approve(interaction.address, ether("1000").toString());
+    await interaction.connect(signer).payback(aBNBc, ether("1").toString());
     // await spot.connect(signer).poke(FAKE_ABNBC_ILK);
 
     await hre.network.provider.request({
