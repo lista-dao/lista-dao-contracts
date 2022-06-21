@@ -8,10 +8,11 @@ const { VAT,
     aBNBcJoin,
     Oracle,
     JUG, VOW, ABACI,
-    DOG,
-    REAL_ABNBC, ceBNBc,
+    DOG, CLIP1,
+    REAL_ABNBC, ceBNBc,COLLATERAL_FAKE_ABNBC,
     REALaBNBcJoin, COLLATERAL_CE_ABNBC,
-    INTERACTION} = require('../../addresses.json');
+    INTERACTION, AUCTION_PROXY,
+} = require('../../addresses.json');
 const {ethers} = require("hardhat");
 
 let wad = "000000000000000000", // 18 Decimals
@@ -21,39 +22,41 @@ let wad = "000000000000000000", // 18 Decimals
 async function main() {
     console.log('Running deploy script');
 
-    // let newCollateral = ethers.utils.formatBytes32String("ceToken");
-    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
-    console.log("CeToken ilk: " + newCollateral);
+    let token = aBNBc;
 
-    // let tokenAddress = "0x51b9eFaB9C8D1ba25C76d3636b3E5784abD65dfC";
-    // let tokenAddress = "0xCa33FBAb46a05D7f8e3151975543a3a1f7463F63";
-    // let tokenAddress = "0x90c15Cd33f7B3b7dadCa7653419b493ABfC7B850";
+    let newCollateral = ethers.utils.formatBytes32String("DevABNBC");
+    console.log("CeToken ilk: " + newCollateral);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
     this.Clip = await hre.ethers.getContractFactory("Clipper");
-    this.Interaction = await hre.ethers.getContractFactory("Interaction");
+    this.Interaction = await hre.ethers.getContractFactory("Interaction", {
+        unsafeAllow: ['external-library-linking'],
+        libraries: {
+            AuctionProxy: AUCTION_PROXY
+        },
+    });
     this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
     this.Spot = await hre.ethers.getContractFactory("Spotter");
     this.Dog = await hre.ethers.getContractFactory("Dog");
+    this.Jug = await hre.ethers.getContractFactory("Jug");
     this.Abaci = await ethers.getContractFactory("LinearDecrease");
 
     const clip = await this.Clip.deploy(VAT, SPOT, DOG, newCollateral);
+    // const clip = await this.Clip.attach(CLIP1);
     await clip.deployed();
     console.log("Clip deployed to:", clip.address);
 
-    const tokenJoin = await this.GemJoin.deploy(VAT, newCollateral, ceBNBc);
+    const tokenJoin = await this.GemJoin.deploy(VAT, newCollateral, token);
+    // const tokenJoin = await this.GemJoin.attach(aBNBcJoin);
     await tokenJoin.deployed();
     console.log("tokenJoin deployed to:", tokenJoin.address);
-
-    // let tokenJoin = "0x5566bCc1e8CaCE6A8B924644C0CFFF5715F72ddb";
-    // let clip = "0xca75156174114eAd8bd9dF1F50E894334041029b";
+    await tokenJoin.rely(INTERACTION);
 
     let interaction = this.Interaction.attach(INTERACTION);
+    let jug = this.Jug.attach(JUG);
+    await jug.rely(INTERACTION);
 
-    // await interaction.setCollateralType(tokenAddress, tokenJoin, newCollateral, clip);
-
-    // await interaction.setCollateralType(tokenAddress, tokenJoin.address, newCollateral, clip.address);
-    await interaction.enableCollateralType(ceBNBc, tokenJoin.address, newCollateral, clip.address);
+    await interaction.setCollateralType(token, tokenJoin.address, newCollateral, clip.address);
 
     let vat = this.Vat.attach(VAT);
 
@@ -64,7 +67,7 @@ async function main() {
     let spot = this.Spot.attach(SPOT);
     await spot["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("pip"), Oracle);
     await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
-    await spot.poke(newCollateral);
+    // await spot.poke(newCollateral);
 
     console.log("Dog...");
     let dog = this.Dog.attach(DOG);
@@ -86,7 +89,8 @@ async function main() {
     await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
     await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
-    await interaction.drip(ceBNBc);
+    await spot.poke(newCollateral);
+    await interaction.drip(token);
 
     console.log('Finished');
 }
