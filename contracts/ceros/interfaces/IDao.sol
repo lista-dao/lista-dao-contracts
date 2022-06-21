@@ -14,7 +14,7 @@ interface IDao {
 
     event Deposit(address indexed user, uint256 amount);
     event Borrow(address indexed user, address collateral, uint256 amount, uint256 liquidationPrice);
-    event Payback(address indexed user, address collateral, uint256 amount, uint256 debt);
+    event Payback(address indexed user, address collateral, uint256 amount, uint256 debt, uint256 liquidationPrice);
     event Withdraw(address indexed user, uint256 amount);
     event CollateralEnabled(address token, bytes32 ilk);
     event CollateralDisabled(address token, bytes32 ilk);

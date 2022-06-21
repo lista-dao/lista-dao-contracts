@@ -109,6 +109,12 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         hay.approve(address(hayJoin), type(uint256).max);
     }
 
+    function setHay(address hay_, address hayJoin_) public auth {
+        hay = HayLike(hay_);
+        hayJoin = HayGemLike(hayJoin_);
+        hay.approve(address(hayJoin), type(uint256).max);
+    }
+
     function setCollateralType(
         address token,
         address gemJoin,
@@ -246,9 +252,10 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         drip(token);
 
-        (, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
+        (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
+        uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        emit Payback(msg.sender, token, hayAmount, userDebt);
+        emit Payback(msg.sender, token, hayAmount, userDebt, liqPrice);
         return dart;
     }
 
