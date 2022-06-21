@@ -101,6 +101,10 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         hay.approve(hayJoin_, type(uint256).max);
     }
 
+    function setSpot(address spot) public auth {
+        spotter = SpotLike(spot);
+    }
+
     function setHayApprove() public auth {
         hay.approve(address(hayJoin), type(uint256).max);
     }
@@ -208,7 +212,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         vat.move(msg.sender, address(this), hayAmount * RAY);
         hayJoin.exit(msg.sender, hayAmount);
 
-        emit Borrow(msg.sender, hayAmount);
+        (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
+        uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
+        emit Borrow(msg.sender, token, hayAmount, liqPrice);
         return uint256(dart);
     }
 
@@ -240,7 +246,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         drip(token);
 
-        emit Payback(msg.sender, hayAmount);
+        (, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
+
+        emit Payback(msg.sender, token, hayAmount, userDebt);
         return dart;
     }
 
