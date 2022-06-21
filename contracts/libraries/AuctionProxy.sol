@@ -79,7 +79,7 @@ library AuctionProxy {
     uint256 hayBal = hay.balanceOf(address(this));
     uint256 gemBal = collateral.gem.gem().balanceOf(address(this));
 
-    uint256 hayMaxAmount = FullMath.mulDiv(maxPrice, collateralAmount, RAY);
+    uint256 hayMaxAmount = FullMath.mulDiv(maxPrice, collateralAmount, RAY) + 1;
 
     hay.transferFrom(msg.sender, address(this), hayMaxAmount);
     hayJoin.join(address(this), hayMaxAmount);
