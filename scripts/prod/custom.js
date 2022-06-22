@@ -38,7 +38,8 @@ async function main() {
 
     let dog = this.Dog.attach(DOG);
     // await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "500" + rad);
-    await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    // await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await dog["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("hole"), "500" + rad);
 }
 
 main()

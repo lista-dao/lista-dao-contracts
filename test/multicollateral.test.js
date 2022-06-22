@@ -212,8 +212,10 @@ describe('===INTERACTION-Multicollateral===', function () {
 
         await jug.connect(deployer)["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), mockVow.address);
 
-        await interaction.connect(deployer).setCollateralType(abnbc.address, abnbcJoin.address, collateral, clipABNBC.address);
-        await interaction.connect(deployer).setCollateralType(abnbc2.address, abnbcJoin2.address, collateral2, clipABNBC.address);
+        await interaction.connect(deployer).setCollateralType(abnbc.address, abnbcJoin.address, collateral,
+            clipABNBC.address, "1250000000000000000000000000");
+        await interaction.connect(deployer).setCollateralType(abnbc2.address, abnbcJoin2.address, collateral2,
+            clipABNBC.address, "1250000000000000000000000000");
         await abnbcJoin.connect(deployer).rely(interaction.address);
         await abnbcJoin2.connect(deployer).rely(interaction.address);
         await clipABNBC.connect(deployer).rely(interaction.address);
