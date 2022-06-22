@@ -80,7 +80,6 @@ ReentrancyGuardUpgradeable
         uint256[] memory outAmounts = _dex.getAmountsOut(amount, path);
         uint256 dexABNBcAmount = outAmounts[outAmounts.length - 1];
         // let's calculate returned amount of aBNBc from BinancePool
-        // poolABNBcAmount = amount - relayerFee - amount*(1-ratio);
         uint256 minumunStake = _pool.getMinimumStake();
         uint256 relayerFee = _pool.getRelayerFee();
         uint256 ratio = _certToken.ratio();
