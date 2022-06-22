@@ -11,7 +11,7 @@ const { VAT,
     JUG,
     Oracle,
     VOW,
-    INTERACTION, REWARDS, DOG,
+    INTERACTION, REWARDS, DOG, DEPLOYER,
     CLIP, COLLATERAL_CE_ABNBC, ceBNBc, ceBNBcJoin, AUCTION_PROXY
 } = require('../addresses-stage2.json');
 const {ether} = require("@openzeppelin/test-helpers");
@@ -51,7 +51,9 @@ async function main() {
     //
     let vat = this.VAT.attach(VAT);
     this.HayFactory = await ethers.getContractFactory("Hay");
+    this.Dog = await ethers.getContractFactory("Dog");
     let hay = this.HayFactory.attach(HAY);
+    let dog = this.Dog.attach(DOG);
     //
     // await hre.network.provider.request({
     //     method: "hardhat_impersonateAccount",
@@ -72,9 +74,9 @@ async function main() {
 
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
-        params: [MIKHAIL],
+        params: [DEPLOYER],
     });
-    const signer = await ethers.getSigner(MIKHAIL)
+    const signer = await ethers.getSigner(DEPLOYER)
 
     let interaction = this.Interaction.attach(INTERACTION);
 
@@ -87,12 +89,12 @@ async function main() {
     //     "0x24308Ca3B62129D51ecfA99410d6B59e0E6c7bfD",
     //     "5000000000000000000")
     let liq = "0x1b32BBb3798BFB848be2FA213350d23fE23Db8e3";
-
+    await dog.connect(signer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("hole"), "500" + rad);
     await interaction.connect(signer).startAuction(ceBNBc, liq, MIKHAIL);
 
     await hre.network.provider.request({
         method: "hardhat_stopImpersonatingAccount",
-        params: [MIKHAIL],
+        params: [DEPLOYER],
     });
 }
 

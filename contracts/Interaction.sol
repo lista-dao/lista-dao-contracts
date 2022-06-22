@@ -101,17 +101,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         hay.approve(hayJoin_, type(uint256).max);
     }
 
-    function setSpot(address spot) public auth {
-        spotter = SpotLike(spot);
-    }
-
     function setHayApprove() public auth {
-        hay.approve(address(hayJoin), type(uint256).max);
-    }
-
-    function setHay(address hay_, address hayJoin_) public auth {
-        hay = HayLike(hay_);
-        hayJoin = HayGemLike(hayJoin_);
         hay.approve(address(hayJoin), type(uint256).max);
     }
 
@@ -119,12 +109,14 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address token,
         address gemJoin,
         bytes32 ilk,
-        address clip
+        address clip,
+        uint256 mat
     ) external auth {
         require(collaterals[token].live == 0, "Interaction/token-already-init");
         vat.init(ilk);
         jug.init(ilk);
         jug.file(ilk, "duty", 0);
+        spotter.file(ilk, "mat", mat);
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
         IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
         vat.rely(gemJoin);
@@ -299,6 +291,13 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         _checkIsLive(collateralType.live);
 
         jug.drip(collateralType.ilk);
+    }
+
+    function poke(address token) public {
+        CollateralType memory collateralType = collaterals[token];
+        _checkIsLive(collateralType.live);
+
+        spotter.poke(collateralType.ilk);
     }
 
     function setRewards(address rewards) external auth {
