@@ -70,30 +70,14 @@ contract Vow {
 
     // --- Administration ---
     function file(bytes32 what, uint data) external auth {
-        if (what == "wait") wait = data;
-        else if (what == "bump") bump = data;
-        else if (what == "sump") sump = data;
-        else if (what == "dump") dump = data;
-        else if (what == "hump") hump = data;
+        if (what == "hump") hump = data;
         else if (what == "lever") lever = data;
         else revert("Vow/file-unrecognized-param");
     }
 
     function file(bytes32 what, address data) external auth {
-        else if (what == "multisig") multisig = data;
+        if (what == "multisig") multisig = data;
         else revert("Vow/file-unrecognized-param");
-    }
-
-    // Push to debt-queue
-    function fess(uint tab) external auth {
-        sin[block.timestamp] = add(sin[block.timestamp], tab);
-        Sin = add(Sin, tab);
-    }
-    // Pop from debt-queue
-    function flog(uint era) external {
-        require(add(era, wait) <= block.timestamp, "Vow/wait-not-finished");
-        Sin = sub(Sin, sin[era]);
-        sin[era] = 0;
     }
 
     // Debt settlement
