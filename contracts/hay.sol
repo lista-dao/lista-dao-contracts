@@ -108,7 +108,8 @@ contract Hay is HayLike {
         emit Transfer(usr, address(0), wad);
     }
     function approve(address usr, uint wad) external returns (bool) {
-        allowance[msg.sender][usr] = wad;
+        _approve(msg.sender, usr, wad);
+
         emit Approval(msg.sender, usr, wad);
         return true;
     }
@@ -149,15 +150,27 @@ contract Hay is HayLike {
         emit Approval(holder, spender, wad);
     }
 
+    function _approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal virtual {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+
+        allowance[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
+    }
+
     function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, allowance(owner, spender) + addedValue);
+        address owner = msg.sender;
+        _approve(owner, spender, allowance[owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-        address owner = _msgSender();
-        uint256 currentAllowance = allowance(owner, spender);
+        address owner = msg.sender;
+        uint256 currentAllowance = allowance[owner][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);

@@ -22,9 +22,9 @@ let wad = "000000000000000000", // 18 Decimals
 async function main() {
     console.log('Running deploy script');
 
-    let token = aBNBc;
+    let token = ceBNBc;
 
-    let newCollateral = ethers.utils.formatBytes32String("DevABNBC");
+    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
     console.log("CeToken ilk: " + newCollateral);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
@@ -56,7 +56,7 @@ async function main() {
     let jug = this.Jug.attach(JUG);
     await jug.rely(INTERACTION);
 
-    await interaction.setCollateralType(token, tokenJoin.address, newCollateral, clip.address);
+    await interaction.setCollateralType(token, tokenJoin.address, newCollateral, clip.address, "1333333333333333333333333333");
 
     let vat = this.Vat.attach(VAT);
 
