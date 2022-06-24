@@ -55,6 +55,8 @@ async function main() {
     let interaction = this.Interaction.attach(INTERACTION);
     let jug = this.Jug.attach(JUG);
     await jug.rely(INTERACTION);
+    let spot = this.Spot.attach(SPOT);
+    await spot.rely(INTERACTION);
 
     await interaction.setCollateralType(token, tokenJoin.address, newCollateral, clip.address, "1333333333333333333333333333");
 
@@ -64,9 +66,8 @@ async function main() {
     await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("line"), "50000000" + rad);
     await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray);
 
-    let spot = this.Spot.attach(SPOT);
     await spot["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("pip"), Oracle);
-    await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
+    // await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
     // await spot.poke(newCollateral);
 
     console.log("Dog...");
