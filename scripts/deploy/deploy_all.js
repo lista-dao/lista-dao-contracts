@@ -151,6 +151,7 @@ async function main() {
     await dog.rely(interaction.address);
     await jug.rely(interaction.address);
     await interaction.setHelioProvider(ceBNBc, HELIO_PROVIDER);
+    await vow.rely(dog.address);
 
     console.log("Vat config...");
     await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);

@@ -73,11 +73,11 @@ async function main() {
 
     // await interactionNew.enableCollateralType(ceBNBc, ceBNBcJoin, newCollateral, CLIP);
 
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [TESTER],
-    });
-    const signer = await ethers.getSigner(TESTER)
+    // await hre.network.provider.request({
+    //     method: "hardhat_impersonateAccount",
+    //     params: [TESTER],
+    // });
+    // const signer = await ethers.getSigner(TESTER)
 
     let interaction = this.Interaction.attach(INTERACTION);
 
@@ -91,12 +91,12 @@ async function main() {
     //     "5000000000000000000")
     let liq = "0x73CF7cC1778a60d43Ca2833F419B77a76177156A";
     // await dog.connect(signer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("hole"), "500" + rad);
-    await interaction.connect(signer).startAuction(ceBNBc, liq, TESTER);
+    await interaction.startAuction(ceBNBc, liq, TESTER);
 
-    await hre.network.provider.request({
-        method: "hardhat_stopImpersonatingAccount",
-        params: [TESTER],
-    });
+    // await hre.network.provider.request({
+    //     method: "hardhat_stopImpersonatingAccount",
+    //     params: [TESTER],
+    // });
 }
 
 main()
