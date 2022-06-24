@@ -229,7 +229,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), hayAmount);
         hayJoin.join(msg.sender, hayAmount);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        (, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
         require(dart >= 0, "Interaction/too-much-requested");
 
@@ -251,7 +250,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return dart;
     }
 
-    // Unlock and transfer to the user `dink` amount of aBNBc
+    // Unlock and transfer to the user `dink` amount of ceABNBc
     function withdraw(
         address participant,
         address token,
@@ -308,7 +307,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     //    //// VIEW                    ////
     //    /////////////////////////////////
 
-    // Price of the collateral asset(aBNBc) from Oracle
+    // Price of the collateral asset(ceABNBc) from Oracle
     function collateralPrice(address token) public view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -341,7 +340,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return 10 ** 45 / mat;
     }
 
-    // Total aBNBc deposited nominated in $
+    // Total ceABNBc deposited nominated in $
     function depositTVL(address token) external view returns (uint256) {
         return deposits[token] * collateralPrice(token) / WAD;
     }
@@ -355,7 +354,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return FullMath.mulDiv(Art, rate, RAY);
     }
 
-    // Not locked user balance in aBNBc
+    // Not locked user balance in ceABNBc
     function free(address token, address usr) public view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -363,7 +362,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return vat.gem(collateralType.ilk, usr);
     }
 
-    // User collateral in aBNBc
+    // User collateral in ceABNBc
     function locked(address token, address usr) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -423,7 +422,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return backedDebt / ink;
     }
 
-    // Price of aBNBc when user will be liquidated
+    // Price of ceABNBc when user will be liquidated
     function currentLiquidationPrice(address token, address usr) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -432,7 +431,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return liquidationPriceForDebt(collateralType.ilk, ink, art);
     }
 
-    // Price of aBNBc when user will be liquidated with additional amount of aBNBc deposited/withdraw
+    // Price of ceABNBc when user will be liquidated with additional amount of ceABNBc deposited/withdraw
     function estimatedLiquidationPrice(address token, address usr, int256 amount) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
@@ -447,7 +446,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         return liquidationPriceForDebt(collateralType.ilk, ink, art);
     }
 
-    // Price of aBNBc when user will be liquidated with additional amount of HAY borrowed/payback
+    // Price of ceABNBc when user will be liquidated with additional amount of HAY borrowed/payback
     //positive amount mean HAYs are being borrowed. So art(debt) will increase
     function estimatedLiquidationPriceHAY(address token, address usr, int256 amount) external view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];

@@ -80,11 +80,11 @@ ReentrancyGuardUpgradeable
         uint256[] memory outAmounts = _dex.getAmountsOut(amount, path);
         uint256 dexABNBcAmount = outAmounts[outAmounts.length - 1];
         // let's calculate returned amount of aBNBc from BinancePool
-        uint256 minumunStake = _pool.getMinimumStake();
+        uint256 minimumStake = _pool.getMinimumStake();
         uint256 relayerFee = _pool.getRelayerFee();
         uint256 ratio = _certToken.ratio();
         uint256 poolABNBcAmount;
-        if (amount >= minumunStake + relayerFee) {
+        if (amount >= minimumStake + relayerFee) {
             poolABNBcAmount = ((amount - relayerFee) * ratio) / 1e18;
         }
         // compare poolABNBcAmount with dexABNBcAmount from Dex
