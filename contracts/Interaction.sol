@@ -484,7 +484,9 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address keeper
     ) external returns (uint256) {
         dropRewards(token, user);
-
+        CollateralType memory collateral = collaterals[token];
+        (uint256 ink,) = vat.urns(collateral.ilk, user);
+        IHelioProvider provider = IHelioProvider(helioProviders[token]);
         uint256 auctionAmount = AuctionProxy.startAuction(
             user,
             keeper,
@@ -492,11 +494,11 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
             hayJoin,
             vat,
             DogLike(dog),
-            IHelioProvider(helioProviders[token]),
-            collaterals[token]
+            provider,
+            collateral
         );
 
-        emit AuctionStarted(token, user);
+        emit AuctionStarted(token, user, ink, collateralPrice(token));
         return auctionAmount;
     }
 
