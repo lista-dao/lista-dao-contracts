@@ -128,7 +128,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     function removeCollateralType(address token) external auth {
-        collaterals[token].live = 0;
+        require(collaterals[token].live != 0, "Interaction/token-not-init");
+        collaterals[token].live = 2; //STOPPED
         address gemJoin = address(collaterals[token].gem);
         vat.deny(gemJoin);
         IERC20Upgradeable(token).safeApprove(gemJoin, 0);
@@ -152,7 +153,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         uint256 dink
     ) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        // _checkIsLive(collateralType.live); Checking in the `drip` function
+        require(collateralType.live == 1, "Interaction/inactive-collateral");
+
         if (helioProviders[token] != address(0)) {
             require(
                 msg.sender == helioProviders[token],
@@ -194,7 +196,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     function borrow(address token, uint256 hayAmount) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        // _checkIsLive(collateralType.live); Checking in the `drip` function
+        require(collateralType.live == 1, "Interaction/inactive-collateral");
 
         drip(token);
         dropRewards(token, msg.sender);
@@ -546,6 +548,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     }
 
     function _checkIsLive(uint256 live) internal pure {
-        require(live == 1, "Interaction/inactive collateral");
+        require(live != 0, "Interaction/inactive collateral");
     }
 }
