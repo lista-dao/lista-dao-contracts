@@ -6,7 +6,7 @@ import "../../interfaces/GemJoinLike.sol";
     struct CollateralType {
     GemJoinLike gem;
     bytes32 ilk;
-    uint32 live;
+    uint32 live; //0 - inactive, 1 - started, 2 - stopped
     address clip;
 }
 
