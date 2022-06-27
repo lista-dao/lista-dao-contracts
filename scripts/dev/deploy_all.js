@@ -1,23 +1,9 @@
 const hre = require("hardhat");
 
 const {
-    ceBNBc, DEPLOYER, COLLATERAL_CE_ABNBC,
-    HELIO_PROVIDER, CHAIN_ID,
-    VAT,
-    SPOT,
-    HayJoin,
-    HAY,
-    ceBNBcJoin,
-    aBNBcJoin,
-    aBNBc,
-    JUG,
-    VOW,
-    DOG,
-    CLIP1,
-    CLIP3,
-    REWARDS,
-    AUCTION_PROXY,
-    INTERACTION
+    ceBNBc, DEPLOYER, COLLATERAL_CE_ABNBC, aBNBc,
+    Oracle, HELIO_PROVIDER, COLLATERAL_FAKE_ABNBC,
+    ABACI, SPOT, DOG, VOW, CLIP,
 } = require('../../addresses.json');
 const {ethers, upgrades} = require("hardhat");
 const {BN, ether} = require("@openzeppelin/test-helpers");
@@ -29,7 +15,9 @@ let wad = "000000000000000000", // 18 Decimals
 async function main() {
     console.log('Running deploy script');
 
+    let collateralFAKE = ethers.utils.formatBytes32String(COLLATERAL_FAKE_ABNBC);
     let collateralCE = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
+    console.log("IlkFake: " + collateralFAKE);
     console.log("IlkCE: " + collateralCE);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
@@ -37,12 +25,12 @@ async function main() {
     this.Hay = await hre.ethers.getContractFactory("Hay");
     this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
     this.HayJoin = await hre.ethers.getContractFactory("HayJoin");
-    this.Oracle = await hre.ethers.getContractFactory("Oracle"); // Mock Oracle
+    // this.Oracle = await hre.ethers.getContractFactory("Oracle"); // Mock Oracle
     this.Jug = await hre.ethers.getContractFactory("Jug");
     this.Vow = await hre.ethers.getContractFactory("Vow");
+    // this.Jar = await hre.ethers.getContractFactory("Jar");
     this.Dog = await hre.ethers.getContractFactory("Dog");
     this.Clip = await hre.ethers.getContractFactory("Clipper");
-    this.Abaci = await ethers.getContractFactory("LinearDecrease");
 
     this.HelioToken = await hre.ethers.getContractFactory("HelioToken");
     this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
@@ -51,27 +39,16 @@ async function main() {
     this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
 
     console.log("Deploying core contracts");
-    let abaci = await this.Abaci.deploy();
-    await abaci.deployed();
-    console.log("abaci deployed to:", abaci.address);
 
     const vat = await upgrades.deployProxy(this.Vat, []);
     await vat.deployed();
     console.log("Vat deployed to:", vat.address);
 
-    const oracle = await this.Oracle.deploy();
-    await oracle.deployed();
-    console.log("oracle deployed to:", oracle.address);
-
-    await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
-
     const spot = await this.Spot.deploy(vat.address);
     await spot.deployed();
-    await spot["file(bytes32,bytes32,address)"](collateralCE, ethers.utils.formatBytes32String("pip"), oracle.address);
-    await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // It means pegged to 1$
     console.log("Spot deployed to:", spot.address);
 
-    const hay = await this.Hay.deploy( CHAIN_ID, "HAY");
+    const hay = await this.Hay.deploy(97, "HAY");
     await hay.deployed();
     console.log("Hay deployed to:", hay.address);
 
@@ -83,11 +60,15 @@ async function main() {
     await bnbJoin.deployed();
     console.log("bnbJoin deployed to:", bnbJoin.address);
 
+    const fakeJoin = await this.GemJoin.deploy(vat.address, collateralFAKE, aBNBc);
+    await fakeJoin.deployed();
+    console.log("FakeJoin deployed to:", fakeJoin.address);
+
     const jug = await this.Jug.deploy(vat.address);
     await jug.deployed();
     console.log("Jug deployed to:", jug.address);
 
-    const vow = await this.Vow.deploy(vat.address, DEPLOYER);
+    const vow = await this.Vow.deploy(vat.address, ethers.constants.AddressZero, ethers.constants.AddressZero, DEPLOYER);
     await vow.deployed();
     console.log("Vow deployed to:", vow.address);
 
@@ -99,14 +80,18 @@ async function main() {
     await clipCE.deployed();
     console.log("ClipCE deployed to:", clipCE.address);
 
+    const clipFAKE = await this.Clip.deploy(vat.address, spot.address, dog.address, collateralFAKE);
+    await clipFAKE.deployed();
+    console.log("ClipFAKE deployed to:", clipFAKE.address);
+
     console.log("Core contracts auth");
 
     await vat.rely(bnbJoin.address);
+    await vat.rely(fakeJoin.address);
     await vat.rely(spot.address);
     await vat.rely(hayJoin.address);
     await vat.rely(jug.address);
     await vat.rely(dog.address);
-    await vat.rely(clipCE.address);
 
      // REWARDS
     console.log("Deploying rewards");
@@ -124,14 +109,13 @@ async function main() {
     await helioOracle.deployed();
     console.log("helioOracle deployed to:", helioOracle.address);
 
-    // initial helio token supply for rewards spending
     const helioToken = await this.HelioToken.deploy(ether("100000000").toString(), rewards.address);
     await helioToken.deployed();
     console.log("helioToken deployed to:", helioToken.address);
 
     await rewards.setHelioToken(helioToken.address);
     await rewards.setOracle(helioOracle.address);
-    await rewards.initPool(ceBNBc, collateralCE, "1000000001847694957439350500"); //6%
+    // await rewards.initPool(ceBNBc, collateral, "1000000001847694957439350500"); //6%
 
     // INTERACTION
     const auctionProxy = await this.AuctionProxy.deploy();
@@ -162,18 +146,29 @@ async function main() {
     await vat.rely(interaction.address);
     await rewards.rely(interaction.address);
     await bnbJoin.rely(interaction.address);
+    await fakeJoin.rely(interaction.address);
     await hayJoin.rely(interaction.address);
     await dog.rely(interaction.address);
     await jug.rely(interaction.address);
     await vow.rely(dog.address);
     await interaction.setHelioProvider(ceBNBc, HELIO_PROVIDER);
-    // 1.333.... <- 75% borrow ratio
-    await interaction.setCollateralType(ceBNBc, bnbJoin.address, collateralCE, clipCE.address, "1333333333333333333333333333");
 
     console.log("Vat config...");
     await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);
     await vat["file(bytes32,bytes32,uint256)"](collateralCE, ethers.utils.formatBytes32String("line"), "50000000" + rad);
     await vat["file(bytes32,bytes32,uint256)"](collateralCE, ethers.utils.formatBytes32String("dust"), "1" + ray);
+    await vat["file(bytes32,bytes32,uint256)"](collateralFAKE, ethers.utils.formatBytes32String("line"), "50000000" + rad);
+    await vat["file(bytes32,bytes32,uint256)"](collateralFAKE, ethers.utils.formatBytes32String("dust"), "1" + ray);
+
+    console.log("Spot...");
+    await spot["file(bytes32,bytes32,address)"](collateralCE, ethers.utils.formatBytes32String("pip"), Oracle);
+    await spot["file(bytes32,bytes32,uint256)"](collateralCE, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,address)"](collateralFAKE, ethers.utils.formatBytes32String("pip"), Oracle);
+    await spot["file(bytes32,bytes32,uint256)"](collateralFAKE, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
+
+    await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // It means pegged to 1$
+    await spot.poke(collateralCE);
+    await spot.poke(collateralFAKE);
 
     console.log("Jug...");
     let BR = new BN("1000000003022266000000000000").toString(); //10% APY
@@ -186,15 +181,20 @@ async function main() {
     // Initialize Liquidation Module
     console.log("Dog...");
     await dog.rely(clipCE.address);
+    await dog.rely(clipFAKE.address);
     await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
     await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "500" + rad);
     await dog["file(bytes32,bytes32,uint256)"](collateralCE, ethers.utils.formatBytes32String("hole"), "250" + rad);
     await dog["file(bytes32,bytes32,uint256)"](collateralCE, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
     await dog["file(bytes32,bytes32,address)"](collateralCE, ethers.utils.formatBytes32String("clip"), clipCE.address);
+    await dog["file(bytes32,bytes32,uint256)"](collateralFAKE, ethers.utils.formatBytes32String("hole"), "250" + rad);
+    await dog["file(bytes32,bytes32,uint256)"](collateralFAKE, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
+    await dog["file(bytes32,bytes32,address)"](collateralFAKE, ethers.utils.formatBytes32String("clip"), clipFAKE.address);
 
 
     console.log("CLIP");
-    await clipCE.rely(dog.address);
+    // let clip = this.Clip.attach(CLIP);
+    await clipCE.rely(DOG);
 
     await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
     await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
@@ -202,109 +202,21 @@ async function main() {
     await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
     await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
     await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
-    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), spot.address);
-    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), dog.address);
-    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
-    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), abaci.address);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
-    await interaction.poke(ceBNBc);
-    await interaction.drip(ceBNBc);
-
-    console.log('Validating code');
-    let vatImplAddress = await upgrades.erc1967.getImplementationAddress(vat.address);
-    console.log("vatImplAddress implementation: ", vatImplAddress);
-
-    await hre.run("verify:verify", {
-        address: vatImplAddress
-    });
-    await hre.run("verify:verify", {
-        address: spot.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: oracle.address,
-    });
-    await hre.run("verify:verify", {
-        address: abaci.address,
-    });
-    await hre.run("verify:verify", {
-        address: hay.address,
-        constructorArguments: [
-            CHAIN_ID,
-            "HAY"
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: hayJoin.address,
-        constructorArguments: [
-            vat.address,
-            hay.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: bnbJoin.address,
-        constructorArguments: [
-            vat.address,
-            collateralCE,
-            ceBNBc,
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: jug.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: vow.address,
-        constructorArguments: [
-            vat.address,
-            DEPLOYER
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: dog.address,
-        constructorArguments: [
-            vat.address
-        ],
-    });
-    await hre.run("verify:verify", {
-        address: clipCE.address,
-        constructorArguments: [
-            vat.address,
-            spot.address,
-            dog.address,
-            collateralCE
-        ],
-    });
-    // Rewards
-    let rewardsImplAddress = await upgrades.erc1967.getImplementationAddress(rewards.address);
-    console.log("rewardsImplAddress implementation: ", rewardsImplAddress);
-    await hre.run("verify:verify", {
-        address: rewardsImplAddress,
-    });
-
-    await hre.run("verify:verify", {
-        address: helioToken.address,
-        constructorArguments: [
-            "100000000",
-            rewards.address,
-        ],
-    });
-
-    // Interaction
-    await hre.run("verify:verify", {
-        address: auctionProxy.address
-    });
-
-    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(interaction.address);
-    console.log("Interaction implementation: ", interactionImplAddress);
-
-    await hre.run("verify:verify", {
-        address: interactionImplAddress,
-    });
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
     console.log('Finished');
 }
