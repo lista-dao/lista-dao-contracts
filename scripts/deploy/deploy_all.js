@@ -26,6 +26,10 @@ let wad = "000000000000000000", // 18 Decimals
     ray = "000000000000000000000000000", // 27 Decimals
     rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
 
+const hoursToSeconds = (hours) => {
+  return hours * 60 * 60;
+};
+
 async function main() {
     console.log('Running deploy script');
 
@@ -37,7 +41,8 @@ async function main() {
     this.Hay = await hre.ethers.getContractFactory("Hay");
     this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
     this.HayJoin = await hre.ethers.getContractFactory("HayJoin");
-    this.Oracle = await hre.ethers.getContractFactory("Oracle"); // Mock Oracle
+    this.SlidingWindowOracle = await hre.ethers.getContractFactory("SlidingWindowOracle"); // Mock Oracle
+    this.Oracle = await hre.ethers.getContractFactory("PriceOracle");
     this.Jug = await hre.ethers.getContractFactory("Jug");
     this.Vow = await hre.ethers.getContractFactory("Vow");
     this.Dog = await hre.ethers.getContractFactory("Dog");
@@ -55,13 +60,43 @@ async function main() {
     await abaci.deployed();
     console.log("abaci deployed to:", abaci.address);
 
+    let factory;
+    let abnbc;
+    let bnb;
+    let usd;
+    if (hre.network.name == "bsc") {
+        factory = "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73";
+        token = "0xE85aFCcDaFBE7F2B096f268e31ccE3da8dA2990A";
+        bnb = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
+        usd = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
+    } else if (hre.network.name == "bsc_testnet") {
+        factory = "0xb7926c0430afb07aa7defde6da862ae0bde767bc";
+        abnbc = "0xfdE0B58c0dB7B2551CEABAbFcE50571E584Aca2a";
+        bnb = "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd";
+        usd = "0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7";
+    }
+    const windowSize = hoursToSeconds(6);
+    const granularity = 6;
+    const slidingWindowOracle = await upgrades.deployProxy(
+        this.SlidingWindowOracle,
+        [factory, windowSize, granularity],
+        { kind: "uups" }
+    );
+    await slidingWindowOracle.deployed();
+    console.log('slidingWindowOracle deployed to: ', slidingWindowOracle.address);
+
+    const oracle = await upgrades.deployProxy(
+        this.Oracle,
+        [abnbc, slidingWindowOracle.address, true, bnb, usd],
+        { kind: "uups" }
+    );
+    await oracle.deployed();
+    console.log("oracle deployed to:", oracle.address);
+
+
     const vat = await upgrades.deployProxy(this.Vat, []);
     await vat.deployed();
     console.log("Vat deployed to:", vat.address);
-
-    const oracle = await this.Oracle.deploy();
-    await oracle.deployed();
-    console.log("oracle deployed to:", oracle.address);
 
     await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
 
