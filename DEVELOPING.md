@@ -92,3 +92,16 @@ https://ethereum.stackexchange.com/a/23110
 ## Addresses
 * "HelioToken": [0x97BBBc81eBF1F130315b717b165Ebc9193a046Cd](https://testnet.bscscan.com/address/0x97BBBc81eBF1F130315b717b165Ebc9193a046Cd),
 * "HelioRewards": [0x7ad1585f12742D21BBDD0e3Ed8DdE279B55565e3](https://testnet.bscscan.com/address/0x7ad1585f12742D21BBDD0e3Ed8DdE279B55565e3),
+
+## Liquidation (DEV env) 
+
+1. Provide collateral
+2. Borrow some hay, note the estimated liquidation price
+3. Set oracle price below your liquidation price 
+   1. [Testnet oracle explorer page](https://testnet.bscscan.com/address/0xE16aFa838a16F20213af35b5591898282f0164BE)
+   2. Use `setPrice` method. Set price with 18 decimals
+   3. Visit [interaction contract](https://testnet.bscscan.com/address/0x92fF29a418A7d815574FAaaF4A54bbf6069B8743)
+   4. Call `poke` method with this argument — `0x90c15Cd33f7B3b7dadCa7653419b493ABfC7B850` 
+4. Visit liquidation page on the frontend
+5. Note your address in the list and press `liquidate` button
+6. Your hBNB will be burned and you will receive any leftover in hay after liquidation happened

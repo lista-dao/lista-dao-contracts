@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 const {
-    REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT
+    REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT, COLLATERAL_CE_ABNBC
 } = require('../../addresses.json');
 const {ethers} = require("hardhat");
 
@@ -14,7 +14,7 @@ async function main() {
         rad = "000000000000000000000000000000000000000000000", // 45 Decimals
         ONE = 10 ** 27;
 
-    let collateral = ethers.utils.formatBytes32String("aBNBc");
+    let collateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
     let collateral2 = ethers.utils.formatBytes32String("REALaBNBc");
     let collateral3 = ethers.utils.formatBytes32String("ceABNBc");
 
