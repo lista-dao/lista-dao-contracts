@@ -10,10 +10,10 @@ contract Oracle is Ownable {
 
     event PriceUpdate(bytes32 price);
 
-    bytes32 public price; 
+    bytes32 public price;
 
     // Take care of decimals while setting a price for the test
-    function setPrice(uint256 _price) external onlyOwner {
+    function setPrice(uint256 _price) external {
         price = bytes32(_price);
         emit PriceUpdate(bytes32(_price));
     }
