@@ -118,20 +118,21 @@ async function main() {
     await rewards.deployed();
     console.log("Rewards deployed to:", rewards.address);
 
-    const helioOracle = await upgrades.deployProxy(this.HelioOracle, [
-        "100000000000000000" // 0.1
-    ]);
-    await helioOracle.deployed();
-    console.log("helioOracle deployed to:", helioOracle.address);
-
-    // initial helio token supply for rewards spending
-    const helioToken = await this.HelioToken.deploy(ether("100000000").toString(), rewards.address);
-    await helioToken.deployed();
-    console.log("helioToken deployed to:", helioToken.address);
-
-    await rewards.setHelioToken(helioToken.address);
-    await rewards.setOracle(helioOracle.address);
-    await rewards.initPool(ceBNBc, collateralCE, "1000000001847694957439350500"); //6%
+    // No Helio Token & Oracle at the moment
+    // const helioOracle = await upgrades.deployProxy(this.HelioOracle, [
+    //     "100000000000000000" // 0.1
+    // ]);
+    // await helioOracle.deployed();
+    // console.log("helioOracle deployed to:", helioOracle.address);
+    //
+    // // initial helio token supply for rewards spending
+    // const helioToken = await this.HelioToken.deploy(ether("100000000").toString(), rewards.address);
+    // await helioToken.deployed();
+    // console.log("helioToken deployed to:", helioToken.address);
+    //
+    // await rewards.setHelioToken(helioToken.address);
+    // await rewards.setOracle(helioOracle.address);
+    // await rewards.initPool(ceBNBc, collateralCE, "1000000001847694957439350500"); //6%
 
     // INTERACTION
     const auctionProxy = await this.AuctionProxy.deploy();
@@ -166,6 +167,8 @@ async function main() {
     await dog.rely(interaction.address);
     await jug.rely(interaction.address);
     await vow.rely(dog.address);
+    await spot.rely(interaction.address);
+
     await interaction.setHelioProvider(ceBNBc, HELIO_PROVIDER);
     // 1.333.... <- 75% borrow ratio
     await interaction.setCollateralType(ceBNBc, bnbJoin.address, collateralCE, clipCE.address, "1333333333333333333333333333");
@@ -286,13 +289,13 @@ async function main() {
         address: rewardsImplAddress,
     });
 
-    await hre.run("verify:verify", {
-        address: helioToken.address,
-        constructorArguments: [
-            "100000000",
-            rewards.address,
-        ],
-    });
+    // await hre.run("verify:verify", {
+    //     address: helioToken.address,
+    //     constructorArguments: [
+    //         "100000000",
+    //         rewards.address,
+    //     ],
+    // });
 
     // Interaction
     await hre.run("verify:verify", {
