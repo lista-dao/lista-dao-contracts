@@ -103,18 +103,19 @@ async function main() {
     await rewards.deployed();
     console.log("Rewards deployed to:", rewards.address);
 
-    const helioOracle = await upgrades.deployProxy(this.HelioOracle, [
-        "100000000000000000" // 0.1
-    ]);
-    await helioOracle.deployed();
-    console.log("helioOracle deployed to:", helioOracle.address);
+    // No HELIO token & Oracle at this moment
+    // const helioOracle = await upgrades.deployProxy(this.HelioOracle, [
+    //     "100000000000000000" // 0.1
+    // ]);
+    // await helioOracle.deployed();
+    // console.log("helioOracle deployed to:", helioOracle.address);
 
-    const helioToken = await this.HelioToken.deploy(ether("100000000").toString(), rewards.address);
-    await helioToken.deployed();
-    console.log("helioToken deployed to:", helioToken.address);
-
-    await rewards.setHelioToken(helioToken.address);
-    await rewards.setOracle(helioOracle.address);
+    // const helioToken = await this.HelioToken.deploy(ether("100000000").toString(), rewards.address);
+    // await helioToken.deployed();
+    // console.log("helioToken deployed to:", helioToken.address);
+    //
+    // await rewards.setHelioToken(helioToken.address);
+    // await rewards.setOracle(helioOracle.address);
     // await rewards.initPool(ceBNBc, collateral, "1000000001847694957439350500"); //6%
 
     // INTERACTION

@@ -33,20 +33,20 @@ async function main() {
     this.Dog = await hre.ethers.getContractFactory("Dog");
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
-    const oracle = await this.Oracle.deploy();
-    await oracle.deployed();
-    console.log("oracle deployed to:", oracle.address);
-
-    await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
+    // const oracle = await this.Oracle.deploy();
+    // await oracle.deployed();
+    // console.log("oracle deployed to:", oracle.address);
+    //
+    // await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
 
     const spot = await this.Spot.attach(SPOT);
     await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), Oracle);
     await spot.poke(collateral);
 
-    console.log('Validating code');
-    await hre.run("verify:verify", {
-        address: oracle.address
-    });
+    // console.log('Validating code');
+    // await hre.run("verify:verify", {
+    //     address: oracle.address
+    // });
 
     console.log('Finished');
 }
