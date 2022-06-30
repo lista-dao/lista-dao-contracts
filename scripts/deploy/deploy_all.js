@@ -75,8 +75,6 @@ async function main() {
     await vat.deployed();
     console.log("Vat deployed to:", vat.address);
 
-    await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
-
     const spot = await this.Spot.deploy(vat.address);
     await spot.deployed();
     await spot["file(bytes32,bytes32,address)"](collateralCE, ethers.utils.formatBytes32String("pip"), oracle.address);
