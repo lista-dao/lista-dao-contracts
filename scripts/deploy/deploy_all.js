@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const fs = require("fs");
 
 const {
     ceBNBc, DEPLOYER, COLLATERAL_CE_ABNBC,
@@ -168,6 +169,32 @@ async function main() {
     });
     await interaction.deployed();
     console.log("interaction deployed to:", interaction.address);
+
+    const addresses = {
+        abaci: abaci.address,
+        oracle: oracle.address,
+        vat: vat.address,
+        spot: spot.address,
+        hay: hay.address,
+        hayJoin: hayJoin.address,
+        bnbJoin: bnbJoin.address,
+        jug: jug.address,
+        vow: vow.address,
+        dog: dog.address,
+        clipCE: clipCE.address,
+        rewards: rewards.address,
+        helioOracle: helioOracle.address,
+        helioToken: helioToken.address,
+        auctionProxy: auctionProxy.address,
+        interaction: interaction.address,
+        vatImp: vatImplAddress
+    };
+    const jsonAddresses = JSON.stringify(addresses);
+    fs.writeFileSync(
+        `./addresses/${network.name}Addresses.json`,
+        jsonAddresses
+    );
+    console.log("Addresses saved!");
 
     await vat.rely(interaction.address);
     await rewards.rely(interaction.address);
