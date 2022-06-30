@@ -160,6 +160,10 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
 
     //drop unrealised rewards
     function drop(address token, address usr) public {
+        if (pools[token].rho == 0) {
+            // No pool for this token — skip rewards
+            return;
+        }
         Pile storage pile = piles[usr][token];
 
         pile.amount += unrealisedRewards(token, usr);
@@ -167,6 +171,10 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
     }
 
     function unrealisedRewards(address token, address usr) public poolInit(token) view returns(uint256) {
+        if (pools[token].rho == 0) {
+            // No pool for this token
+            return 0;
+        }
         bytes32 poolIlk = pools[token].ilk;
         (, uint256 usrDebt) = vat.urns(poolIlk, usr);
         uint256 last = piles[usr][token].ts;
