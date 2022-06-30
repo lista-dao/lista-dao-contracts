@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract PriceConsumerV3 {
+contract BnbOracle {
 
     AggregatorV3Interface internal priceFeed;
 
