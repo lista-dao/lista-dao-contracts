@@ -41,10 +41,13 @@ contract Hay is HayLike {
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
+    uint256 public supplyCap;
 
     mapping (address => uint)                      public balanceOf;
     mapping (address => mapping (address => uint)) public allowance;
     mapping (address => uint)                      public nonces;
+
+    event SupplyCapSet(uint256 oldCap, uint256 newCap);
 
     // --- Math ---
     function add(uint x, uint y) internal pure returns (uint z) {
@@ -63,7 +66,7 @@ contract Hay is HayLike {
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
-    constructor(uint256 chainId_, string memory symbol_) {
+    constructor(uint256 chainId_, string memory symbol_, uint256 supplyCap_) {
         wards[msg.sender] = 1;
         DOMAIN_SEPARATOR = keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -73,6 +76,7 @@ contract Hay is HayLike {
             address(this)
         ));
         symbol = symbol_;
+        supplyCap = supplyCap_;
     }
 
     // --- Token ---
@@ -93,6 +97,7 @@ contract Hay is HayLike {
         return true;
     }
     function mint(address usr, uint wad) external auth {
+        require(add(totalSupply, wad) <= supplyCap, "Hay/cap-reached");
         balanceOf[usr] = add(balanceOf[usr], wad);
         totalSupply    = add(totalSupply, wad);
         emit Transfer(address(0), usr, wad);
@@ -176,5 +181,12 @@ contract Hay is HayLike {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
         return true;
+    }
+
+    function setSupplyCap(uint256 wad) public auth {
+        require(wad >= totalSupply, "Hay/more-supply-than-cap");
+        uint256 oldCap = supplyCap;
+        supplyCap = wad;
+        emit SupplyCapSet(oldCap, supplyCap);
     }
 }
