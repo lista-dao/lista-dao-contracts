@@ -15,7 +15,7 @@ interface DogLike {
 // File contracts/dog.sol
 // License-Identifier: AGPL-3.0-or-later
 
-/// dog.sol -- Usb liquidation module 2.0
+/// dog.sol -- Hay liquidation module 2.0
 
 // Copyright (C) 2020-2022 Dai Foundation
 //
@@ -78,8 +78,8 @@ contract Dog is DogLike {
     struct Ilk {
         address clip;  // Liquidator
         uint256 chop;  // Liquidation Penalty                                          [wad]
-        uint256 hole;  // Max USB needed to cover debt+fees of active auctions per ilk [rad]
-        uint256 dirt;  // Amt USB needed to cover debt+fees of active auctions per ilk [rad]
+        uint256 hole;  // Max HAY needed to cover debt+fees of active auctions per ilk [rad]
+        uint256 dirt;  // Amt HAY needed to cover debt+fees of active auctions per ilk [rad]
     }
 
     VatLike immutable public vat;  // CDP Engine
@@ -88,8 +88,8 @@ contract Dog is DogLike {
 
     VowLike public vow;   // Debt Engine
     uint256 public live;  // Active Flag
-    uint256 public Hole;  // Max USB needed to cover debt+fees of active auctions [rad]
-    uint256 public Dirt;  // Amt USB needed to cover debt+fees of active auctions [rad]
+    uint256 public Hole;  // Max HAY needed to cover debt+fees of active auctions [rad]
+    uint256 public Dirt;  // Amt HAY needed to cover debt+fees of active auctions [rad]
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -175,15 +175,15 @@ contract Dog is DogLike {
 
     // --- CDP Liquidation: all bark and no bite ---
     //
-    // Liquidate a Vault and start a Dutch auction to sell its collateral for USB.
+    // Liquidate a Vault and start a Dutch auction to sell its collateral for HAY.
     //
     // The third argument is the address that will receive the liquidation reward, if any.
     //
-    // The entire Vault will be liquidated except when the target amount of USB to be raised in
+    // The entire Vault will be liquidated except when the target amount of HAY to be raised in
     // the resulting auction (debt of Vault + liquidation penalty) causes either Dirt to exceed
     // Hole or ilk.dirt to exceed ilk.hole by an economically significant amount. In that
     // case, a partial liquidation is performed to respect the global and per-ilk limits on
-    // outstanding USB target. The one exception is if the resulting auction would likely
+    // outstanding HAY target. The one exception is if the resulting auction would likely
     // have too little collateral to be interesting to Keepers (debt taken from Vault < ilk.dust),
     // in which case the function reverts. Please refer to the code and comments within if
     // more detail is desired.
@@ -217,7 +217,7 @@ contract Dog is DogLike {
                     // This will result in at least one of dirt_i > hole_i or Dirt > Hole becoming true.
                     // The amount of excess will be bounded above by ceiling(dust_i * chop_i / WAD).
                     // This deviation is assumed to be small compared to both hole_i and Hole, so that
-                    // the extra amount of target USB over the limits intended is not of economic concern.
+                    // the extra amount of target HAY over the limits intended is not of economic concern.
                     dart = art;
                 } else {
 

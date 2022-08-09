@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 struct Sale {
     uint256 pos; // Index in active array
-    uint256 tab; // Usb to raise       [rad]
+    uint256 tab; // Hay to raise       [rad]
     uint256 lot; // collateral to sell [wad]
     address usr; // Liquidated CDP
     uint96 tic; // Auction start time

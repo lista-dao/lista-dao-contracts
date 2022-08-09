@@ -17,10 +17,12 @@
 
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import "./interfaces/SpotLike.sol";
 import "./interfaces/VatLike.sol";
 
-contract Spotter is SpotLike {
+contract Spotter is SpotLike, Initializable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address guy) external auth { wards[guy] = 1;  }
@@ -39,7 +41,7 @@ contract Spotter is SpotLike {
     mapping (bytes32 => Ilk) public ilks;
 
     VatLike public vat;  // CDP Engine
-    uint256 public par;  // ref per usb [ray]
+    uint256 public par;  // ref per hay [ray]
 
     uint256 public live;
 
@@ -51,7 +53,7 @@ contract Spotter is SpotLike {
     );
 
     // --- Init ---
-    constructor(address vat_) {
+    function initialize(address vat_) external initializer {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
         par = ONE;
