@@ -19,6 +19,8 @@
 
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 interface Abacus {
     // 1st arg: initial price               [ray]
     // 2nd arg: seconds since auction start [seconds]
@@ -26,7 +28,7 @@ interface Abacus {
     function price(uint256, uint256) external view returns (uint256);
 }
 
-contract LinearDecrease is Abacus {
+contract LinearDecrease is Abacus, Initializable {
 
     // --- Auth ---
     mapping (address => uint256) public wards;
@@ -47,7 +49,7 @@ contract LinearDecrease is Abacus {
     event File(bytes32 indexed what, uint256 data);
 
     // --- Init ---
-    constructor() {
+    function initialize() external initializer {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -94,7 +96,7 @@ contract LinearDecrease is Abacus {
     }
 }
 
-contract StairstepExponentialDecrease is Abacus {
+contract StairstepExponentialDecrease is Abacus, Initializable {
 
     // --- Auth ---
     mapping (address => uint256) public wards;
@@ -118,7 +120,7 @@ contract StairstepExponentialDecrease is Abacus {
     // --- Init ---
     // @notice: `cut` and `step` values must be correctly set for
     //     this contract to return a valid price
-    constructor() {
+    function initialize() external initializer {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -186,7 +188,7 @@ contract StairstepExponentialDecrease is Abacus {
 // While an equivalent function can be obtained by setting step = 1 in StairstepExponentialDecrease,
 // this continous (i.e. per-second) exponential decrease has be implemented as it is more gas-efficient
 // than using the stairstep version with step = 1 (primarily due to 1 fewer SLOAD per price calculation).
-contract ExponentialDecrease is Abacus {
+contract ExponentialDecrease is Abacus, Initializable {
 
     // --- Auth ---
     mapping (address => uint256) public wards;
@@ -209,7 +211,7 @@ contract ExponentialDecrease is Abacus {
     // --- Init ---
     // @notice: `cut` value must be correctly set for
     //     this contract to return a valid price
-    constructor() {
+    function initialize() external initializer {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }

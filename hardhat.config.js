@@ -30,13 +30,13 @@ module.exports = {
     networks: {
 
         bsc: {
-            url: `https://speedy-nodes-nyc.moralis.io/${process.env.MORALIS_PROJECT_ID}/bsc/mainnet`,
+            url: `https://bsc-dataseed.binance.org/`,
             chainId: 56,
             accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
         },
 
         bsc_testnet: {
-            url: `https://speedy-nodes-nyc.moralis.io/${process.env.MORALIS_PROJECT_ID}/bsc/testnet`,
+            url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
             chainId: 97,
             accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
         },

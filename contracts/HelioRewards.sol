@@ -13,7 +13,7 @@ import "./interfaces/IRewards.sol";
 import "./interfaces/PipLike.sol";
 
 
-contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgradeable {
+contract HelioRewards is IRewards, OwnableUpgradeable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { require(live == 1, "Rewards/not-live"); wards[usr] = 1; }
@@ -59,8 +59,7 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
     uint256 public rewardsPool;
     uint256 public poolLimit;
 
-    function initialize(address vat_,
-                        uint256 poolLimit_ ) public initializer {
+    function initialize(address vat_, uint256 poolLimit_ ) public initializer {
         __Ownable_init();
 
         live = 1;
@@ -68,8 +67,6 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
         vat = VatLike(vat_);
         poolLimit = poolLimit_;
     }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stop() public auth {
         live = 0;
@@ -125,7 +122,7 @@ contract HelioRewards is IRewards, Initializable, UUPSUpgradeable, OwnableUpgrad
         emit RateChanged(token, newRate);
     }
 
-    // 1 USB is helioPrice() helios
+    // 1 HAY is helioPrice() helios
     function helioPrice() public view returns(uint256) {
         (bytes32 price, bool has) = oracle.peek();
         if (has) {

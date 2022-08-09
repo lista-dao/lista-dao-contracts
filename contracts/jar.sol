@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// jar.sol -- Usb distribution farming
+/// jar.sol -- Hay distribution farming
 
-// Copyright (C) 2022 Qazawat <xirexor@gmail.com>
+// Copyright (C) 2022
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -24,8 +24,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /*
    "Put rewards in the jar and close it".
-   This contract lets you deposit USBs from usb.sol and earn
-   USB rewards. The USB rewards are deposited into this contract
+   This contract lets you deposit HAYs from hay.sol and earn
+   HAY rewards. The HAY rewards are deposited into this contract
    and distributed over a timeline. Users can redeem rewards
    after exit delay.
 */
@@ -54,12 +54,12 @@ contract Jar {
     uint public spread;      // Distribution time     [sec]
     uint public endTime;     // Time "now" + spread   [sec]
     uint public rate;        // Emission per second   [wad]
-    uint public tps;         // USB tokens per share  [wad]
+    uint public tps;         // HAY tokens per share  [wad]
     uint public lastUpdate;  // Last tps update       [sec]
     uint public exitDelay;   // User unstake delay    [sec]
-    address public USB;      // The USB Stable Coin
+    address public HAY;      // The HAY Stable Coin
 
-    mapping(address => uint) public tpsPaid;      // USB per share paid
+    mapping(address => uint) public tpsPaid;      // HAY per share paid
     mapping(address => uint) public rewards;      // Accumulated rewards
     mapping(address => uint) public withdrawn;    // Capital withdrawn
     mapping(address => uint) public unstakeTime;  // Time of Unstake
@@ -129,12 +129,12 @@ contract Jar {
     }
 
     // --- Administration ---
-    function initialize(address _usbToken, uint _spread, uint _exitDelay) public auth {
+    function initialize(address _hayToken, uint _spread, uint _exitDelay) public auth {
         require(spread == 0);
-        USB = _usbToken;
+        HAY = _hayToken;
         spread = _spread;
         exitDelay = _exitDelay;
-        emit Initialized(USB, spread, exitDelay);
+        emit Initialized(HAY, spread, exitDelay);
     }
     
     // Can be called by anybody. In order to fill the contract with additional funds
@@ -149,7 +149,7 @@ contract Jar {
         lastUpdate = block.timestamp;
         endTime = block.timestamp + spread;
 
-        IERC20(USB).safeTransferFrom(msg.sender, address(this), wad);
+        IERC20(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Replenished(wad);
     }
     function setSpread(uint _spread) external auth {
@@ -174,7 +174,7 @@ contract Jar {
         balanceOf[msg.sender] += wad;
         totalSupply += wad;
 
-        IERC20(USB).safeTransferFrom(msg.sender, address(this), wad);
+        IERC20(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Join(msg.sender, wad);
     }
     function exit(uint256 wad) external update(msg.sender) {
@@ -200,7 +200,7 @@ contract Jar {
             if (_amount > 0) {
                 rewards[accounts[i]] = 0;
                 withdrawn[accounts[i]] = 0;
-                IERC20(USB).safeTransfer(accounts[i], _amount);
+                IERC20(HAY).safeTransfer(accounts[i], _amount);
             }
         }
        
