@@ -29,9 +29,7 @@ uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
-
     function rely(address usr) external auth {wards[usr] = 1;}
-
     function deny(address usr) external auth {wards[usr] = 0;}
     modifier auth {
         require(wards[msg.sender] == 1, "Interaction/not-authorized");
@@ -53,6 +51,32 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
+
+    uint256 public whitelistMode;
+    address public whitelistOperator;
+    mapping(address => uint) public whitelist;
+    function enableWhitelist() external auth {whitelistMode = 1;}
+    function disableWhitelist() external auth {whitelistMode = 0;}
+    function setWhitelistOperator(address usr) external auth {
+        whitelistOperator = usr;
+    }
+    function addToWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            whitelist[usrs[i]] = 1;
+    }
+    function removeFromWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            whitelist[usrs[i]] = 0;
+    }
+    modifier whitelisted(address participant) {
+        if (whitelistMode == 1)
+            require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
+        _;
+    }
+    modifier operatorOrWard {
+        require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward"); 
+        _;
+    }
 
     function initialize(
         address vat_,
@@ -145,7 +169,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address participant,
         address token,
         uint256 dink
-    ) external returns (uint256) {
+    ) external whitelisted(participant) returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 

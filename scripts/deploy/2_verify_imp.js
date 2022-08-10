@@ -47,7 +47,7 @@ const {
 
 async function main() {
 
-    // Verify all implementations
+    // // Verify all implementations
     await hre.run("verify:verify", {address: ceaBNBcImplementation});
     await hre.run("verify:verify", {address: ceVaultImplementation});
     await hre.run("verify:verify", {address: hBnbImplementation});
