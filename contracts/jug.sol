@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// jug.sol -- Usb Lending Rate
+/// jug.sol -- Hay Lending Rate
 
 // Copyright (C) 2018 Rain <rainbreak@riseup.net>
 //
@@ -23,11 +23,13 @@ pragma solidity ^0.8.10;
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import "./hMath.sol";
 import "./interfaces/JugLike.sol";
 import "./interfaces/VatLike.sol";
 
-contract Jug is JugLike {
+contract Jug is JugLike, Initializable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth { wards[usr] = 1; }
@@ -49,7 +51,7 @@ contract Jug is JugLike {
     uint256                  public base;  // Global, per-second stability fee contribution [ray]
 
     // --- Init ---
-    constructor(address vat_) {
+    function initialize(address vat_) external initializer {
         wards[msg.sender] = 1;
         vat = VatLike(vat_);
     }

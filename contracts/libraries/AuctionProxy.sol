@@ -5,8 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "../interfaces/ClipperLike.sol";
 import "../interfaces/GemJoinLike.sol";
-import "../interfaces/HayGemLike.sol";
-import "../interfaces/HayLike.sol";
+import "../interfaces/HayJoinLike.sol";
 import "../interfaces/DogLike.sol";
 import "../interfaces/VatLike.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
@@ -23,8 +22,8 @@ library AuctionProxy {
   function startAuction(
     address user,
     address keeper,
-    HayLike hay,
-    HayGemLike hayJoin,
+    IERC20Upgradeable hay,
+    HayJoinLike hayJoin,
     VatLike vat,
     DogLike dog,
     IHelioProvider helioProvider,
@@ -48,8 +47,8 @@ library AuctionProxy {
   function resetAuction(
     uint auctionId,
     address keeper,
-    HayLike hay,
-    HayGemLike hayJoin,
+    IERC20Upgradeable hay,
+    HayJoinLike hayJoin,
     VatLike vat,
     CollateralType calldata collateral
   ) public {
@@ -69,8 +68,8 @@ library AuctionProxy {
     uint256 collateralAmount,
     uint256 maxPrice,
     address receiverAddress,
-    HayLike hay,
-    HayGemLike hayJoin,
+    IERC20Upgradeable hay,
+    HayJoinLike hayJoin,
     VatLike vat,
     IHelioProvider helioProvider,
     CollateralType calldata collateral

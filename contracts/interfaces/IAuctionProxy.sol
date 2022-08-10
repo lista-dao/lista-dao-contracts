@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./HayLike.sol";
-import "./HayGemLike.sol";
+import "./HayJoinLike.sol";
 import "./VatLike.sol";
 import "./ClipperLike.sol";
 import "./DogLike.sol";

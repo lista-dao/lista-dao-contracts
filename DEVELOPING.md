@@ -7,31 +7,31 @@ Assume user has some aBNBc tokens.
 aBNBc is ERC20 complaint contract. 
 
 1. Approve aBNBc(token) with deposit amount against interaction contract
-2. Call `interaction.deposit(<token>, <amount>)`
+2. Call `interaction.deposit(<participant>, <token>, <amount>)`
 
 ### Borrow
 
 1. Call `interaction.borrow(<token>, <amount_to_borrow>)`
 `Token` is the collateral token that you want to use
-Check that you have USB present in the wallet
+Check that you have HAY present in the wallet
 
 ### Auction
 
 * `getTotalAuctionsCountForToken(<token>)` - gets total amount of auctions for collateral
 * `getAllActiveAuctionsForToken(<token>)` - gets all active auctions for collateral
 * `startAuction(<token>, <user_address>, <keeper_address>)` - starts an auction for a collateral, liquidates user and transfers incentives to keeper address
-* `buyFromAuction(<token>, <auctionId>, <collateral_amount>, <max_price>, <receiver_address>)` - buys collateral in auction(before this call user should approve `collateral_mount * max_price / ray` amount of USB to DAOInteraction contract)
+* `buyFromAuction(<token>, <auctionId>, <collateral_amount>, <max_price>, <receiver_address>)` - buys collateral in auction(before this call user should approve `collateral_mount * max_price / ray` amount of HAY to DAOInteraction contract)
   1. `token` - address of collateral token
   2. `auctionId` - Id of auction
   3. `collateral_amount` - the maximum amount of collateral user wants to buy [wad]
-  4. `max_price` - the maximum acceptable price in USB per unit collateral [ray]
+  4. `max_price` - the maximum acceptable price in HAY per unit collateral [ray]
   5. `receiver_address` - address that will receive the collateral
 
 
 ### Repay
 
-1. Approve USB (it is also ERC20 complaint contract) against interaction
-2. Call `interaction.payback(<token>, <amount_of_usb>)`
+1. Approve HAY (it is also ERC20 complaint contract) against interaction
+2. Call `interaction.payback(<token>, <amount_of_hay>)`
 
 Note: aBNBc will stay collaterized(locked) in the vault.
 
@@ -44,30 +44,18 @@ Unlock and transfer funds to the user
 ## View functions
 
 * `locked(<token>, <user_address>)` - Amount of aBNBc in collateral for a user
-* `borrowed(<token>, <user_address>)` - Amount of USB borrowed by user
+* `borrowed(<token>, <user_address>)` - Amount of HAY borrowed by user
 * `collateralPrice(<token>)` - price of the collateral asset(aBNBc) from Oracle
-* `usbPrice(<token>)` - USB price
-* `collateralRate(<token>)` - how much USB user can borrow for one token of collateral<br> 
-                     i.e. 1 aBNBc worth `collateralRate` USB
+* `hayPrice(<token>)` - HAY price
+* `collateralRate(<token>)` - how much HAY user can borrow for one token of collateral<br> 
+                     i.e. 1 aBNBc worth `collateralRate` HAY
 * `depositTVL(<token>)` - Total aBNBc deposited nominated in $
-* `collateralTVL(<token>)` - Total USB borrowed by all users
-* `availableToBorrow(<token>, <user_address>)` - Collateral minus borrowed. In other words: free collateral (nominated in USB)
+* `collateralTVL(<token>)` - Total HAY borrowed by all users
+* `availableToBorrow(<token>, <user_address>)` - Collateral minus borrowed. In other words: free collateral (nominated in HAY)
 * `willBorrow(<token>, <user_address>, <amount>)` - Collateral minus borrowed with additional amount of aBNBc (`amount` can be negative).
 * `currentLiquidationPrice(<token>, <user_address>)` - Price of aBNBc when user will be liquidated
 * `estimatedLiquidationPrice(<token>, <user_address>, <amount>)` - Price of aBNBc when user will be liquidated with additional amount of aBNBc deposited/withdraw
 * `borrowApr(<token>)` - Percent value, yearly APY with 6 decimals
-
-## ABIs
-[INTERACTION ABI](interfaces/DAOInteraction.json)
-
-[IERC20 ABI](interfaces/IERC20.json)
-
-## Addresses
-
-* "INTERACTION": [0xE8A954826660a78FFf62652FeD243E3fef262014](https://testnet.bscscan.com/address/0xE8A954826660a78FFf62652FeD243E3fef262014),
-* "mock aBNBc": [0x33284aFc0791F18011B86C2469A7625066345373](https://testnet.bscscan.com/address/0x33284aFc0791F18011B86C2469A7625066345373),
-* "REAL aBNBc": [0x46dE2FBAf41499f298457cD2d9288df4Eb1452Ab](https://testnet.bscscan.com/address/0x46dE2FBAf41499f298457cD2d9288df4Eb1452Ab),
-* "USB": [0x86A6bdb0101051a0F5FeeD0941055Bca74F21D6C](https://testnet.bscscan.com/address/0x86A6bdb0101051a0F5FeeD0941055Bca74F21D6C),
 
 ## String to bytes32
 
@@ -86,22 +74,11 @@ https://ethereum.stackexchange.com/a/23110
 ### View distribution APY
 `distributionApy()` - rate in percent (like borrowApr)
 
-### ABI
-[HelioRewards ABI](interfaces/HelioRewards.json)
-
-## Addresses
-* "HelioToken": [0x97BBBc81eBF1F130315b717b165Ebc9193a046Cd](https://testnet.bscscan.com/address/0x97BBBc81eBF1F130315b717b165Ebc9193a046Cd),
-* "HelioRewards": [0x7ad1585f12742D21BBDD0e3Ed8DdE279B55565e3](https://testnet.bscscan.com/address/0x7ad1585f12742D21BBDD0e3Ed8DdE279B55565e3),
-
 ## Liquidation (DEV env) 
 
 1. Provide collateral
 2. Borrow some hay, note the estimated liquidation price
 3. Set oracle price below your liquidation price 
-   1. [Testnet oracle explorer page](https://testnet.bscscan.com/address/0xE16aFa838a16F20213af35b5591898282f0164BE)
-   2. Use `setPrice` method. Set price with 18 decimals
-   3. Visit [interaction contract](https://testnet.bscscan.com/address/0x92fF29a418A7d815574FAaaF4A54bbf6069B8743)
-   4. Call `poke` method with this argument — `0x90c15Cd33f7B3b7dadCa7653419b493ABfC7B850` 
 4. Visit liquidation page on the frontend
 5. Note your address in the list and press `liquidate` button
 6. Your hBNB will be burned and you will receive any leftover in hay after liquidation happened
