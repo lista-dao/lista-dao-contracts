@@ -74,6 +74,8 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
         return transferFrom(msg.sender, dst, wad);
     }
     function transferFrom(address src, address dst, uint wad) public returns (bool) {
+        require(src != address(0), "Hay/transfer-from-zero-address");
+        require(dst != address(0), "Hay/transfer-to-zero-address");
         require(balanceOf[src] >= wad, "Hay/insufficient-balance");
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad, "Hay/insufficient-allowance");
@@ -85,12 +87,14 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
         return true;
     }
     function mint(address usr, uint wad) external auth {
+        require(usr != address(0), "Hay/mint-to-zero-address");
         require(totalSupply + wad <= supplyCap, "Hay/cap-reached");
         balanceOf[usr] += wad;
         totalSupply    += wad;
         emit Transfer(address(0), usr, wad);
     }
     function burn(address usr, uint wad) external {
+        require(usr != address(0), "Hay/burn-from-zero-address");
         require(balanceOf[usr] >= wad, "Hay/insufficient-balance");
         if (usr != msg.sender && allowance[usr][msg.sender] != type(uint256).max) {
             require(allowance[usr][msg.sender] >= wad, "Hay/insufficient-allowance");
@@ -148,8 +152,8 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
         address spender,
         uint256 amount
     ) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(owner != address(0), "Hay/approve-from-zero-address");
+        require(spender != address(0), "Hay/approve-to-zero-address");
 
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);
@@ -164,7 +168,7 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         address owner = msg.sender;
         uint256 currentAllowance = allowance[owner][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
+        require(currentAllowance >= subtractedValue, "Hay/decreased-allowance-below-zero");
         unchecked {
             _approve(owner, spender, currentAllowance - subtractedValue);
         }
