@@ -19,8 +19,9 @@
 
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /*
    "Put rewards in the jar and close it".
@@ -30,9 +31,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
    after exit delay.
 */
 
-contract Jar {
+contract Jar is Initializable {
     // --- Wrapper ---
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // --- Auth ---
     mapping (address => uint) public wards;
@@ -77,8 +78,8 @@ contract Jar {
     event Cage();
 
     // --- Init ---
-    constructor(string memory _name, string memory _symbol) {
-        wards[msg.sender] = 1;
+    function initialize(string memory _name, string memory _symbol) external initializer {
+       wards[msg.sender] = 1;
         live = 1;
         name = _name;
         symbol = _symbol;
@@ -149,7 +150,7 @@ contract Jar {
         lastUpdate = block.timestamp;
         endTime = block.timestamp + spread;
 
-        IERC20(HAY).safeTransferFrom(msg.sender, address(this), wad);
+        IERC20Upgradeable(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Replenished(wad);
     }
     function setSpread(uint _spread) external auth {
@@ -174,7 +175,7 @@ contract Jar {
         balanceOf[msg.sender] += wad;
         totalSupply += wad;
 
-        IERC20(HAY).safeTransferFrom(msg.sender, address(this), wad);
+        IERC20Upgradeable(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Join(msg.sender, wad);
     }
     function exit(uint256 wad) external update(msg.sender) {
@@ -200,7 +201,7 @@ contract Jar {
             if (_amount > 0) {
                 rewards[accounts[i]] = 0;
                 withdrawn[accounts[i]] = 0;
-                IERC20(HAY).safeTransfer(accounts[i], _amount);
+                IERC20Upgradeable(HAY).safeTransfer(accounts[i], _amount);
             }
         }
        
