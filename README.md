@@ -12,7 +12,7 @@ edit .env with your variables
 * **join** — ERC20 token adapters
 * **jug** — stability fee collector
 * **spot** — oracle price fetch
-* **usb** — stable coin
+* **hay** — stable coin
 * **vat** — core cdp vault
 * **vow** — vault balance sheet. Keeps track of surplus&debt
 
