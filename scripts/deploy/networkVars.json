@@ -22,6 +22,7 @@
     "COMMON": "COMMON_NETWORK_VARIABLES",
   
     "ilkString": "ceABNBc",
-    "multiSig": ""
+    "multiSig": "",
+    "whiteListOperator": "0x57F9672bA603251C9C03B36cabdBBcA7Ca8Cfcf4"
   }
   
