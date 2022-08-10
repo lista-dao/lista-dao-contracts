@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -10,8 +8,7 @@ import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
 
 import "./interfaces/VatLike.sol";
-import "./interfaces/HayLike.sol";
-import "./interfaces/HayGemLike.sol";
+import "./interfaces/HayJoinLike.sol";
 import "./interfaces/GemJoinLike.sol";
 import "./interfaces/JugLike.sol";
 import "./interfaces/DogLike.sol";
@@ -29,12 +26,10 @@ uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao, IAuctionProxy {
+contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
-
     function rely(address usr) external auth {wards[usr] = 1;}
-
     function deny(address usr) external auth {wards[usr] = 0;}
     modifier auth {
         require(wards[msg.sender] == 1, "Interaction/not-authorized");
@@ -43,8 +38,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
     VatLike public vat;
     SpotLike public spotter;
-    HayLike public hay;
-    HayGemLike public hayJoin;
+    IERC20Upgradeable public hay;
+    HayJoinLike public hayJoin;
     JugLike public jug;
     address public dog;
     IRewards public helioRewards;
@@ -55,11 +50,36 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet private usersInDebt; // todo: remove on launch - not used
-
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
-    function initialize(address vat_,
+    uint256 public whitelistMode;
+    address public whitelistOperator;
+    mapping(address => uint) public whitelist;
+    function enableWhitelist() external auth {whitelistMode = 1;}
+    function disableWhitelist() external auth {whitelistMode = 0;}
+    function setWhitelistOperator(address usr) external auth {
+        whitelistOperator = usr;
+    }
+    function addToWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            whitelist[usrs[i]] = 1;
+    }
+    function removeFromWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            whitelist[usrs[i]] = 0;
+    }
+    modifier whitelisted(address participant) {
+        if (whitelistMode == 1)
+            require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
+        _;
+    }
+    modifier operatorOrWard {
+        require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward"); 
+        _;
+    }
+
+    function initialize(
+        address vat_,
         address spot_,
         address hay_,
         address hayJoin_,
@@ -73,8 +93,8 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
-        hay = HayLike(hay_);
-        hayJoin = HayGemLike(hayJoin_);
+        hay = IERC20Upgradeable(hay_);
+        hayJoin = HayJoinLike(hayJoin_);
         jug = JugLike(jug_);
         dog = dog_;
         helioRewards = IRewards(rewards_);
@@ -84,8 +104,6 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         hay.approve(hayJoin_, type(uint256).max);
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
     function setCores(address vat_, address spot_, address hayJoin_,
         address jug_) public auth {
         // Reset previous approval
@@ -93,7 +111,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
 
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
-        hayJoin = HayGemLike(hayJoin_);
+        hayJoin = HayJoinLike(hayJoin_);
         jug = JugLike(jug_);
 
         vat.hope(hayJoin_);
@@ -151,7 +169,7 @@ contract Interaction is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDao
         address participant,
         address token,
         uint256 dink
-    ) external returns (uint256) {
+    ) external whitelisted(participant) returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 

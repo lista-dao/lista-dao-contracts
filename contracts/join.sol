@@ -19,8 +19,10 @@
 
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import "./interfaces/GemJoinLike.sol";
-import "./interfaces/HayGemLike.sol";
+import "./interfaces/HayJoinLike.sol";
 import "./interfaces/GemLike.sol";
 
 // FIXME: This contract was altered compared to the production version.
@@ -44,7 +46,7 @@ interface VatLike {
       - `GemJoin`: For well behaved ERC20 tokens, with simple transfer
                    semantics.
       - `ETHJoin`: For native Ether.
-      - `HayJoin`: For connecting internal Usb balances to an external
+      - `HayJoin`: For connecting internal Hay balances to an external
                    `DSToken` implementation.
     In practice, adapter implementations will be varied and specific to
     individual collateral types, accounting for different transfer
@@ -54,7 +56,7 @@ interface VatLike {
       - `exit`: remove collateral from the system
 */
 
-contract GemJoin is GemJoinLike {
+contract GemJoin is GemJoinLike, Initializable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth {
@@ -83,7 +85,7 @@ contract GemJoin is GemJoinLike {
     event Exit(address indexed usr, uint256 wad);
     event Cage();
 
-    constructor(address vat_, bytes32 ilk_, address gem_) {
+    function initialize(address vat_, bytes32 ilk_, address gem_) external initializer {
         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
@@ -111,7 +113,7 @@ contract GemJoin is GemJoinLike {
     }
 }
 
-contract HayJoin is HayGemLike {
+contract HayJoin is HayJoinLike, Initializable {
     // --- Auth ---
     mapping (address => uint) public wards;
     function rely(address usr) external auth {
@@ -128,7 +130,7 @@ contract HayJoin is HayGemLike {
     }
 
     VatLike public vat;      // CDP Engine
-    DSTokenLike public usb;  // Stablecoin Token
+    DSTokenLike public hay;  // Stablecoin Token
     uint    public live;     // Active Flag
 
     // Events
@@ -138,11 +140,11 @@ contract HayJoin is HayGemLike {
     event Exit(address indexed usr, uint256 wad);
     event Cage();
 
-    constructor(address vat_, address usb_) {
-        wards[msg.sender] = 1;
+    function initialize(address vat_, address hay_) external initializer {
+         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
-        usb = DSTokenLike(usb_);
+        hay = DSTokenLike(hay_);
     }
     function cage() external auth {
         live = 0;
@@ -156,13 +158,13 @@ contract HayJoin is HayGemLike {
     }
     function join(address usr, uint wad) external auth {
         vat.move(address(this), usr, mul(ONE, wad));
-        usb.burn(msg.sender, wad);
+        hay.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
     function exit(address usr, uint wad) external auth {
         require(live == 1, "HayJoin/not-live");
         vat.move(msg.sender, address(this), mul(ONE, wad));
-        usb.mint(usr, wad);
+        hay.mint(usr, wad);
         emit Exit(usr, wad);
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// clip.sol -- Usb auction module 2.0
+/// clip.sol -- Hay auction module 2.0
 
 // Copyright (C) 2020-2022 Dai Foundation
 //
@@ -18,6 +18,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma solidity ^0.8.10;
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "./interfaces/ClipperLike.sol";
 import "./interfaces/VatLike.sol";
@@ -44,7 +46,7 @@ interface AbacusLike {
     function price(uint256, uint256) external view returns (uint256);
 }
 
-contract Clipper is ClipperLike {
+contract Clipper is ClipperLike, Initializable {
     // --- Auth ---
     mapping (address => uint256) public wards;
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
@@ -55,11 +57,11 @@ contract Clipper is ClipperLike {
     }
 
     // --- Data ---
-    bytes32  immutable public ilk;   // Collateral type of this Clipper
-    VatLike  immutable public vat;   // Core CDP Engine
+    bytes32 public ilk;   // Collateral type of this Clipper
+    VatLike public vat;   // Core CDP Engine
 
     DogLike     public dog;      // Liquidation module
-    address     public vow;      // Recipient of usb raised in auctions
+    address     public vow;      // Recipient of hay raised in auctions
     SpotterLike public spotter;  // Collateral price module
     AbacusLike  public calc;     // Current price calculator
 
@@ -82,7 +84,7 @@ contract Clipper is ClipperLike {
     // 1: no new kick()
     // 2: no new kick() or redo()
     // 3: no new kick(), redo(), or take()
-    uint256 public stopped = 0;
+    uint256 public stopped;
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -122,13 +124,14 @@ contract Clipper is ClipperLike {
     event Yank(uint256 id);
 
     // --- Init ---
-    constructor(address vat_, address spotter_, address dog_, bytes32 ilk_) {
+    function initialize(address vat_, address spotter_, address dog_, bytes32 ilk_) external initializer {
         vat     = VatLike(vat_);
         spotter = SpotterLike(spotter_);
         dog     = DogLike(dog_);
         ilk     = ilk_;
         buf     = RAY;
         wards[msg.sender] = 1;
+        stopped = 0;
         emit Rely(msg.sender);
     }
 
@@ -229,7 +232,7 @@ contract Clipper is ClipperLike {
     //
     // Where `val` is the collateral's unitary value in USD, `buf` is a
     // multiplicative factor to increase the starting price, and `par` is a
-    // reference per USB.
+    // reference per HAY.
     function kick(
         uint256 tab,  // Debt                   [rad]
         uint256 lot,  // Collateral             [wad]
@@ -313,13 +316,13 @@ contract Clipper is ClipperLike {
 
     // Buy up to `amt` of collateral from the auction indexed by `id`.
     //
-    // Auctions will not collect more USB than their assigned USB target,`tab`;
-    // thus, if `amt` would cost more USB than `tab` at the current price, the
-    // amount of collateral purchased will instead be just enough to collect `tab` USB.
+    // Auctions will not collect more HAY than their assigned HAY target,`tab`;
+    // thus, if `amt` would cost more HAY than `tab` at the current price, the
+    // amount of collateral purchased will instead be just enough to collect `tab` HAY.
     //
     // To avoid partial purchases resulting in very small leftover auctions that will
     // never be cleared, any partial purchase must leave at least `Clipper.chost`
-    // remaining USB target. `chost` is an asynchronously updated value equal to
+    // remaining HAY target. `chost` is an asynchronously updated value equal to
     // (Vat.dust * Dog.chop(ilk) / WAD) where the values are understood to be determined
     // by whatever they were when Clipper.upchost() was last called. Purchase amounts
     // will be minimally decreased when necessary to respect this limit; i.e., if the
@@ -331,7 +334,7 @@ contract Clipper is ClipperLike {
     function take(
         uint256 id,           // Auction id
         uint256 amt,          // Upper limit on amount of collateral to buy  [wad]
-        uint256 max,          // Maximum acceptable price (USB / collateral) [ray]
+        uint256 max,          // Maximum acceptable price (HAY / collateral) [ray]
         address who,          // Receiver of collateral and external call address
         bytes calldata data   // Data to pass in external call; if length 0, no call is done
     ) external auth lock isStopped(3) {
@@ -361,10 +364,10 @@ contract Clipper is ClipperLike {
             // Purchase as much as possible, up to amt
             uint256 slice = min(lot, amt);  // slice <= lot
 
-            // USB needed to buy a slice of this sale
+            // HAY needed to buy a slice of this sale
             owe = mul(slice, price);
 
-            // Don't collect more than tab of USB
+            // Don't collect more than tab of HAY
             if (owe > tab) {
                 // Total debt will be paid
                 owe = tab;                  // owe' <= owe
@@ -399,10 +402,10 @@ contract Clipper is ClipperLike {
                 ClipperCallee(who).clipperCall(msg.sender, owe, slice, data);
             }
 
-            // Get USB from caller
+            // Get HAY from caller
             vat.move(msg.sender, vow, owe);
 
-            // Removes Usb out for liquidation from accumulator
+            // Removes HAY out for liquidation from accumulator
             dog_.digs(ilk, lot == 0 ? tab + owe : owe);
         }
 
