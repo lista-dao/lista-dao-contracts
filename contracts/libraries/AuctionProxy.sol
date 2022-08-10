@@ -62,7 +62,7 @@ library AuctionProxy {
     hay.transfer(keeper, hayBal);
   }
 
-  // Returns lefotver from auction
+  // Returns lefover from auction
   function buyFromAuction(
     uint256 auctionId,
     uint256 collateralAmount,
