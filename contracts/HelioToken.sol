@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-contract HelioToken is ERC20, ERC20Pausable {
+contract HelioToken is ERC20PausableUpgradeable {
 
     event MintedRewardsSupply(address rewardsContract, uint256 amount);
 
@@ -26,7 +25,9 @@ contract HelioToken is ERC20, ERC20Pausable {
         _;
     }
 
-    constructor(uint256 rewardsSupply_, address rewards_) ERC20("Helio Reward token", "HELIO"){
+    function initialize(uint256 rewardsSupply_, address rewards_) public initializer {
+        __ERC20_init_unchained("Helio Reward token", "HELIO");
+        __ERC20Pausable_init();
         wards[msg.sender] = 1;
         rewards = rewards_;
         _mint(rewards, rewardsSupply_);
@@ -45,11 +46,10 @@ contract HelioToken is ERC20, ERC20Pausable {
         return true;
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override(ERC20, ERC20Pausable) {
-        super._beforeTokenTransfer(from, to, amount);
+    function pause() external auth {
+        _pause();
+    }
+    function unpause() external auth {
+        _unpause();
     }
 }
