@@ -20,15 +20,15 @@ ReentrancyGuardUpgradeable
     /**
      * Variables
      */
-    address private _operator;
+    address public _operator;
     // Tokens
-    address private _certToken;
-    address private _ceToken;
-    ICertToken private _collateralToken; // (default hBNB)
-    ICerosRouter private _ceRouter;
-    IDao private _dao;
-    IBinancePool private _pool;
-    address private _proxy;
+    address public _certToken;
+    address public _ceToken;
+    ICertToken public _collateralToken; // (default hBNB)
+    ICerosRouter public _ceRouter;
+    IDao public _dao;
+    IBinancePool public _pool;
+    address public _proxy;
     /**
      * Modifiers
      */

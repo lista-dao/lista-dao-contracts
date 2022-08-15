@@ -22,6 +22,7 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "./interfaces/VatLike.sol";
+import "./interfaces/HayJoinLike.sol";
 
 contract Vow is Initializable {
     // --- Auth ---
@@ -45,16 +46,18 @@ contract Vow is Initializable {
     uint256 public dump;  // Flop initial lot size  [wad]
     uint256 public sump;  // Flop fixed bid size    [rad]
 
-    uint256 public bump;  // Flap fixed lot size    [rad]
-    uint256 public hump;  // Surplus buffer         [rad]
+    address public hayJoin; // Stablecoin address
+    uint256 public hump;    // Surplus buffer      [rad]
 
     uint256 public live;  // Active Flag
 
     // --- Init ---
-    function initialize(address vat_, address multisig_) external initializer {
+    function initialize(address vat_, address _hayJoin, address multisig_) external initializer {
         wards[msg.sender] = 1;
-        vat     = VatLike(vat_);
+        vat = VatLike(vat_);
+        hayJoin = _hayJoin;
         multisig = multisig_;
+        vat.hope(hayJoin);
         live = 1;
     }
 
@@ -76,7 +79,6 @@ contract Vow is Initializable {
     // --- Administration ---
     function file(bytes32 what, uint data) external auth {
         if (what == "wait") wait = data;
-        else if (what == "bump") bump = data;
         else if (what == "sump") sump = data;
         else if (what == "dump") dump = data;
         else if (what == "hump") hump = data;
@@ -85,6 +87,12 @@ contract Vow is Initializable {
 
     function file(bytes32 what, address data) external auth {
         if (what == "multisig") multisig = data;
+        else if (what == "hayjoin") { 
+            vat.nope(hayJoin);
+            hayJoin = data;
+            vat.hope(hayJoin);
+        }
+        else if (what == "vat") vat = VatLike(data);
         else revert("Vow/file-unrecognized-param");
     }
 
@@ -118,7 +126,8 @@ contract Vow is Initializable {
         require(vat.hay(address(this)) >= add(vat.sin(address(this)), hump), "Vow/insufficient-surplus");
         require(sub(vat.sin(address(this)), Sin) == 0, "Vow/debt-not-zero");
         uint rad = sub(vat.hay(address(this)), add(vat.sin(address(this)), hump));
-        vat.move(address(this), multisig, rad);
+        uint wad = rad / 1e27;
+        HayJoinLike(hayJoin).exit(multisig, wad);
     }
 
     function cage() external auth {

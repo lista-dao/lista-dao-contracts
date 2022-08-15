@@ -157,7 +157,7 @@ async function main() {
   console.log("Deployed: jug        : " + jug.address);
   console.log("Imp                  : " + jugImplementation);
 
-  const vow = await upgrades.deployProxy(this.Vow, [vat.address, _multiSig], {initializer: "initialize"});
+  const vow = await upgrades.deployProxy(this.Vow, [vat.address, hayJoin.address, _multiSig], {initializer: "initialize"});
   await vow.deployed();
   let vowImplementation = await upgrades.erc1967.getImplementationAddress(vow.address);
   console.log("Deployed: vow        : " + vow.address);
@@ -248,6 +248,7 @@ async function main() {
   console.log("Joins init...");
   await bnbJoin.rely(interaction.address);
   await hayJoin.rely(interaction.address);
+  // await hayJoin.rely(vow.address);
 
   console.log("Dog init...");
   await dog.rely(interaction.address);

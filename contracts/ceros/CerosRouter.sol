@@ -268,4 +268,25 @@ ReentrancyGuardUpgradeable
         _provider = provider;
         emit ChangeProvider(provider);
     }
+    function getProvider() external view returns(address) {
+        return _provider;
+    }
+    function getCeToken() external view returns(address) {
+        return address(_ceToken);
+    }
+    function getWbnbAddress() external view returns(address) {
+        return _wBnbAddress;
+    }
+    function getCertToken() external view returns(address) {
+        return address(_certToken);
+    }
+    function getPoolAddress() external view returns(address) {
+        return address(_pool);
+    }
+    function getDexAddress() external view returns(address) {
+        return address(_dex);
+    }
+    function getVaultAddress() external view returns(address) {
+        return address(_vault);
+    }
 }
