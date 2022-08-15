@@ -11,4 +11,4 @@ This directory the reports of audits performed on Helio smart contracts by diffe
 | Ceros, Helio | PeckShield | [`2022-05-25`](./PeckShield_250522.pdf) |
 | Helio        | SlowMist   | [`2022-05-10`](./SlowMist_100522.pdf)   |
 | Ceros        | SlowMist   | [`2022-05-24`](./SlowMist_240522.pdf)   |
-| Ceros, Helio | Veridise   | [`2022-06-27`](./Veridise_Helio.pdf)         |
+| Ceros, Helio | Veridise   | [`2022-06-27`](./Veridise_270622.pdf)         |
