@@ -49,6 +49,7 @@ contract HelioToken is ERC20PausableUpgradeable {
     function pause() external auth {
         _pause();
     }
+    
     function unpause() external auth {
         _unpause();
     }
