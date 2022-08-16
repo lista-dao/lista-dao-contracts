@@ -20,6 +20,7 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import "./interfaces/VatLike.sol";
 import "./interfaces/HayJoinLike.sol";
@@ -51,6 +52,9 @@ contract Vow is Initializable {
 
     uint256 public live;  // Active Flag
 
+    address public hay;  // Hay token
+    
+
     // --- Init ---
     function initialize(address vat_, address _hayJoin, address multisig_) external initializer {
         wards[msg.sender] = 1;
@@ -62,29 +66,15 @@ contract Vow is Initializable {
     }
 
     // --- Math ---
-    function add(uint x, uint y) internal pure returns (uint z) {
-        unchecked {
-            require((z = x + y) >= x);
-        }
-    }
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        unchecked {
-            require((z = x - y) <= x);
-        }
-    }
     function min(uint x, uint y) internal pure returns (uint z) {
         return x <= y ? x : y;
     }
 
     // --- Administration ---
     function file(bytes32 what, uint data) external auth {
-        if (what == "wait") wait = data;
-        else if (what == "sump") sump = data;
-        else if (what == "dump") dump = data;
-        else if (what == "hump") hump = data;
+        if (what == "hump") hump = data;
         else revert("Vow/file-unrecognized-param");
     }
-
     function file(bytes32 what, address data) external auth {
         if (what == "multisig") multisig = data;
         else if (what == "hayjoin") { 
@@ -92,40 +82,38 @@ contract Vow is Initializable {
             hayJoin = data;
             vat.hope(hayJoin);
         }
+        else if (what == "hay") hay = data;
         else if (what == "vat") vat = VatLike(data);
         else revert("Vow/file-unrecognized-param");
     }
 
     // Push to debt-queue
     function fess(uint tab) external auth {
-        sin[block.timestamp] = add(sin[block.timestamp], tab);
-        Sin = add(Sin, tab);
     }
     // Pop from debt-queue
     function flog(uint era) external {
-        require(add(era, wait) <= block.timestamp, "Vow/wait-not-finished");
-        Sin = sub(Sin, sin[era]);
-        sin[era] = 0;
     }
 
     // Debt settlement
     function heal(uint rad) external {
         require(rad <= vat.hay(address(this)), "Vow/insufficient-surplus");
-        require(rad <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
-        vat.heal(rad);
-    }
-    function kiss(uint rad) external {
-        require(rad <= Ash, "Vow/not-enough-ash");
-        require(rad <= vat.hay(address(this)), "Vow/insufficient-surplus");
-        Ash = sub(Ash, rad);
+        require(rad <= vat.sin(address(this)), "Vow/insufficient-debt");
         vat.heal(rad);
     }
 
+    function kiss(uint rad) external {
+    }
+
+    // Feed stablecoin to vow
+    function feed(uint wad) external {
+        IERC20Upgradeable(hay).transferFrom(msg.sender, address(this), wad);
+        IERC20Upgradeable(hay).approve(hayJoin, wad);
+        HayJoinLike(hayJoin).join(address(this), wad);
+    }
     // Send surplus to multisig
     function flap() external {
-        require(vat.hay(address(this)) >= add(vat.sin(address(this)), hump), "Vow/insufficient-surplus");
-        require(sub(vat.sin(address(this)), Sin) == 0, "Vow/debt-not-zero");
-        uint rad = sub(vat.hay(address(this)), add(vat.sin(address(this)), hump));
+        require(vat.hay(address(this)) >= vat.sin(address(this)) + hump, "Vow/insufficient-surplus");
+        uint rad = vat.hay(address(this)) - (vat.sin(address(this)) + hump);
         uint wad = rad / 1e27;
         HayJoinLike(hayJoin).exit(multisig, wad);
     }
