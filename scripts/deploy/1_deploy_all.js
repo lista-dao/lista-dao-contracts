@@ -230,9 +230,9 @@ async function main() {
   await vat.rely(dog.address);
   await vat.rely(clipCE.address);
   await vat.rely(interaction.address);
-  await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "500000000" + rad);
-  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("line"), "50000000" + rad);
-  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("dust"), "1" + ray);
+  await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "5000000" + rad);
+  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("line"), "5000000" + rad);
+  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("dust"), "100" + ray);
 
   console.log("Hay init...");
   await hay.rely(hayJoin.address);
@@ -248,23 +248,23 @@ async function main() {
   console.log("Joins init...");
   await bnbJoin.rely(interaction.address);
   await hayJoin.rely(interaction.address);
-  // await hayJoin.rely(vow.address);
+  await hayJoin.rely(vow.address);
 
   console.log("Dog init...");
   await dog.rely(interaction.address);
   await dog.rely(clipCE.address);
   await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
-  await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "500" + rad);
-  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("hole"), "250" + rad);
+  await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "50000000" + rad);
+  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("hole"), "50000000" + rad);
   await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
   await dog["file(bytes32,bytes32,address)"](ilkCE, ethers.utils.formatBytes32String("clip"), clipCE.address);
 
   console.log("Clip init...");
   await clipCE.rely(dog.address);
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
-  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "10800"); // 3h reset time
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
   await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), spot.address);
@@ -283,6 +283,7 @@ async function main() {
 
   console.log("Vow init...");
   await vow.rely(dog.address);
+  await vow["file(bytes32,address)"]("hay", hay.address);
 
   console.log("Interaction init...");
   await interaction.setHelioProvider(ceaBNBc.address, helioProvider.address); 
@@ -291,6 +292,9 @@ async function main() {
   await interaction.drip(ceaBNBc.address, {gasLimit: 200000});
   await interaction.enableWhitelist(); // Deposits are limited to whitelist
   await interaction.setWhitelistOperator(whitelistOperatorAddress); // Whitelist manager
+
+  console.log("Abaci init...");
+  await abaci.file(ethers.utils.formatBytes32String("tau"), "36000");
 
   // Store deployed addresses
   const addresses = {
