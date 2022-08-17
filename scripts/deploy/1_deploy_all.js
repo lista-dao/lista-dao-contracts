@@ -18,13 +18,13 @@ async function main() {
   let whitelistOperatorAddress;
 
   if (hre.network.name == "bsc") {
-      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./networkVars.json'); // mainnet
+      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // mainnet
       _aBNBc = m_aBNBc; _wBnb = m_wBnb; _aBnbb = m_aBnbb; _dex = m_dex; _pool = m_pool, _multiSig = multiSig;
       whitelistOperatorAddress = whiteListOperator;
       chainId = ethers.BigNumber.from(m_chainID);
       ilkCE = ethers.utils.formatBytes32String(ilkString);
   } else if (hre.network.name == "bsc_testnet") {
-      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./networkVars.json'); // testnet
+      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // testnet
       _aBNBc = t_aBNBc; _wBnb = t_wBnb; _aBnbb = t_aBnbb; _dex = t_dex; _pool = t_pool, _multiSig = multiSig;
       whitelistOperatorAddress = whiteListOperator;
       chainId = ethers.BigNumber.from(t_chainID);
@@ -283,7 +283,7 @@ async function main() {
 
   console.log("Vow init...");
   await vow.rely(dog.address);
-  await vow["file(bytes32,address)"]("hay", hay.address);
+  await vow["file(bytes32,address)"](ethers.utils.formatBytes32String("hay"), hay.address);
 
   console.log("Interaction init...");
   await interaction.setHelioProvider(ceaBNBc.address, helioProvider.address); 
