@@ -4,18 +4,16 @@ const {ether} = require("@openzeppelin/test-helpers");
 const { withDefaults } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 
 ///////////////////////////////////////////////////////////////////////////////////
-// Note: This script is meant to be used before full release. Not for production.//
-///////////////////////////////////////////////////////////////////////////////////
-//             Caution: Never set the current WARD to the same WARD.             //
+//                  Caution: Caller should not be the new WARD.                  //
 ///////////////////////////////////////////////////////////////////////////////////
 
 let dead_address = "0x000000000000000000000000000000000000dEaD";
 
 async function main() {
 
-  /*****OWNERSHIP TRANSFER*****/
   [deployer] = await ethers.getSigners();
 
+  // Load contracts
   this.CeaBNBc = await hre.ethers.getContractFactory("CeToken");
   this.CeVault = await hre.ethers.getContractFactory("CeVault");
   this.HBnb = await hre.ethers.getContractFactory("hBNB");
@@ -48,27 +46,28 @@ async function main() {
   let _multisig1, _multisig2, _multisig3, _multisig4;
 
   let _ceabnbc, 
-   _cevault, 
-   _hbnb, 
-   _cerosrouter,
-   _helioprovider,
-   _vat,
-   _spot,
-   _hay,
-   _gemjoin,
-   _hayjoin,
-   _oracle,
-   _jug,
-   _vow,
-   _dog,
-   _clip,
-   _abaci,
-//    _heliotoken,
+    _cevault, 
+    _hbnb, 
+    _cerosrouter,
+    _helioprovider,
+    _vat,
+    _spot,
+    _hay,
+    _gemjoin,
+    _hayjoin,
+    _oracle,
+    _jug,
+    _vow,
+    _dog,
+    _clip,
+    _abaci,
+    // _heliotoken,
    _heliorewards,
-//    _heliooracle,
+    // _heliooracle,
    _auctionproxy,
    _interaction;
   
+  // Load addresses
   if (hre.network.name == "bsc") {
     const {m_ceaBNBc, m_ceVault, m_hBNB, m_cerosRouter, m_abaci, m_oracle, m_vat, m_spot, m_hay
     , m_hayJoin, m_bnbJoin, m_jug, m_vow, m_dog, m_clipCE, m_rewards, m_interaction, m_AuctionLib, m_helioProvider,
@@ -85,6 +84,7 @@ async function main() {
     _multisig1 = multisig1, _multisig2 = multisig2, _multisig3 = multisig3, _multisig4 = multisig4;
   }
 
+  // Attach contracts to addresses
   let ceabnbc = await this.CeaBNBc.attach(_ceabnbc);
   let cevault = await this.CeVault.attach(_cevault);
   let hbnb = await this.HBnb.attach(_hbnb);
@@ -101,14 +101,18 @@ async function main() {
   let dog = await this.Dog.attach(_dog);
   let clip = await this.Clip.attach(_clip);
   let abaci = await this.Abaci.attach(_abaci);
-//   let heliotoken = await this.HelioToken.attach();
+  // let heliotoken = await this.HelioToken.attach();
   let heliorewards = await this.HelioRewards.attach(_heliorewards);
-//   let heliooracle = await this.HelioOracle.attach();
+  // let heliooracle = await this.HelioOracle.attach();
   let auctionproxy = await this.AuctionProxy.attach(_auctionproxy);
   let interaction = await this.Interaction.attach(_interaction);
 
-  console.log("HOLD YOUR HORSES !");
-  console.log("STARTING TRANSFER OF OWNERSHIPS !")
+  // WARD transfer to self will result in loss of contract
+  if (_multisig3 == deployer.address || _multisig2 == deployer.address) 
+    throw new Error("same-addresses");
+
+  console.log("---------------------------");
+  console.log("Initializing ownerships transfer...")
 
   // MULTISIG 4
   await ceabnbc.transferOwnership(_multisig4);
@@ -184,22 +188,22 @@ async function main() {
   await heliorewards.deny(deployer.address);
   console.log("heliorewards denied to   : " + deployer.address);
   await heliorewards.transferOwnership(dead_address); // Dead Address
-  console.log("heliorewars transfered to: " + dead_address);
+  console.log("helioreward transfer to  : " + dead_address);
 
   await interaction.disableWhitelist(); // Whitelist DISABLED
-  console.log("WHITELIST DISABLED !");
+  console.log("whitelist disabled.");
   await interaction.rely(_multisig2);
-  console.log("interaction relied to     : " + _multisig2);
+  console.log("interaction relied to    : " + _multisig2);
   await interaction.deny(deployer.address);
-  console.log("interaction denied to     : " + deployer.address);
+  console.log("interaction denied to    : " + deployer.address);
   await interaction.transferOwnership(dead_address); // Dead Address
-  console.log("interaction transfer to   : " + dead_address);
+  console.log("interaction transfer to  : " + dead_address);
 
   await helioprovider.transferOwnership(_multisig2)
-  console.log("helioprovider transfer to : " + _multisig2);
+  console.log("helioprovider transfer to: " + _multisig2);
 
-  console.log("TRANSFER OF OWNERSHIPS COMPLETED !");
-  console.log("DON'T FORGET PROXY ADMIN OWNERSHIP TRANDFER !");
+  console.log("---------------------------");
+  console.log("Ownerships transfer complete...");
 
   // MULTISIG 1
   // THE PROXY ADMIN OWNERSHIP WILL BE TRANSFERED FROM BSC-SCAN
