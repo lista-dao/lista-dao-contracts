@@ -6,6 +6,8 @@ const { withDefaults } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 ///////////////////////////////////////////////////////////////////////////////////
 // Note: This script is meant to be used before full release. Not for production.//
 ///////////////////////////////////////////////////////////////////////////////////
+//             Caution: Never set the current WARD to the same WARD.             //
+///////////////////////////////////////////////////////////////////////////////////
 
 let dead_address = "0x000000000000000000000000000000000000dEaD";
 
@@ -159,6 +161,8 @@ async function main() {
   await jug.deny(deployer.address);
   console.log("jug denied to            : " + deployer.address);
 
+  await vow["file(bytes32,address)"](ethers.utils.formatBytes32String("multisig"), _multisig3); // Surplus Wallet
+  console.log("vow surplus multisig set : " + _multisig3);
   await vow.rely(_multisig3);
   console.log("vow relied to            : " + _multisig3);
   await vow.deny(deployer.address);
