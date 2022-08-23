@@ -22,6 +22,7 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 /*
    "Put rewards in the jar and close it".
@@ -31,7 +32,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
    after exit delay.
 */
 
-contract Jar is Initializable {
+contract Jar is Initializable, ReentrancyGuardUpgradeable {
     // --- Wrapper ---
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -52,23 +53,26 @@ contract Jar is Initializable {
     mapping(address => uint) public balanceOf;
 
     // --- Reward Data ---
-    uint public spread;      // Distribution time     [sec]
-    uint public endTime;     // Time "now" + spread   [sec]
-    uint public rate;        // Emission per second   [wad]
-    uint public tps;         // HAY tokens per share  [wad]
-    uint public lastUpdate;  // Last tps update       [sec]
-    uint public exitDelay;   // User unstake delay    [sec]
-    address public HAY;      // The HAY Stable Coin
+    uint public spread;          // Distribution time     [sec]
+    uint public endTime;         // Time "now" + spread   [sec]
+    uint public rate;            // Emission per second   [wad]
+    uint public tps;             // HAY tokens per share  [wad]
+    uint public lastUpdate;      // Last tps update       [sec]
+    uint public exitDelay;       // User unstake delay    [sec]
+    uint public flashLoanDelay;  // Anti flash loan time  [sec]
+    address public HAY;          // The HAY Stable Coin
 
     mapping(address => uint) public tpsPaid;      // HAY per share paid
     mapping(address => uint) public rewards;      // Accumulated rewards
     mapping(address => uint) public withdrawn;    // Capital withdrawn
     mapping(address => uint) public unstakeTime;  // Time of Unstake
+    mapping(address => uint) public stakeTime;    // Time of Stake
+
+    mapping(address => uint) public operators;  // Operators of contract
 
     uint    public live;     // Active Flag
 
     // --- Events ---
-    event Initialized(address indexed token, uint indexed duration, uint indexed exitDelay);
     event Replenished(uint reward);
     event SpreadUpdated(uint newDuration);
     event ExitDelayUpdated(uint exitDelay);
@@ -78,11 +82,16 @@ contract Jar is Initializable {
     event Cage();
 
     // --- Init ---
-    function initialize(string memory _name, string memory _symbol) external initializer {
-       wards[msg.sender] = 1;
-        live = 1;
+    function initialize(string memory _name, string memory _symbol, address _hayToken, uint _spread, uint _exitDelay, uint _flashLoanDelay) external initializer {
+        __ReentrancyGuard_init();
+        wards[msg.sender] = 1;
         name = _name;
         symbol = _symbol;
+        HAY = _hayToken;
+        spread = _spread;
+        exitDelay = _exitDelay;
+        flashLoanDelay = _flashLoanDelay;
+        live = 1;
     }
 
     // --- Math ---
@@ -98,6 +107,10 @@ contract Jar is Initializable {
             rewards[account] = earned(account);
             tpsPaid[account] = tps;
         }
+        _;
+    }
+    modifier authOrOperator {
+        require(operators[msg.sender] == 1 || wards[msg.sender] == 1, "Jar/not-auth-or-operator");
         _;
     }
 
@@ -116,52 +129,49 @@ contract Jar is Initializable {
         uint perToken = tokensPerShare() - tpsPaid[account];
         return ((balanceOf[account] * perToken) / 1e18) + rewards[account];
     }
-    function redeemable(address account) public view returns (uint) {
-        return balanceOf[account] + earned(account);
-    }
-    function getRewardForDuration() external view returns (uint) {
-        return rate * spread;
-    }
-    function getAPR() external view returns (uint) {
-        if(spread == 0 || totalSupply == 0) {
-            return 0;
-        }
-        return ((rate * 31536000 * 1e18) / totalSupply) * 100;
-    }
 
-    // --- Administration ---
-    function initialize(address _hayToken, uint _spread, uint _exitDelay) public auth {
-        require(spread == 0);
-        HAY = _hayToken;
-        spread = _spread;
-        exitDelay = _exitDelay;
-        emit Initialized(HAY, spread, exitDelay);
-    }
-    
-    // Can be called by anybody. In order to fill the contract with additional funds
-    function replenish(uint wad) external update(address(0)) {
+    // --- Administration --
+    function replenish(uint wad, bool newSpread) external authOrOperator update(address(0)) {
+        uint timeline = spread;
         if (block.timestamp >= endTime) {
-            rate = wad / spread;
+            rate = wad / timeline;
         } else {
             uint remaining = endTime - block.timestamp;
             uint leftover = remaining * rate;
-            rate = (wad + leftover) / spread;
+            timeline = newSpread ? spread : remaining;
+            rate = (wad + leftover) / timeline;
         }
         lastUpdate = block.timestamp;
-        endTime = block.timestamp + spread;
+        endTime = block.timestamp + timeline;
 
         IERC20Upgradeable(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Replenished(wad);
     }
-    function setSpread(uint _spread) external auth {
-        require(block.timestamp > endTime, "Jar/rewards-active");
+    function setSpread(uint _spread) external authOrOperator {
         require(_spread > 0, "Jar/duration-non-zero");
         spread = _spread;
         emit SpreadUpdated(_spread);
     }
-    function setExitDelay(uint _exitDelay) external auth {
+    function setExitDelay(uint _exitDelay) external authOrOperator {
         exitDelay = _exitDelay;
         emit ExitDelayUpdated(_exitDelay);
+    }
+    function addOperator() external auth {
+        operators[msg.sender] = 1;
+    }
+    function removeOperator() external auth {
+        operators[msg.sender] = 0;
+    }
+    function extractDust() external auth {
+        uint leftover;
+        if (block.timestamp < endTime) {
+            uint remaining = endTime - block.timestamp;
+            leftover = remaining * rate;
+        }
+        uint dust = IERC20Upgradeable(HAY).balanceOf(address(this)) - (totalSupply + leftover);
+        if (dust != 0) {
+            IERC20Upgradeable(HAY).safeTransfer(msg.sender, dust);
+        }
     }
     function cage() external auth {
         live = 0;
@@ -169,17 +179,19 @@ contract Jar is Initializable {
     }
 
     // --- User ---
-    function join(uint256 wad) external update(msg.sender) {
+    function join(uint256 wad) external update(msg.sender) nonReentrant {
         require(live == 1, "Jar/not-live");
 
         balanceOf[msg.sender] += wad;
         totalSupply += wad;
+        stakeTime[msg.sender] = block.timestamp + flashLoanDelay;
 
         IERC20Upgradeable(HAY).safeTransferFrom(msg.sender, address(this), wad);
         emit Join(msg.sender, wad);
     }
-    function exit(uint256 wad) external update(msg.sender) {
+    function exit(uint256 wad) external update(msg.sender) nonReentrant {
         require(live == 1, "Jar/not-live");
+        require(block.timestamp > stakeTime[msg.sender], "Jar/flash-loan-delay");
         require(wad > 0);
 
         balanceOf[msg.sender] -= wad;        
@@ -189,8 +201,8 @@ contract Jar is Initializable {
 
         emit Exit(msg.sender, wad);
     }
-    function redeemBatch(address[] memory accounts) external {
-        // Target is to allow direct and on-behalf redemption
+    function redeemBatch(address[] memory accounts) external nonReentrant {
+        // Allow direct and on-behalf redemption
         require(live == 1, "Jar/not-live");
 
         for (uint i = 0; i < accounts.length; i++) {
