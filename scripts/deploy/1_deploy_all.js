@@ -221,6 +221,7 @@ async function main() {
   console.log("Ceros init...");
   await hBNB.changeMinter(helioProvider.address);
   await cerosRouter.changeProvider(helioProvider.address);
+  await helioProvider.changeProxy(interaction.address);
 
   console.log("Core init...");
   await vat.rely(bnbJoin.address);
@@ -260,6 +261,7 @@ async function main() {
   await dog["file(bytes32,bytes32,address)"](ilkCE, ethers.utils.formatBytes32String("clip"), clipCE.address);
 
   console.log("Clip init...");
+  await clipCE.rely(interaction.address);
   await clipCE.rely(dog.address);
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
   await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "10800"); // 3h reset time
