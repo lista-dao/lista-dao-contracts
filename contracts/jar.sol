@@ -48,7 +48,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     // --- Derivative ---
     string public name;
     string public symbol;
-    uint8 public decimals = 18;
+    uint8 public decimals;
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
 
@@ -85,6 +85,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     function initialize(string memory _name, string memory _symbol, address _hayToken, uint _spread, uint _exitDelay, uint _flashLoanDelay) external initializer {
         __ReentrancyGuard_init();
         wards[msg.sender] = 1;
+        decimals = 18;
         name = _name;
         symbol = _symbol;
         HAY = _hayToken;
@@ -156,11 +157,11 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         exitDelay = _exitDelay;
         emit ExitDelayUpdated(_exitDelay);
     }
-    function addOperator() external auth {
-        operators[msg.sender] = 1;
+    function addOperator(address _operator) external auth {
+        operators[_operator] = 1;
     }
-    function removeOperator() external auth {
-        operators[msg.sender] = 0;
+    function removeOperator(address _operator) external auth {
+        operators[_operator] = 0;
     }
     function extractDust() external auth {
         uint leftover;
