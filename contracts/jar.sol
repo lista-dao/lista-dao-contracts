@@ -76,6 +76,8 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     event Replenished(uint reward);
     event SpreadUpdated(uint newDuration);
     event ExitDelayUpdated(uint exitDelay);
+    event OperatorSet(address operator);
+    event OperatorUnset(address operator);
     event Join(address indexed user, uint indexed amount);
     event Exit(address indexed user, uint indexed amount);
     event Redeem(address[] indexed user);
@@ -159,17 +161,15 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     }
     function addOperator(address _operator) external auth {
         operators[_operator] = 1;
+        emit OperatorSet(_operator);
     }
     function removeOperator(address _operator) external auth {
         operators[_operator] = 0;
+        emit OperatorUnset(_operator);
     }
     function extractDust() external auth {
-        uint leftover;
-        if (block.timestamp < endTime) {
-            uint remaining = endTime - block.timestamp;
-            leftover = remaining * rate;
-        }
-        uint dust = IERC20Upgradeable(HAY).balanceOf(address(this)) - (totalSupply + leftover);
+        require(block.timestamp >= endTime, "Jar/in-distribution");
+        uint dust = IERC20Upgradeable(HAY).balanceOf(address(this)) - totalSupply;
         if (dust != 0) {
             IERC20Upgradeable(HAY).safeTransfer(msg.sender, dust);
         }
@@ -193,11 +193,12 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     function exit(uint256 wad) external update(msg.sender) nonReentrant {
         require(live == 1, "Jar/not-live");
         require(block.timestamp > stakeTime[msg.sender], "Jar/flash-loan-delay");
-        require(wad > 0);
 
-        balanceOf[msg.sender] -= wad;        
-        totalSupply -= wad;
-        withdrawn[msg.sender] += wad;
+        if (wad > 0) {
+            balanceOf[msg.sender] -= wad;        
+            totalSupply -= wad;
+            withdrawn[msg.sender] += wad;
+        }
         unstakeTime[msg.sender] = block.timestamp + exitDelay;
 
         emit Exit(msg.sender, wad);
