@@ -74,7 +74,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         _;
     }
     modifier operatorOrWard {
-        require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward"); 
+        require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward");
         _;
     }
 
@@ -192,7 +192,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         deposits[token] += dink;
 
-        emit Deposit(participant, dink);
+        emit Deposit(participant, token, dink, locked(token, participant));
         return dink;
     }
 
@@ -232,7 +232,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
-        emit Borrow(msg.sender, token, hayAmount, liqPrice);
+        emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
     }
 

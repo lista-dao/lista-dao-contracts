@@ -12,8 +12,8 @@ import "../../interfaces/GemJoinLike.sol";
 
 interface IDao {
 
-    event Deposit(address indexed user, uint256 amount);
-    event Borrow(address indexed user, address collateral, uint256 amount, uint256 liquidationPrice);
+    event Deposit(address indexed user, address collateral, uint256 amount, uint256 totalAmount);
+    event Borrow(address indexed user, address collateral, uint256 collateralAmount, uint256 amount, uint256 liquidationPrice);
     event Payback(address indexed user, address collateral, uint256 amount, uint256 debt, uint256 liquidationPrice);
     event Withdraw(address indexed user, uint256 amount);
     event CollateralEnabled(address token, bytes32 ilk);
