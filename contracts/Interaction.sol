@@ -133,12 +133,18 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         require(collaterals[token].live == 0, "Interaction/token-already-init");
         vat.init(ilk);
         jug.init(ilk);
-        jug.file(ilk, "duty", 0);
         spotter.file(ilk, "mat", mat);
         collaterals[token] = CollateralType(GemJoinLike(gemJoin), ilk, 1, clip);
         IERC20Upgradeable(token).safeApprove(gemJoin, type(uint256).max);
         vat.rely(gemJoin);
         emit CollateralEnabled(token, ilk);
+    }
+
+    function setCollateralDuty(address token, uint data) external auth {
+        CollateralType memory collateralType = collaterals[token];
+        _checkIsLive(collateralType.live);
+        jug.drip(collateralType.ilk);
+        jug.file(collateralType.ilk, "duty", data);
     }
 
     function setHelioProvider(address token, address helioProvider) external auth {
@@ -383,7 +389,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     // User collateral in ceABNBc
-    function locked(address token, address usr) external view returns (uint256) {
+    function locked(address token, address usr) public view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
