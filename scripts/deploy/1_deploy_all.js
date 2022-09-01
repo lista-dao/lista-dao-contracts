@@ -280,7 +280,8 @@ async function main() {
   // 1000000000627937192491029810 2% Borrow Rate
   // 1000000000937303470807876290 3% Borrow Rate
   // 1000000003022266000000000000 10% Borrow Rate
-  await jug["file(bytes32,uint256)"](ethers.utils.formatBytes32String("base"), "1000000000627937192491029810");
+  // ***We don't set base rate. We set only duty rate via interaction***
+  // await jug["file(bytes32,uint256)"](ethers.utils.formatBytes32String("base"), "1000000000627937192491029810");
   await jug["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
 
   console.log("Vow init...");
@@ -294,6 +295,7 @@ async function main() {
   await interaction.drip(ceaBNBc.address, {gasLimit: 200000});
   await interaction.enableWhitelist(); // Deposits are limited to whitelist
   await interaction.setWhitelistOperator(whitelistOperatorAddress); // Whitelist manager
+  await interaction.setCollateralDuty(ceaBNBc.address, "1000000000627937192491029810");
 
   console.log("Abaci init...");
   await abaci.file(ethers.utils.formatBytes32String("tau"), "36000");
