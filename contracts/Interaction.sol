@@ -147,6 +147,16 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         jug.file(collateralType.ilk, "duty", data);
     }
 
+    function removeBaseRate(address token) external auth {
+        CollateralType memory collateralType = collaterals[token];
+        _checkIsLive(collateralType.live);
+
+        jug.drip(collateralType.ilk);
+        jug.file(collateralType.ilk, "duty", jug.base());
+        jug.file("base", 0);
+        jug.drip(collateralType.ilk);
+    }
+
     function setHelioProvider(address token, address helioProvider) external auth {
         helioProviders[token] = helioProvider;
     }
