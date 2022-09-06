@@ -11,4 +11,6 @@ interface JugLike {
     function init(bytes32 ilk) external;
 
     function file(bytes32 ilk, bytes32 what, uint data) external;
+
+    function file(bytes32 what, uint data) external;
 }
