@@ -209,4 +209,8 @@ ReentrancyGuardUpgradeable
         _collateralToken = ICertToken(collateralToken);
         emit ChangeCollateralToken(collateralToken);
     }
+    function changeOperator(address operator) external onlyOwner {
+        _operator = operator;
+        emit ChangeOperator(operator);
+    }
 }
