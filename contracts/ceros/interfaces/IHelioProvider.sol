@@ -24,6 +24,8 @@ interface IHelioProvider {
 
     event ChangeProxy(address auctionProxy);
 
+    event ChangeOperator(address operator);
+
     /**
      * Deposit
      */
