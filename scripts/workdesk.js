@@ -51,11 +51,11 @@ async function main() {
   console.log("Addresses Recorded to: " + `../${network.name}_addresses.json`);
 
   // Verify
-  await hre.run("verify:verify", {address: dog.address});
-  await hre.run("verify:verify", {address: vow.address});
-  await hre.run("verify:verify", {address: hay.address});
-  await hre.run("verify:verify", {address: int.address});
-  await hre.run("verify:verify", {address: auctionProxy.address});
+  // await hre.run("verify:verify", {address: dog.address});
+  // await hre.run("verify:verify", {address: vow.address});
+  // await hre.run("verify:verify", {address: hay.address});
+  // await hre.run("verify:verify", {address: int.address});
+  // await hre.run("verify:verify", {address: auctionProxy.address});
 }
 
 main()
