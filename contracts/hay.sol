@@ -37,7 +37,7 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
     }
 
     // --- ERC20 Data ---
-    string  public constant name     = "Hay Stablecoin";
+    string  public constant name     = "Hay Destablecoin";
     string  public symbol;
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
@@ -180,5 +180,15 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
         uint256 oldCap = supplyCap;
         supplyCap = wad;
         emit SupplyCapSet(oldCap, supplyCap);
+    }
+
+    function updateDomainSeparator(uint256 chainId_) external auth {
+        DOMAIN_SEPARATOR = keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes(name)),
+            keccak256(bytes(version)),
+            chainId_,
+            address(this)
+        ));
     }
 }
