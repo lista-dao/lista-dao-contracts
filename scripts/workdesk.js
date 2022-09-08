@@ -3,73 +3,60 @@ const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
 const {ether} = require("@openzeppelin/test-helpers");
 
-
 async function main() {
 
   let [deployer] = await ethers.getSigners();
 
   // Contracts Fetching
-//   this.ElipsisMediator = await hre.ethers.getContractFactory("ElipsisMediator");
-  this.Jar = await hre.ethers.getContractFactory("Jar");
-  this.HelioProvider = await hre.ethers.getContractFactory("HelioProvider");
+  this.Dog = await hre.ethers.getContractFactory("Dog");
+  this.Vow = await hre.ethers.getContractFactory("Vow");
+  this.Hay = await hre.ethers.getContractFactory("Hay");
+  this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
 
-  // Contracts Deployment
-//   let jar = await Jar.deploy();
-//   console.log("Deployed: Jug        : " + jar.address);
+  const auctionProxy = await this.AuctionProxy.deploy();
+  await auctionProxy.deployed();
+  this.Interaction = await hre.ethers.getContractFactory("Interaction", {
+    unsafeAllow: ["external-library-linking"],
+    libraries: {
+      AuctionProxy: auctionProxy.address,
+    },
+  });
 
-//   let em = await upgrades.deployProxy(this.ElipsisMediator, ["0x305A3c22170065003a9BC9ea17fF95999102E785"], {initializer: "initialize"});
-//   await em.deployed();
-//   let emImp = await upgrades.erc1967.getImplementationAddress(em.address);
-//   console.log("Deployed: Mediator   : " + em.address);
-//   console.log("Imp                  : " + emImp);
+  let dog = await this.Dog.deploy();
+  await dog.deployed();
+  let vow = await this.Vow.deploy();
+  await vow.deployed();
+  let hay = await this.Hay.deploy();
+  await hay.deployed();
+  let int = await this.Interaction.deploy();
+  await int.deployed();
 
-  let helioProvider = await this.HelioProvider.deploy();
-  await helioProvider.deployed();
-  console.log("HelioProvider: " + helioProvider.address);
+  console.log("Dog: " + dog.address);
+  console.log("Vow: " + vow.address);
+  console.log("Hay: " + hay.address);
+  console.log("Int: " + int.address);
+  console.log("Lib: " + auctionProxy.address);
+  
+  // Store deployed addresses
+  const addresses = {
+    Dog: dog.address,
+    Vow: vow.address,
+    Hay: hay.address,
+    Int: int.address,
+    Lib: auctionProxy.address
+  }
 
-  // Contracts Initialization
-//   await em.relyOperator("0x87e70D500E4ef21b28F0949E1650a3873e74ec9c");
-
-  // Upgrades
-//   const admin_slot = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
-  const jarProxy = "0x0a1Fd12F73432928C190CAF0810b3B767A59717e";
-
-//   const proxyAddress = await ethers.provider.getStorageAt(jarProxy, admin_slot);
-//   const PROXY_ADMIN_ABI = ["function upgrade(address proxy, address implementation) public"]
-
-//   const proxyAdminAddress = parseAddress(proxyAddress);
-//   let proxyAdmin = await ethers.getContractAt(PROXY_ADMIN_ABI, proxyAdminAddress);
-
-//   if (proxyAdminAddress != ethers.constants.AddressZero) {
-//     await (await proxyAdmin.upgrade(jarProxy, jar.address)).wait();
-//     console.log("Upgraded Successfully...")
-//   } else {
-//     console.log("Invalid proxyAdmin address");
-//   }
-
-  // Update Jar vars
-  let jarContract = await ethers.getContractAt("Jar", jarProxy);
-  await jarContract.addOperator("0x87e70D500E4ef21b28F0949E1650a3873e74ec9c");
-  await jarContract.removeOperator("0x57F9672bA603251C9C03B36cabdBBcA7Ca8Cfcf4");
-  await jarContract.setExitDelay(0);
-  await jarContract.setSpread(604800);
-  await jarContract.rely("0x8d388136d578dCD791D081c6042284CED6d9B0c6");
-  await jarContract.deny(deployer.address);
+  const json_addresses = JSON.stringify(addresses);
+  fs.writeFileSync(`../${network.name}_addresses.json`, json_addresses);
+  console.log("Addresses Recorded to: " + `../${network.name}_addresses.json`);
 
   // Verify
-  await hre.run("verify:verify", {address: helioProvider.address});
-//   await hre.run("verify:verify", {address: jar.address});
-//   await hre.run("verify:verify", {address: emImp.address});
+  await hre.run("verify:verify", {address: dog.address});
+  await hre.run("verify:verify", {address: vow.address});
+  await hre.run("verify:verify", {address: hay.address});
+  await hre.run("verify:verify", {address: int.address});
+  await hre.run("verify:verify", {address: auctionProxy.address});
 }
-
-// function parseAddress(addressString){
-//     const buf = Buffer.from(addressString.replace(/^0x/, ''), 'hex');
-//     if (!buf.slice(0, 12).equals(Buffer.alloc(12, 0))) {
-//       return undefined;
-//     }
-//     const address = '0x' + buf.toString('hex', 12, 32); // grab the last 20 bytes
-//     return ethers.utils.getAddress(address);
-//   }
 
 main()
     .then(() => process.exit(0))

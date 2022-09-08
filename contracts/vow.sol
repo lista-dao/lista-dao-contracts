@@ -87,21 +87,11 @@ contract Vow is Initializable {
         else revert("Vow/file-unrecognized-param");
     }
 
-    // Push to debt-queue
-    function fess(uint tab) external auth {
-    }
-    // Pop from debt-queue
-    function flog(uint era) external {
-    }
-
     // Debt settlement
     function heal(uint rad) external {
         require(rad <= vat.hay(address(this)), "Vow/insufficient-surplus");
         require(rad <= vat.sin(address(this)), "Vow/insufficient-debt");
         vat.heal(rad);
-    }
-
-    function kiss(uint rad) external {
     }
 
     // Feed stablecoin to vow
