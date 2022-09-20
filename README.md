@@ -21,14 +21,17 @@ edit .env with your variables
 * **HelioToken** — rewards token
 * **HelioOracle** - rewards token oracle
 
-### Ceros
+### Ceros contracts
 * **CerosRouter** — finds the best way to obtain aBNBc.
 * **CeToken** — underlying collateral token inside makerDao
 * **CeVault** — stores obtained aBNBc
 * **HelioProvider** — wraps BNB into ceABNBc via _CerosRouter_
 
-### Interaction
+### Interaction contract
 * **Interaction** — proxy for makerDao contracts. 
 Provide deposit&withdraw and borrow&payback functions for end users
 * **AuctionProxy** — entrypoint for auction methods.
 End users can start auctions and participate in it via this contract
+
+### Unit Testing
+The core MakerDAO contracts are already battletested and the mock folders are excluded from tests.
