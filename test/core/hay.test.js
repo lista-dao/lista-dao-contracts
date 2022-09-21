@@ -1,7 +1,7 @@
 const { ethers, network } = require('hardhat');
 const { expect } = require("chai");
 
-describe('===Spot===', function () {
+describe('===Hay===', function () {
     let deployer, signer1, signer2;
 
     let wad = "000000000000000000", // 18 Decimals
