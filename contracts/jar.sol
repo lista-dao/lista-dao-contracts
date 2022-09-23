@@ -211,12 +211,11 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         emit Exit(msg.sender, wad);
     }
     function redeemBatch(address[] memory accounts) external nonReentrant {
+        // Allow direct and on-behalf redemption
+        require(live == 1, "Jar/not-live");
         _redeemHelper(accounts);
     }
     function _redeemHelper(address[] memory accounts) private {
-        // Allow direct and on-behalf redemption
-        require(live == 1, "Jar/not-live");
-
         for (uint i = 0; i < accounts.length; i++) {
             if (block.timestamp < unstakeTime[accounts[i]] && unstakeTime[accounts[i]] != 0 && exitDelay != 0)
                 continue;
