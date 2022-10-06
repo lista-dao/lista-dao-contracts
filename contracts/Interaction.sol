@@ -212,22 +212,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return dink;
     }
 
-    function _mul(uint x, int y) internal pure returns (int z) {
-    unchecked {
-        z = int(x) * y;
-        require(int(x) >= 0);
-        require(y == 0 || z / y == int(x));
-    }
-    }
-
-    function _add(uint x, int y) internal pure returns (uint z) {
-    unchecked {
-        z = x + uint(y);
-        require(y >= 0 || z <= x);
-        require(y <= 0 || z >= x);
-    }
-    }
-
     function borrow(address token, uint256 hayAmount) external returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
@@ -236,12 +220,13 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         dropRewards(token, msg.sender);
 
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
-        int256 dart = int256(hayAmount * 10 ** 27 / rate);
+        int256 dart = int256(hayAmount * RAY / rate);
         require(dart >= 0, "Interaction/too-much-requested");
 
-        if (uint256(dart) * rate < hayAmount * (10 ** 27)) {
+        if (uint256(dart) * rate < hayAmount * RAY) {
             dart += 1; //ceiling
         }
+
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
         vat.move(msg.sender, address(this), hayAmount * RAY);
         hayJoin.exit(msg.sender, hayAmount);
@@ -262,27 +247,34 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
-        IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), hayAmount);
-        hayJoin.join(msg.sender, hayAmount);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        int256 dart = int256(FullMath.mulDiv(hayAmount, 10 ** 27, rate));
+        (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
+
+        int256 dart;
+        uint256 realAmount = hayAmount;
+
+        uint256 debt = rate * art;
+        if (realAmount * RAY >= debt) { // Close CDP
+            dart = int(art);
+            realAmount = debt / RAY;
+            realAmount = realAmount * RAY == debt ? realAmount : realAmount + 1;
+        } else { // Less/Greater than dust
+            dart = int256(FullMath.mulDiv(realAmount, RAY, rate));
+        }
+
+        IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), realAmount);
+        hayJoin.join(msg.sender, realAmount);
+        
         require(dart >= 0, "Interaction/too-much-requested");
 
-        if (uint256(dart) * rate < hayAmount * (10 ** 27) &&
-            uint256(dart + 1) * rate <= vat.hay(msg.sender)
-        ) {
-            dart += 1;
-            // ceiling
-        }
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
         dropRewards(token, msg.sender);
-
         drip(token);
 
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        emit Payback(msg.sender, token, hayAmount, userDebt, liqPrice);
+        emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
         return dart;
     }
 
@@ -414,7 +406,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (, uint256 art) = vat.urns(collateralType.ilk, usr);
-        return (art * rate) / 10 ** 27;
+
+        // 100 Wei is added as a ceiling to help close CDP in repay()
+        if ((art * rate) / RAY != 0) {
+            return ((art * rate) / RAY) + 100;
+        }
+        else {
+            return 0;
+        }
     }
 
     // Collateral minus borrowed. Basically free collateral (nominated in HAY)
