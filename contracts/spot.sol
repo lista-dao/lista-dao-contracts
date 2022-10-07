@@ -103,4 +103,7 @@ contract Spotter is SpotLike, Initializable {
     function cage() external auth {
         live = 0;
     }
+    function uncage() external auth {
+        live = 1;
+    } 
 }

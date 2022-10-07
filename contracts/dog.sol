@@ -97,6 +97,7 @@ contract Dog is DogLike, Initializable {
     );
     event Digs(bytes32 indexed ilk, uint256 rad);
     event Cage();
+    event Uncage();
 
     // --- Init ---
     function initialize(address vat_) external initializer {
@@ -250,5 +251,10 @@ contract Dog is DogLike, Initializable {
     function cage() external auth {
         live = 0;
         emit Cage();
+    }
+
+    function uncage() external auth {
+        live = 1;
+        emit Uncage();
     }
 }

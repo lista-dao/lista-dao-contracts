@@ -115,4 +115,8 @@ contract Vow is Initializable {
         Ash = 0;
         vat.heal(min(vat.hay(address(this)), vat.sin(address(this))));
     }
+
+    function uncage() external auth {
+        live = 1;
+    }
 }
