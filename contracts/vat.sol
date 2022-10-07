@@ -136,6 +136,9 @@ contract Vat is VatLike, OwnableUpgradeable {
     function cage() external auth {
         live = 0;
     }
+    function uncage() external auth {
+        live = 1;
+    }
 
     // --- Fungibility ---
     function slip(bytes32 ilk, address usr, int256 wad) external auth {

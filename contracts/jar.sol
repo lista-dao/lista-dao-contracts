@@ -82,6 +82,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     event Exit(address indexed user, uint indexed amount);
     event Redeem(address[] indexed user);
     event Cage();
+    event Uncage();
 
     // --- Init ---
     function initialize(string memory _name, string memory _symbol, address _hayToken, uint _spread, uint _exitDelay, uint _flashLoanDelay) external initializer {
@@ -177,6 +178,10 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     function cage() external auth {
         live = 0;
         emit Cage();
+    }
+    function uncage() external auth {
+        live = 1;
+        emit Uncage();
     }
 
     // --- User ---

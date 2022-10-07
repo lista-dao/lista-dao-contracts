@@ -84,6 +84,7 @@ contract GemJoin is GemJoinLike, Initializable {
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
     event Cage();
+    event Uncage();
 
     function initialize(address vat_, bytes32 ilk_, address gem_) external initializer {
         wards[msg.sender] = 1;
@@ -97,6 +98,10 @@ contract GemJoin is GemJoinLike, Initializable {
     function cage() external auth {
         live = 0;
         emit Cage();
+    }
+    function uncage() external auth {
+        live = 1;
+        emit Uncage();
     }
     function join(address usr, uint wad) external auth {
         require(live == 1, "GemJoin/not-live");
@@ -139,6 +144,7 @@ contract HayJoin is HayJoinLike, Initializable {
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
     event Cage();
+    event Uncage();
 
     function initialize(address vat_, address hay_) external initializer {
          wards[msg.sender] = 1;
@@ -149,6 +155,10 @@ contract HayJoin is HayJoinLike, Initializable {
     function cage() external auth {
         live = 0;
         emit Cage();
+    }
+    function uncage() external auth {
+        live = 1;
+        emit Uncage();
     }
     uint constant ONE = 10 ** 27;
     function mul(uint x, uint y) internal pure returns (uint z) {
