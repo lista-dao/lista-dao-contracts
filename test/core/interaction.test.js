@@ -53,11 +53,17 @@ describe('===Interaction===', function () {
         this.Factory = await ethers.getContractFactory("PancakeFactory");
         this.wBNB = await ethers.getContractFactory("wBNB");
         wbnb = await this.wBNB.deploy();
+        this.LinearDecrease = await ethers.getContractFactory("LinearDecrease");
 
         factory = await this.Factory.deploy(deployer.address);
         this.Router = await ethers.getContractFactory("PancakeRouter");
         dex = await this.Router.deploy(factory.address, wbnb.address);
         
+        abacus = await this.LinearDecrease.connect(deployer).deploy();
+        await abacus.deployed();
+        await abacus.initialize();
+        await abacus.connect(deployer).file(toBytes32("tau"), "1800");
+
         // Collateral module
         abnbc = await this.ABNBC.connect(deployer).deploy();
         await abnbc.deployed(); // Collateral
@@ -159,9 +165,14 @@ describe('===Interaction===', function () {
         await hbnb.changeMinter(helioProvider.address);
         await ceVault.changeRouter(ceRouter.address);
         // MINT aBNBc
-        amount = toBN('10000000020000000000');
+        amount = toBN('10000000000020000000000');
         await abnbb.mintBonds(deployer.address, amount.mul(toBN(5)).toString());
         await abnbb.unlockSharesFor(deployer.address, amount.mul(toBN(2)).toString());
+
+        await abnbb.mintBonds(signer1.address, amount.mul(toBN(5)).toString());
+        await abnbb.unlockSharesFor(signer1.address, amount.mul(toBN(2)).toString());
+        await abnbb.mintBonds(signer2.address, amount.mul(toBN(5)).toString());
+        await abnbb.unlockSharesFor(signer2.address, amount.mul(toBN(2)).toString());
 
         await oracle.connect(deployer).setPrice(toWad("400"));
         
@@ -678,8 +689,6 @@ describe('===Interaction===', function () {
             await interaction.drip(ceToken.address);
             const afterHayBalance = await vat.hay(vow.address);
 
-            // console.log(await interaction.collateralPrice(ceToken.address));
-            // console.log(await interaction.hayPrice(ceToken.address));
             expect(beforeHayBalance).to.be.equal(0);
             expect(afterHayBalance).to.be.gt(0);
         });
@@ -717,9 +726,10 @@ describe('===Interaction===', function () {
             await spot.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral,toBytes32("mat"),"1250000000000000000000000000");
             await spot["file(bytes32,uint256)"](toBytes32("par"), toRay("1")); // It means pegged to 1$
 
+            const [,,beforeSpot,,] = await vat.ilks(collateral);
+
             const res = await interaction.poke(ceToken.address);
             expect(res).to.emit(interaction, "Poke");
-
 
             await jug["file(bytes32,uint256)"](toBytes32("base"), toRay("0.000000002"));
             await jug["file(bytes32,address)"](toBytes32("vow"), vow.address);
@@ -733,21 +743,432 @@ describe('===Interaction===', function () {
             await advanceTime(60);
             await interaction.drip(ceToken.address);
 
+            const [,,afterSpot,,] = await vat.ilks(collateral);
+            expect(afterSpot).to.be.not.equal(beforeSpot);
+        });
+    });
+    describe('--- read states via view functions', function() {
+        it('read prices and collateral states', async function() {
+            await vat.initialize();
+            await spot.initialize(vat.address);
+            await hay.initialize(97, "HAY", "100" + wad);
+            await hayJoin.initialize(vat.address, hay.address);
+            await jug.initialize(vat.address);
+            await dog.initialize(vat.address);
+            await clip.initialize(vat.address, spot.address, dog.address, collateral);
+            await ceabnbcJoin.initialize(vat.address, collateral, ceToken.address);
+            await helioRewards.initialize(vat.address, "100" + wad);
+            await interaction.initialize(vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, helioRewards.address);
+            
+            await hayJoin.rely(interaction.address);
+            await hay.rely(hayJoin.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(interaction.address);
+            await vat.rely(jug.address);
+            await vat.rely(spot.address);
+            await jug.rely(interaction.address);
+            await spot.rely(interaction.address);
+            await ceabnbcJoin.rely(interaction.address);
+            await interaction.setCollateralType(ceToken.address, ceabnbcJoin.address, collateral, clip.address, toRay("0.75"));
+
+            await abnbc.approve(ceRouter.address, "10" + wad);
+            const beforeBalance = await abnbc.balanceOf(deployer.address);
+            await interaction.setHelioProvider(ceToken.address, helioProvider.address);
+            await helioProvider.provideInABNBc("10" + wad);
+
+            await spot.connect(deployer)["file(bytes32,bytes32,address)"](collateral, toBytes32("pip"), oracle.address);
+            await spot.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral,toBytes32("mat"),"1250000000000000000000000000");
+            await spot["file(bytes32,uint256)"](toBytes32("par"), toRay("1")); // It means pegged to 1$
+
+            const res = await interaction.poke(ceToken.address);
+            expect(res).to.emit(interaction, "Poke");
+
+            await jug["file(bytes32,uint256)"](toBytes32("base"), toRay("0.000000002"));
+            await jug["file(bytes32,address)"](toBytes32("vow"), vow.address);
+
+            await vat["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("spot"), toRay("0.8"));
+
+            const borrowAmount = "1" + wad;
+            await interaction.borrow(ceToken.address, borrowAmount);
+
+            await advanceTime(60);
+            await interaction.drip(ceToken.address);
+
             // Read states via view functions
-            console.log(await interaction.collateralPrice(ceToken.address));
-            console.log(await interaction.hayPrice(ceToken.address));
-            console.log(await interaction.collateralRate(ceToken.address));
-            console.log(await interaction.depositTVL(ceToken.address));
-            console.log(await interaction.collateralTVL(ceToken.address));
-            console.log(await interaction.free(ceToken.address, deployer.address));
-            console.log(await interaction.locked(ceToken.address, deployer.address));
-            console.log(await interaction.borrowed(ceToken.address, deployer.address));
-            console.log(await interaction.availableToBorrow(ceToken.address, deployer.address));
-            console.log(await interaction.willBorrow(ceToken.address, deployer.address, toWad("1")));
-            console.log(await interaction.currentLiquidationPrice(ceToken.address, deployer.address));
-            console.log(await interaction.estimatedLiquidationPrice(ceToken.address, deployer.address, toWad("1")));
-            console.log(await interaction.estimatedLiquidationPriceHAY(ceToken.address, deployer.address, toWad("1")));
-            console.log(await interaction.borrowApr(ceToken.address));
+            expect(await interaction.collateralPrice(ceToken.address)).to.be.equal(toWad("400"));
+            const [,rate,,,] = await vat.ilks(collateral);
+            expect(await interaction.hayPrice(ceToken.address)).to.be.equal(rate.div(BigNumber.from(1000000000)));
+            expect(await interaction.collateralRate(ceToken.address)).to.be.equal(toWad("0.8")); // 0.8 = 1 / 1.25
+            expect(await interaction.depositTVL(ceToken.address)).to.be.equal(toWad("4000")); // 10 * 400 in $
+            const collateralTVL = await interaction.collateralTVL(ceToken.address);
+            expect(await interaction.free(ceToken.address, deployer.address)).to.be.equal(0);
+            expect(await interaction.locked(ceToken.address, deployer.address)).to.be.equal(toWad("10"));
+            expect(await interaction.borrowed(ceToken.address, deployer.address)).to.be.equal(collateralTVL);
+            
+            expect(await interaction.availableToBorrow(ceToken.address, deployer.address)).to.be.equal(BigNumber.from("6999999877999992679"));
+            expect(await interaction.willBorrow(ceToken.address, deployer.address, toWad("1"))).to.be.equal(BigNumber.from("7799999877999992679"));
+            expect(await interaction.currentLiquidationPrice(ceToken.address, deployer.address)).to.be.equal(BigNumber.from("125000015250000000"));
+            expect(await interaction.estimatedLiquidationPrice(ceToken.address, deployer.address, toWad("1"))).to.be.equal(BigNumber.from("113636377500000000"));
+            expect(await interaction.estimatedLiquidationPriceHAY(ceToken.address, deployer.address, toWad("1"))).to.be.equal(BigNumber.from("125000000125000015"));
+            expect(await interaction.borrowApr(ceToken.address)).to.be.equal(BigNumber.from("6514815689033158807"));
+        });
+    });
+    describe('--- Auction Scenario', function() {
+        it('auction should be started and bought as expected', async function() {
+            await vat.initialize();
+            await spot.initialize(vat.address);
+            await hay.initialize(97, "HAY", "100000" + wad);
+            await hayJoin.initialize(vat.address, hay.address);
+            await jug.initialize(vat.address);
+            await dog.initialize(vat.address);
+            await clip.initialize(vat.address, spot.address, dog.address, collateral);
+            await ceabnbcJoin.initialize(vat.address, collateral, ceToken.address);
+            await helioRewards.initialize(vat.address, "100" + wad);
+            await interaction.initialize(vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, helioRewards.address);
+            
+            await hayJoin.rely(interaction.address);
+            await hay.rely(hayJoin.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(interaction.address);
+            await vat.rely(jug.address);
+            await vat.rely(spot.address);
+            await vat.rely(dog.address);
+            await vat.rely(clip.address);
+            await jug.rely(interaction.address);
+            await spot.rely(interaction.address);
+            await ceabnbcJoin.rely(interaction.address);
+            await interaction.setCollateralType(ceToken.address, ceabnbcJoin.address, collateral, clip.address, toRay("0.75"));
+
+            await helioProvider.changeProxy(interaction.address);
+            await jug["file(bytes32,uint256)"](toBytes32("base"), toRay("0.000000002"));
+            await jug["file(bytes32,address)"](toBytes32("vow"), vow.address);
+
+            await vat["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("spot"), toRay("0.8"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("dust"), toRad("1"));
+
+            await dog.rely(clip.address);
+            await dog.rely(interaction.address);
+            await dog["file(bytes32,address)"](toBytes32("vow"), vow.address);
+            await dog["file(bytes32,uint256)"](toBytes32("Hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("chop"), toWad("1.13"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,address)"](collateral, toBytes32("clip"), clip.address);
+
+            await clip.connect(deployer).rely(dog.address);
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("buf"), toRay("1.2"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("tail"), "1800");
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("cusp"), toRay("0.3"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("chip"), toWad("0.02"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("tip"), toRad("100"));
+
+            await clip
+                .connect(deployer)
+                ["file(bytes32,address)"](toBytes32("vow"), vow.address);
+            await clip
+                .connect(deployer)
+                ["file(bytes32,address)"](toBytes32("calc"), abacus.address);
+
+            clip.rely(interaction.address);
+
+            await abnbc.approve(ceRouter.address, "10" + wad);
+            const beforeBalance = await abnbc.balanceOf(deployer.address);
+            await interaction.setHelioProvider(ceToken.address, helioProvider.address);
+            await helioProvider.provideInABNBc("10" + wad);
+
+            await spot.connect(deployer)["file(bytes32,bytes32,address)"](collateral, toBytes32("pip"), oracle.address);
+            await spot.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral,toBytes32("mat"),"1250000000000000000000000000");
+            await spot["file(bytes32,uint256)"](toBytes32("par"), toRay("1")); // It means pegged to 1$
+
+            const res = await interaction.poke(ceToken.address);
+            expect(res).to.emit(interaction, "Poke");
+
+            const borrowAmount = "1000" + wad;
+            await interaction.borrow(ceToken.address, borrowAmount);
+
+            await oracle.connect(deployer).setPrice(toWad("120"));
+            await interaction.poke(ceToken.address);
+
+            await interaction.connect(deployer).startAuction(ceToken.address, deployer.address, signer1.address);
+
+            const sale = await clip.sales(1);
+            expect(sale.usr).to.not.be.equal(ethers.utils.AddressZero);
+
+            const dink = toWad("1000");
+            await abnbc.connect(signer1).approve(ceRouter.address, "1000" + wad);
+            await abnbc.connect(signer2).approve(ceRouter.address, "1000" + wad);
+            await helioProvider.connect(signer1).provideInABNBc(dink);
+            await helioProvider.connect(signer2).provideInABNBc(dink);
+
+            const dart = "5000" + wad;
+            await interaction.connect(signer1).borrow(ceToken.address, dart);
+            await interaction.connect(signer2).borrow(ceToken.address, dart);
+            
+            await vat.connect(signer1).hope(clip.address);
+            await vat.connect(signer2).hope(clip.address);
+
+            await hay.connect(signer1).approve(interaction.address, toWad("701"));
+            await hay.connect(signer2).approve(interaction.address, toWad("1001"));
+
+            // await advanceTime(2000); // If time spent too much, auction needs reset
+            // await advanceTime(10); // Too expensive means your propased price is still not available for auction decrease price
+            await advanceTime(1000);
+
+            const abnbcSigner1BalanceBefore = await abnbc.balanceOf(signer1.address);
+            const abnbcSigner2BalanceBefore = await abnbc.balanceOf(signer2.address);
+            
+            await interaction.connect(signer1).buyFromAuction(
+                ceToken.address,
+                1,
+                toWad("7"),
+                toRay("100"),
+                signer1.address,
+                []
+            );
+
+            await interaction.connect(signer2).buyFromAuction(
+                ceToken.address,
+                1,
+                toWad("10"),
+                toRay("100"),
+                signer2.address,
+                []
+            );
+            
+            const abnbcSigner1BalanceAfter = await abnbc.balanceOf(signer1.address);
+            const abnbcSigner2BalanceAfter = await abnbc.balanceOf(signer2.address);
+
+            expect(abnbcSigner1BalanceAfter.sub(abnbcSigner1BalanceBefore)).to.be.equal(toWad("7"));
+            expect(abnbcSigner2BalanceAfter.sub(abnbcSigner2BalanceBefore)).to.be.equal(toWad("3"));
+
+            const saleAfter = await clip.sales(1);
+            expect(saleAfter.pos).to.equal(0);
+            expect(saleAfter.tab).to.equal(0);
+            expect(saleAfter.lot).to.equal(0);
+            expect(saleAfter.tic).to.equal(0);
+            expect(saleAfter.top).to.equal(0);
+            expect(saleAfter.usr).to.equal(ethers.constants.AddressZero);
+
+            const [status,,,] = await interaction.getAuctionStatus(ceToken.address, 1);
+            expect(status).to.be.equal(false);
+
+            const allActiveAuctions = await interaction.getAllActiveAuctionsForToken(ceToken.address);
+            expect(allActiveAuctions.length).to.be.equal(0);
+        });
+        it('--- resetAuction()', async function() {
+            await vat.initialize();
+            await spot.initialize(vat.address);
+            await hay.initialize(97, "HAY", "100000" + wad);
+            await hayJoin.initialize(vat.address, hay.address);
+            await jug.initialize(vat.address);
+            await dog.initialize(vat.address);
+            await clip.initialize(vat.address, spot.address, dog.address, collateral);
+            await ceabnbcJoin.initialize(vat.address, collateral, ceToken.address);
+            await helioRewards.initialize(vat.address, "100" + wad);
+            await interaction.initialize(vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, helioRewards.address);
+            
+            await hayJoin.rely(interaction.address);
+            await hay.rely(hayJoin.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(interaction.address);
+            await vat.rely(jug.address);
+            await vat.rely(spot.address);
+            await vat.rely(dog.address);
+            await vat.rely(clip.address);
+            await jug.rely(interaction.address);
+            await spot.rely(interaction.address);
+            await ceabnbcJoin.rely(interaction.address);
+            await interaction.setCollateralType(ceToken.address, ceabnbcJoin.address, collateral, clip.address, toRay("0.75"));
+
+            await helioProvider.changeProxy(interaction.address);
+            await jug["file(bytes32,uint256)"](toBytes32("base"), toRay("0.000000002"));
+            await jug["file(bytes32,address)"](toBytes32("vow"), vow.address);
+
+            await vat["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("spot"), toRay("0.8"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("dust"), toRad("1"));
+
+            await dog.rely(clip.address);
+            await dog.rely(interaction.address);
+            await dog["file(bytes32,address)"](toBytes32("vow"), vow.address);
+            await dog["file(bytes32,uint256)"](toBytes32("Hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("chop"), toWad("1.13"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,address)"](collateral, toBytes32("clip"), clip.address);
+
+            await clip.connect(deployer).rely(dog.address);
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("buf"), toRay("1.2"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("tail"), "1800");
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("cusp"), toRay("0.3"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("chip"), toWad("0.02"));
+            await clip
+                .connect(deployer)
+                ["file(bytes32,uint256)"](toBytes32("tip"), toRad("100"));
+
+            await clip
+                .connect(deployer)
+                ["file(bytes32,address)"](toBytes32("vow"), vow.address);
+            await clip
+                .connect(deployer)
+                ["file(bytes32,address)"](toBytes32("calc"), abacus.address);
+
+            clip.rely(interaction.address);
+
+            await abnbc.approve(ceRouter.address, "10" + wad);
+            const beforeBalance = await abnbc.balanceOf(deployer.address);
+            await interaction.setHelioProvider(ceToken.address, helioProvider.address);
+            await helioProvider.provideInABNBc("10" + wad);
+
+            await spot.connect(deployer)["file(bytes32,bytes32,address)"](collateral, toBytes32("pip"), oracle.address);
+            await spot.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral,toBytes32("mat"),"1250000000000000000000000000");
+            await spot["file(bytes32,uint256)"](toBytes32("par"), toRay("1")); // It means pegged to 1$
+
+            const res = await interaction.poke(ceToken.address);
+            expect(res).to.emit(interaction, "Poke");
+
+            const borrowAmount = "1000" + wad;
+            await interaction.borrow(ceToken.address, borrowAmount);
+
+            await oracle.connect(deployer).setPrice(toWad("120"));
+            await interaction.poke(ceToken.address);
+
+            await interaction.connect(deployer).startAuction(ceToken.address, deployer.address, signer1.address);
+
+            const sale = await clip.sales(1);
+            expect(sale.usr).to.not.be.equal(ethers.utils.AddressZero);
+
+            const dink = toWad("1000");
+            await abnbc.connect(signer1).approve(ceRouter.address, "1000" + wad);
+            await abnbc.connect(signer2).approve(ceRouter.address, "1000" + wad);
+            await helioProvider.connect(signer1).provideInABNBc(dink);
+            await helioProvider.connect(signer2).provideInABNBc(dink);
+
+            const dart = "5000" + wad;
+            await interaction.connect(signer1).borrow(ceToken.address, dart);
+            await interaction.connect(signer2).borrow(ceToken.address, dart);
+            
+            await vat.connect(signer1).hope(clip.address);
+            await vat.connect(signer2).hope(clip.address);
+
+            await hay.connect(signer1).approve(interaction.address, toWad("701"));
+            await hay.connect(signer2).approve(interaction.address, toWad("1001"));
+
+            // await advanceTime(2000); // If time spent too much, auction needs reset
+            // await advanceTime(10); // Too expensive means your propased price is still not available for auction decrease price
+            await advanceTime(2000);
+
+            const reset = await interaction.resetAuction(ceToken.address, 1, deployer.address); 
+            expect(reset).emit(interaction, "Redo");
+        });
+    });
+    describe('--- upchostClipper()', function() {
+        it('refresh chost for collateral', async function() {
+            await vat.initialize();
+            await spot.initialize(vat.address);
+            await hay.initialize(97, "HAY", "100000" + wad);
+            await hayJoin.initialize(vat.address, hay.address);
+            await jug.initialize(vat.address);
+            await dog.initialize(vat.address);
+            await clip.initialize(vat.address, spot.address, dog.address, collateral);
+            await ceabnbcJoin.initialize(vat.address, collateral, ceToken.address);
+            await helioRewards.initialize(vat.address, "100" + wad);
+            await interaction.initialize(vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, helioRewards.address);
+            
+            await hayJoin.rely(interaction.address);
+            await hay.rely(hayJoin.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(interaction.address);
+            await vat.rely(jug.address);
+            await vat.rely(spot.address);
+            await vat.rely(dog.address);
+            await vat.rely(clip.address);
+            await jug.rely(interaction.address);
+            await spot.rely(interaction.address);
+            await ceabnbcJoin.rely(interaction.address);
+            await interaction.setCollateralType(ceToken.address, ceabnbcJoin.address, collateral, clip.address, toRay("0.75"));
+
+            // await helioProvider.changeProxy(interaction.address);
+
+            await jug["file(bytes32,uint256)"](toBytes32("base"), toRay("0.000000002"));
+            await jug["file(bytes32,address)"](toBytes32("vow"), vow.address);
+
+            await vat["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("spot"), toRay("0.8"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("dust"), toRad("1"));
+
+            await dog.rely(clip.address);
+            await dog.rely(interaction.address);
+            await dog["file(bytes32,address)"](toBytes32("vow"), vow.address);
+            await dog["file(bytes32,uint256)"](toBytes32("Hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("chop"), toWad("1.13"));
+            await dog["file(bytes32,bytes32,uint256)"](collateral, toBytes32("hole"), toRad("10000000"));
+            await dog["file(bytes32,bytes32,address)"](collateral, toBytes32("clip"), clip.address);
+            
+            const before = await clip.chost();
+            await interaction.upchostClipper(ceToken.address);
+            const after = await clip.chost();
+            expect(after).be.not.equal(before);
+        });
+    });
+    describe('--- totalPegLiquidity()', function() {
+        it('read total supply of hay', async function() {
+            await vat.initialize();
+            await spot.initialize(vat.address);
+            await hay.initialize(97, "HAY", "100" + wad);
+            await hayJoin.initialize(vat.address, hay.address);
+            await jug.initialize(vat.address);
+            await dog.initialize(vat.address);
+            await clip.initialize(vat.address, spot.address, dog.address, collateral);
+            await ceabnbcJoin.initialize(vat.address, collateral, ceToken.address);
+            await helioRewards.initialize(vat.address, "100" + wad);
+            await interaction.initialize(vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, helioRewards.address);
+            
+            await hayJoin.rely(interaction.address);
+            await hay.rely(hayJoin.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(interaction.address);
+            await vat.rely(jug.address);
+            await jug.rely(interaction.address);
+            await spot.rely(interaction.address);
+            await ceabnbcJoin.rely(interaction.address);
+            await interaction.setCollateralType(ceToken.address, ceabnbcJoin.address, collateral, clip.address, toRay("0.75"));
+
+            await abnbc.approve(ceRouter.address, "10" + wad);
+            await interaction.setHelioProvider(ceToken.address, helioProvider.address);
+            await helioProvider.provideInABNBc("10" + wad);
+
+            // set ceiling limit for collateral
+            await vat["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("line"), toRad("20000"));
+            await vat["file(bytes32,bytes32,uint256)"](collateral, toBytes32("spot"), toRay("0.8"));
+            const borrowAmount = "1" + wad;
+            await interaction.borrow(ceToken.address, borrowAmount);
+
+            const res = await interaction.totalPegLiquidity();
+            expect(res).to.be.equal(borrowAmount);
         });
     });
 });
