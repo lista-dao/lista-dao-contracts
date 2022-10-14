@@ -11,7 +11,6 @@ import "../ceros/interfaces/IBinancePool.sol";
 import "./interfaces/IMasterVault.sol";
 import "./interfaces/IWaitingPool.sol";
 import "../strategy/IBaseStrategy.sol";
-import "hardhat/console.sol";
 contract MasterVault is
 IMasterVault,
 OwnableUpgradeable,
@@ -439,7 +438,8 @@ ReentrancyGuardUpgradeable
     }
 
     function _assessDepositFee(uint256 amount) private view returns(uint256) {
-        return amount - binancePool.getRelayerFee();
+        // due to precision loss in cerosRouter/ceVault contract during allocate()
+        return amount - binancePool.getRelayerFee() - 1;
     }
 
     receive() external payable {
