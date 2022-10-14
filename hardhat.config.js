@@ -28,7 +28,11 @@ module.exports = {
     },
 
     networks: {
-
+        hardhat : {
+            accounts: {
+                accountsBalance: "100000000000000000000000000",
+            },
+        },
         bsc: {
             url: `https://bsc-dataseed.binance.org/`,
             chainId: 56,

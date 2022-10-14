@@ -12,7 +12,6 @@ const {
   advanceTime,
   printSale,
 } = require("./helpers/utils");
-const {VAT} = require("../addresses.json");
 const hre = require("hardhat");
 const {ether} = require("@openzeppelin/test-helpers");
 
