@@ -1,0 +1,19 @@
+{
+    "BSC_MAINNET": "BSC_MAINNET_VARIABLES",
+  
+    "m_ceaBNBc": "", 
+    "m_ceVault": "", 
+    "m_cerosRouter": "", 
+    "m_bnbJoin": "", 
+    "m_helioProvider": "",  
+  
+    "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
+  
+    "t_ceaBNBc": "", 
+    "t_ceVault": "", 
+    "t_cerosRouter": "", 
+    "t_bnbJoin": "", 
+    "t_helioProvider": ""
+
+}
+  
