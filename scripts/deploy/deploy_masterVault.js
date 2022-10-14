@@ -63,7 +63,7 @@ async function main() {
         _waitingPoolCap = 10;
 
     // deploy masterVault
-    masterVault = await upgrades.deployProxy(MasterVault, [_maxDepositFee, _maxWithdrawalFee, _wBnb, _maxStrategies, ceaBNBc.address], {initializer: "initialize"});
+    masterVault = await upgrades.deployProxy(MasterVault, [_maxDepositFee, _maxWithdrawalFee, _wBnb, _maxStrategies, ceaBNBc.address, _binancePool], {initializer: "initialize"});
     await masterVault.deployed();
     let masterVaultImplementation = await upgrades.erc1967.getImplementationAddress(masterVault.address);
     console.log("masterVault    : " + masterVault.address);
