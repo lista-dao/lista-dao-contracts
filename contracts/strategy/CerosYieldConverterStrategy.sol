@@ -37,8 +37,8 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         _certToken = ICertToken(certToekn);
         _binancePool = IBinancePool(binancePool);
         vault = IMasterVault(masterVault);
-        underlying.approve(address(destination), type(uint256).max);
-        underlying.approve(address(vault), type(uint256).max);
+        // underlying.approve(address(destination), type(uint256).max);
+        // underlying.approve(address(vault), type(uint256).max);
         _certToken.approve(binancePool, type(uint256).max);
     }
 
@@ -119,7 +119,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
 
     /// @dev claims yeild from ceros in aBNBc and transfers to feeRecipient
     function harvest() external onlyStrategist {
-        _harvestTo(feeRecipient);
+        _harvestTo(rewards);
     }
 
     /// @dev internal function to claim yeild from ceros in aBNBc and transfer them to desired address
@@ -135,8 +135,8 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         }
     }
 
-    /// @dev only owner can change swap pool address
-    /// @param binancePool new swap pool address
+    /// @dev only owner can change binance pool address
+    /// @param binancePool new binance pool address
     function changeBinancePool(address binancePool) external onlyOwner {
         require(binancePool != address(0));
         _certToken.approve(address(_binancePool), 0);
