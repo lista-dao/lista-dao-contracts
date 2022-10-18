@@ -122,7 +122,6 @@ ReentrancyGuardUpgradeable
         address src = msg.sender;
         uint256 amount = msg.value;
         require(amount > 0, "invalid amount");
-        // shares = _assessSwapFee(amount, binancePool.stakeFee());
         shares = _assessFee(amount, depositFee);
         shares = _assessDepositFee(shares);
         uint256 waitingPoolDebt = waitingPool.totalDebt();
@@ -132,16 +131,10 @@ ReentrancyGuardUpgradeable
         if(waitingPoolDebt > 0 && waitingPoolBalance < waitingPoolDebt) {
             uint256 waitingPoolDebtDiff = waitingPoolDebt - waitingPoolBalance;
             uint256 poolAmount = (waitingPoolDebtDiff < shares) ? waitingPoolDebtDiff : shares;
-            // payable(address(waitingPool)).transfer(poolAmount);
             (bool success,) = address(waitingPool).call{ value: poolAmount }("");
             require(success);
-            // IWETH(asset).deposit{value: amount - poolAmount}();
         }
-        // else {
-        //     // IWETH(asset).deposit{value: amount}();
-        // }
         ICertToken(vaultToken).mint(src, shares);
-        // _mint(src, shares);
         emit Deposit(src, src, amount, shares);
     }
 
@@ -157,7 +150,6 @@ ReentrancyGuardUpgradeable
     onlyProvider 
     returns (uint256 shares) {
         address src = msg.sender;
-        // _burn(src, amount);
         ICertToken(vaultToken).burn(src, amount);
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);   // TODO: check again
@@ -167,17 +159,13 @@ ReentrancyGuardUpgradeable
             if(withdrawn == 0) {
                 waitingPool.addToQueue(account, shares);
                 if(ethBalance > 0) {
-                    // IWETH(asset).withdraw(ethBalance);
-                    // require(payable(address(waitingPool)).send(ethBalance));
                     (bool success,) = address(waitingPool).call{ value: ethBalance }("");
                     require(success);
                 }
                 emit Withdraw(src, src, src, amount, shares);
                 return amount;
             }
-            // require(withdrawn == shares, "invalid withdrawn amount");
         } else {
-            // IWETH(asset).withdraw(shares);
             payable(account).transfer(shares);
         } 
         emit Withdraw(src, src, src, amount, shares);
@@ -347,11 +335,6 @@ ReentrancyGuardUpgradeable
                         if(totalAssetInVault() >= depositAmount) {
                             _depositToStrategy(strategies[i], depositAmount);
                         }
-                    // } else {
-                    //     uint256 withdrawAmount = strategy.debt - (totalAssets * allocation) / 1e6;
-                    //     if(withdrawAmount > 0) {
-                    //         _withdrawFromStrategy(strategies[i], withdrawAmount);
-                    //     }
                     }
                 }
             }
