@@ -15,7 +15,7 @@ ReentrancyGuardUpgradeable {
 
     address public strategist;
     address public destination;
-    address public feeRecipient;
+    address public rewards;
 
     IWETH public underlying;
 
@@ -27,7 +27,7 @@ ReentrancyGuardUpgradeable {
 
     function __BaseStrategy_init(
         address destinationAddr,
-        address feeRecipientAddr,
+        address rewardsAddr,
         address underlyingToken
     ) internal initializer {
         __Ownable_init();
@@ -35,7 +35,7 @@ ReentrancyGuardUpgradeable {
         __ReentrancyGuard_init();
         strategist = msg.sender;
         destination = destinationAddr;
-        feeRecipient = feeRecipientAddr;
+        rewards = rewardsAddr;
         underlying = IWETH(underlyingToken);
     }
 
@@ -76,9 +76,9 @@ ReentrancyGuardUpgradeable {
         emit UpdatedStrategist(newStrategist);
     }
     
-    function setFeeRecipient(address newFeeRecipient) external onlyOwner {
-        require(newFeeRecipient != address(0));
-        feeRecipient = newFeeRecipient;
-        emit UpdatedFeeRecipient(newFeeRecipient);
+    function setRewards(address newRewardsAddr) external onlyOwner {
+        require(newRewardsAddr != address(0));
+        rewards = newRewardsAddr;
+        emit UpdatedFeeRecipient(newRewardsAddr);
     }
 }
