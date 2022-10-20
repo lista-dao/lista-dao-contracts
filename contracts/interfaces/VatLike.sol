@@ -37,4 +37,6 @@ interface VatLike {
     function heal(uint rad) external;
 
     function suck(address u, address v, uint rad) external;
+
+    function live() external view returns (uint256);
 }
