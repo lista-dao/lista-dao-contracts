@@ -96,7 +96,7 @@ async function main() {
   // Verify
   await hre.run("verify:verify", {address: gemJoinImplementation});
   await hre.run("verify:verify", {address: clipperImplementation});
-  await hre.run("verify:verify", {address: oracleImplementation});
+  await hre.run("verify:verify", {address: oracleImplementation, contract: "contracts/oracle/BusdOracle.sol:BusdOracle"});
 }
 
 main()
