@@ -20,19 +20,19 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the ceros router contract
     /// @param feeRecipient Address of the fee recipient
-    /// @param underlyingToken Address of the underlying token(wMatic)
+    // /// @param underlyingToken Address of the underlying token(wMatic)
     /// @param certToekn Address of aBNBc token
     /// @param masterVault Address of the masterVault contract
     /// @param binancePool Address of binancePool contract
     function initialize(
         address destination,
         address feeRecipient,
-        address underlyingToken,
+        // address underlyingToken,
         address certToekn,
         address masterVault,
         address binancePool
     ) public initializer {
-        __BaseStrategy_init(destination, feeRecipient, underlyingToken);
+        __BaseStrategy_init(destination, feeRecipient);
         _ceRouter = ICerosRouter(destination);
         _certToken = ICertToken(certToekn);
         _binancePool = IBinancePool(binancePool);
@@ -96,7 +96,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         // uint256 wethBalance = underlying.balanceOf(address(this));
         uint256 ethBalance = address(this).balance;
         if(amount < ethBalance) {
-            underlying.transfer(recipient, amount);
+            payable(recipient).transfer(amount);
             return amount;
         } else {
             value = _ceRouter.withdraw(recipient, amount);
@@ -149,10 +149,10 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @param ceRouter new ceros router address
     function changeCeRouter(address ceRouter) external onlyOwner {
         require(ceRouter != address(0));
-        underlying.approve(address(_ceRouter), 0);
+        // underlying.approve(address(_ceRouter), 0);
         destination = ceRouter;
         _ceRouter = ICerosRouter(ceRouter);
-        underlying.approve(address(_ceRouter), type(uint256).max);
+        // underlying.approve(address(_ceRouter), type(uint256).max);
         emit CeRouterChanged(ceRouter);
     }
 }

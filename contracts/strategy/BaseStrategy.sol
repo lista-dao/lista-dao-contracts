@@ -17,18 +17,18 @@ ReentrancyGuardUpgradeable {
     address public destination;
     address public rewards;
 
-    IWETH public underlying;
+    // IWETH public underlying;
 
     bool public depositPaused;
 
     event UpdatedStrategist(address strategist);
-    event UpdatedFeeRecipient(address feeRecipient);
+    event UpdatedRewards(address rewards);
     event UpdatedPerformanceFee(uint256 performanceFee);
 
     function __BaseStrategy_init(
         address destinationAddr,
-        address rewardsAddr,
-        address underlyingToken
+        address rewardsAddr
+        // address underlyingToken
     ) internal initializer {
         __Ownable_init();
         __Pausable_init();
@@ -36,7 +36,7 @@ ReentrancyGuardUpgradeable {
         strategist = msg.sender;
         destination = destinationAddr;
         rewards = rewardsAddr;
-        underlying = IWETH(underlyingToken);
+        // underlying = IWETH(underlyingToken);
     }
 
     /**
@@ -51,15 +51,15 @@ ReentrancyGuardUpgradeable {
     }
 
     function balanceOfWant() public view returns(uint256) {
-        return underlying.balanceOf(address(this));
+        return address(this).balance;
     }
 
     function balanceOfPool() public view returns(uint256) {
-        return underlying.balanceOf(address(destination));
+        return address(destination).balance;
     }
 
     function balanceOf() public view returns(uint256) {
-        return underlying.balanceOf(address(this)) + underlying.balanceOf(address(destination));
+        return address(this).balance + address(destination).balance;
     }
 
     function pause() external onlyStrategist {
@@ -79,6 +79,6 @@ ReentrancyGuardUpgradeable {
     function setRewards(address newRewardsAddr) external onlyOwner {
         require(newRewardsAddr != address(0));
         rewards = newRewardsAddr;
-        emit UpdatedFeeRecipient(newRewardsAddr);
+        emit UpdatedRewards(newRewardsAddr);
     }
 }

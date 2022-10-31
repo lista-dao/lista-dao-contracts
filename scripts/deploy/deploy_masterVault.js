@@ -77,12 +77,11 @@ async function main() {
     console.log("imp        : " + waitingPoolImplementation);
 
     let _destination = cerosRouter.address,
-        _feeRecipient = deployer.address,
-        _underlyingToken = _wBnb,
+        _rewards = deployer.address,
         _certToken = _aBNBc;
 
     // deploy ceros strategy
-    let cerosYieldConverterStrategy = await upgrades.deployProxy(CerosYieldConverterStrategy, [_destination, _feeRecipient, _underlyingToken, _certToken, masterVault.address, _binancePool], {initializer: "initialize"});
+    let cerosYieldConverterStrategy = await upgrades.deployProxy(CerosYieldConverterStrategy, [_destination, _rewards, _certToken, masterVault.address, _binancePool], {initializer: "initialize"});
     await cerosYieldConverterStrategy.deployed();
     let cerosYieldConverterStrategyImp = await upgrades.erc1967.getImplementationAddress(cerosYieldConverterStrategy.address);
     console.log("cerosYieldConverterStrategy    : " + cerosYieldConverterStrategy.address);
