@@ -148,7 +148,7 @@ describe.only("MasterVault", function () {
       [
         cerosRouter.address,
         deployer.address,
-        _wBnb,
+        // _wBnb,
         _aBNBc,
         masterVault.address,
         _binancePool,
@@ -1082,7 +1082,7 @@ describe.only("MasterVault", function () {
         [
           cerosRouter.address,
           deployer.address,
-          _wBnb,
+          // _wBnb,
           _aBNBc,
           masterVault.address,
           _binancePool,
@@ -1392,11 +1392,11 @@ describe.only("MasterVault", function () {
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
-      it("setFeeRecipient(): should let owner change feeRecipient", async function () {
+      it("setRewards(): should let owner change rewards account", async function () {
         expect(
-          await cerosStrategy.connect(deployer).setFeeRecipient(signer2.address)
+          await cerosStrategy.connect(deployer).setRewards(signer2.address)
         )
-          .to.emit(cerosStrategy, "UpdatedFeeRecipient")
+          .to.emit(cerosStrategy, "UpdatedRewards")
           .withArgs(signer2.address);
       });
 

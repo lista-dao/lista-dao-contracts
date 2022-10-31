@@ -422,7 +422,7 @@ ReentrancyGuardUpgradeable
 
     function _assessDepositFee(uint256 amount) private view returns(uint256) {
         // due to precision loss in cerosRouter/ceVault contract during allocate()
-        return amount - binancePool.getRelayerFee() - 1;
+        return amount - binancePool.getRelayerFee();
     }
 
     receive() external payable {
