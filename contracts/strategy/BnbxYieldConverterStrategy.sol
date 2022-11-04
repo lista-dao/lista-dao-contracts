@@ -17,6 +17,26 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     uint256 bnbx_holding_balance;
     uint256 bnb_deposit_balance;
 
+    struct UserWithdrawRequest {
+        address recipient;
+        uint256 amount;
+        uint256 bnbxAmount;
+        uint256 triggerTime;
+    }
+    mapping(uint256 => UserWithdrawRequest[]) _batchToUserWithdrawRequests;
+
+    struct BatchWithdrawRequest {
+        uint256 bnbxWithdrawUUID;
+        uint256 bnbxAmount;
+        uint256 triggerTime;
+    } 
+    mapping(uint256 => BatchWithdrawRequest) _batchDetail;
+    uint256 firstBatchWithdrawIdx;
+    uint256 nextBatchWithdrawIdx;
+
+    uint256 batchSize;
+    uint256 batchWithdrawBnbxAmount;
+
     event StakeManagerChanged(address stakeManager);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
@@ -94,60 +114,66 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     function _withdraw(address recipient, uint256 amount) internal returns (uint256 value) {
         require(amount > 0, "invalid amount");
 
+        if(_batchToUserWithdrawRequests[nextBatchWithdrawIdx].length == batchSize) {
+            _createBatchAndWithdraw();
+        }
+
         uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
-        
         bnb_deposit_balance -= amount;
         bnbx_holding_balance -= bnbxAmount;
         
-        userRequests[recipient].push( UserRequest({
-            batchId: nextWithdrawBatchId,
-            bnbAmt : amount,
-            bnbxAmount,
-            triggerTime,
-        }));
+        _batchToUserWithdrawRequests[nextBatchWithdrawIdx].push(
+            UserWithdrawRequest({
+                recipient: recipient,
+                amount: amount,
+                bnbxAmount: bnbxAmount,
+                triggerTime: block.timestamp
+            })
+        );
 
-        // or maybe queue userRequests;
-        // userRequests.push( UserRequest({
-        //     batchId: nextWithdrawBatchId,
-        //     bnbAmt : amount,
-        //     bnbxAmount,
-        //     triggerTime,
-        // }));
-
-        batchWithdrawTotal += bnbxAmount;
-
+        batchWithdrawBnbxAmount += bnbxAmount;
         return 0;
     }
 
-    function batchWithdraw(){
-        uint256 nextStakeManagerWithdrawId = _stakeManager.nextUndelegateUUID();
-        batchRequest[nextWithdrawBatchId] = BatchRequest({
-            nextStakeManagerWithdrawId,
-            batchWithdrawTotal,
-            triggerTime,
-            claimTime: 0
+    function _createBatchAndWithdraw() private {
+        _batchDetail[nextBatchWithdrawIdx] = BatchWithdrawRequest({
+            bnbxWithdrawUUID: _stakeManager.nextUndelegateUUID(),
+            bnbxAmount: batchWithdrawBnbxAmount,
+            triggerTime: block.timestamp
         });
-        
-        _stakeManager.requestWithdraw(batchWithdrawTotal);
 
-        nextWithdrawBatchId++;
-        batchWithdrawTotal = 0;
+        _stakeManager.requestWithdraw(batchWithdrawBnbxAmount);
+
+        batchWithdrawBnbxAmount=0;
+        nextBatchWithdrawIdx++;
     }
 
-    function batchClaimWithdraw(){ // transfer funds(BNB) from stakeManager to strategy
-        batchWithdrawRequests = _stakeManager.getUserWithdrawalRequests();
+    function isBatchClaimable(uint256 idx) public returns (bool) {
+        uint256 uuid = _batchDetail[idx].bnbxWithdrawUUID;
+        IStakeManager.BotUndelegateRequest request = _stakeManager.getBotUndelegateRequest(idx);
+        return ( request.endTime != 0 );
+    }
 
-        for( each batchReqId : batchWithdrawRequests){ // would be max 7 as once per day
-            if batchReqId is claimable => claim it;
+    function claimNextBatch() public returns (bool) { // transfer funds(BNB) from stakeManager to strategy
+        uint256 claimableIdx = -1;
+
+        IStakeManager.WithdrawalRequest requests = _stakeManager.getUserWithdrawalRequests(address(this));
+
+        for(uint256 idx=0; idx < requests.length; idx++) {
+            if(_stakeManager.getUserRequestStatus(address(this), idx)) {
+                claimableIdx = idx;
+                break;
+            }
         }
+
+        if (claimableIdx == -1) return false;
+        
+        // uint256 batchId = 
+        _stakeManager.claimWithdraw(claimableIdx);
+        // _distributeFunds(batchId)
+        return true;
     }
 
-    function claimFundsforUsers(){
-        // iterate over user requests 
-        // check if 15 days have passed after user has triggered requestWithdraw
-        // 
-
-    }
 
     receive() external payable {}
 
