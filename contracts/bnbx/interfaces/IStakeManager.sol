@@ -9,6 +9,13 @@ interface IStakeManager {
         uint256 startTime;
     }
 
+    struct BotUndelegateRequest {
+        uint256 startTime;
+        uint256 endTime;
+        uint256 amount;
+        uint256 amountInBnbX;
+    }
+
     function deposit() external payable;
 
     function requestWithdraw(uint256 _amountInBnbX) external;
