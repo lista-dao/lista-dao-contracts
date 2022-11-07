@@ -109,7 +109,6 @@ contract Vow is Initializable {
     }
 
     function cage() external auth {
-        require(live == 1, "Vow/not-live");
         live = 0;
         Sin = 0;
         Ash = 0;
