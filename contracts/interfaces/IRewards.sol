@@ -17,9 +17,9 @@ interface IRewards {
 
     event RewardsLimitChanged(uint256 newLimit);
 
-    event Start(address user);
+    event Cage(address user);
 
-    event Stop(address user);
+    event Uncage(address user);
 
     event Claimed(address indexed user, uint256 amount);
 
