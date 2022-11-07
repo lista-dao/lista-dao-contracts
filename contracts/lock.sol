@@ -27,6 +27,7 @@ interface CageLike {
 interface HelioTokenLike {
     function pause() external;
     function unpause() external;
+    function paused() external view returns (bool);
 }
 
 contract Lock is Initializable{
@@ -88,7 +89,7 @@ contract Lock is Initializable{
         vow.cage();
         spot.cage();
         hayJoin.cage();
-        helioToken.pause();
+        if(helioToken.paused() != true) helioToken.pause();
         jar.cage();
     }
     function lock(bytes32 what) external auth {
@@ -98,13 +99,13 @@ contract Lock is Initializable{
         else if (what == "vow")   vow.cage();
         else if (what == "spot") spot.cage();
         else if (what == "hayJoin") hayJoin.cage();
-        else if (what == "helioToken") helioToken.pause();
+        else if (what == "helioToken") { if(helioToken.paused() != true) helioToken.pause(); }
         else if (what == "jar") jar.cage();
         else revert("Lock/file-unrecognized-param");
     }
     function lockExternals() external auth {
         require(live == 1, "Lock/not-live");
-        helioToken.pause();
+        if(helioToken.paused() != true) helioToken.pause();
         jar.cage();
     }
     function lockCore() external auth {
@@ -119,13 +120,12 @@ contract Lock is Initializable{
     // --- Unlocking ---
     function unlockAll() external auth {
         require(live == 1, "Lock/not-live");
-        live = 0;
         vat.uncage();
         dog.uncage();
         vow.uncage();
         spot.uncage();
         hayJoin.uncage();
-        helioToken.unpause();
+        if(helioToken.paused() == true) helioToken.unpause();
         jar.uncage();
     }
     function unlock(bytes32 what) external auth {
@@ -135,13 +135,13 @@ contract Lock is Initializable{
         else if (what == "vow")   vow.uncage();
         else if (what == "spot") spot.uncage();
         else if (what == "hayJoin") hayJoin.uncage();
-        else if (what == "helioToken") helioToken.unpause();
+        else if (what == "helioToken") if(helioToken.paused() == true) helioToken.unpause();
         else if (what == "jar") jar.uncage();
         else revert("Lock/file-unrecognized-param");
     }
     function unlockExternals() external auth {
         require(live == 1, "Lock/not-live");
-        helioToken.unpause();
+        if(helioToken.paused() == true) helioToken.unpause();
         jar.uncage();
     }
     function unlockCore() external auth {
