@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../ceros/interfaces/IWETH.sol";
+import "../masterVault/interfaces/IMasterVault.sol";
 import "./IBaseStrategy.sol";
 
 abstract contract BaseStrategy is
@@ -17,18 +17,17 @@ ReentrancyGuardUpgradeable {
     address public destination;
     address public rewards;
 
-    // IWETH public underlying;
-
     bool public depositPaused;
+
+    IMasterVault public vault;
 
     event UpdatedStrategist(address strategist);
     event UpdatedRewards(address rewards);
-    event UpdatedPerformanceFee(uint256 performanceFee);
 
     function __BaseStrategy_init(
         address destinationAddr,
-        address rewardsAddr
-        // address underlyingToken
+        address rewardsAddr,
+        address masterVault
     ) internal initializer {
         __Ownable_init();
         __Pausable_init();
@@ -36,7 +35,7 @@ ReentrancyGuardUpgradeable {
         strategist = msg.sender;
         destination = destinationAddr;
         rewards = rewardsAddr;
-        // underlying = IWETH(underlyingToken);
+        vault = IMasterVault(masterVault);
     }
 
     /**
@@ -47,19 +46,32 @@ ReentrancyGuardUpgradeable {
         _;
     }
 
-    function _beforeDeposit(uint256 amount) internal virtual returns (bool) {
+    /**
+     * @dev Throws if deposits are paused.
+     */
+    modifier whenDepositNotPaused() {
+        require(!depositPaused, "deposits are paused");
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the masterVault
+     */
+    modifier onlyVault() {
+        require(msg.sender == address(vault), "!vault");
+        _;
     }
 
     function balanceOfWant() public view returns(uint256) {
         return address(this).balance;
     }
 
-    function balanceOfPool() public view returns(uint256) {
+    function balanceOfPool() public virtual view returns(uint256) {
         return address(destination).balance;
     }
 
     function balanceOf() public view returns(uint256) {
-        return address(this).balance + address(destination).balance;
+        return balanceOfWant() + balanceOfPool();
     }
 
     function pause() external onlyStrategist {
