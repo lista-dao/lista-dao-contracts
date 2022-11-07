@@ -47,6 +47,11 @@ ReentrancyGuardUpgradeable {
         _;
     }
 
+    modifier whenDepositNotPaused() {
+        require(!depositPaused, "deposits are paused");
+        _;
+    }
+
     function _beforeDeposit(uint256 amount) internal virtual returns (bool) {
     }
 
@@ -54,7 +59,7 @@ ReentrancyGuardUpgradeable {
         return address(this).balance;
     }
 
-    function balanceOfPool() public view returns(uint256) {
+    function balanceOfPool() public virtual view returns(uint256) {
         return address(destination).balance;
     }
 
