@@ -12,47 +12,32 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     ICerosRouter private _ceRouter;
     ICertToken private _certToken;
     IBinancePool private _binancePool; 
-    IMasterVault public vault;
 
     event BinancePoolChanged(address binancePool);
     event CeRouterChanged(address ceRouter);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the ceros router contract
-    /// @param feeRecipient Address of the fee recipient
-    // /// @param underlyingToken Address of the underlying token(wMatic)
+    /// @param rewards Address of the fee recipient
     /// @param certToekn Address of aBNBc token
     /// @param masterVault Address of the masterVault contract
     /// @param binancePool Address of binancePool contract
     function initialize(
         address destination,
-        address feeRecipient,
-        // address underlyingToken,
+        address rewards,
         address certToekn,
         address masterVault,
         address binancePool
     ) public initializer {
-        __BaseStrategy_init(destination, feeRecipient);
+        __BaseStrategy_init(destination, rewards, masterVault);
         _ceRouter = ICerosRouter(destination);
         _certToken = ICertToken(certToekn);
         _binancePool = IBinancePool(binancePool);
-        vault = IMasterVault(masterVault);
-        // underlying.approve(address(destination), type(uint256).max);
-        // underlying.approve(address(vault), type(uint256).max);
         _certToken.approve(binancePool, type(uint256).max);
-    }
-
-    /**
-     * Modifiers
-     */
-    modifier onlyVault() {
-        require(msg.sender == address(vault), "!vault");
-        _;
     }
 
     /// @dev deposits the given amount of underlying tokens into ceros
     function deposit() external payable onlyVault returns(uint256 value) {
-        // require(amount <= underlying.balanceOf(address(this)), "insufficient balance");
         uint256 amount = msg.value;
         require(amount <= address(this).balance, "insufficient balance");
         return _deposit(amount);
@@ -60,15 +45,12 @@ contract CerosYieldConverterStrategy is BaseStrategy {
 
     /// @dev deposits all the available underlying tokens into ceros
     function depositAll() external payable onlyVault returns(uint256 value) {
-        // uint256 amount = underlying.balanceOf(address(this));
-        // return _deposit(amount);
         return _deposit(address(this).balance);
     }
 
     /// @dev internal function to deposit the given amount of underlying tokens into ceros
     /// @param amount amount of underlying tokens
-    function _deposit(uint256 amount) internal returns (uint256 value) {
-        require(!depositPaused, "deposits are paused");
+    function _deposit(uint256 amount) whenDepositNotPaused internal returns (uint256 value) {
         require(amount > 0, "invalid amount");
         if (canDeposit(amount)) {
             return _ceRouter.deposit{value: amount}();
@@ -93,7 +75,6 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @return value - returns the amount of underlying tokens withdrawn from ceros
     function _withdraw(address recipient, uint256 amount) internal returns (uint256 value) {
         require(amount > 0, "invalid amount");
-        // uint256 wethBalance = underlying.balanceOf(address(this));
         uint256 ethBalance = address(this).balance;
         if(amount < ethBalance) {
             payable(recipient).transfer(amount);
@@ -149,10 +130,8 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @param ceRouter new ceros router address
     function changeCeRouter(address ceRouter) external onlyOwner {
         require(ceRouter != address(0));
-        // underlying.approve(address(_ceRouter), 0);
         destination = ceRouter;
         _ceRouter = ICerosRouter(ceRouter);
-        // underlying.approve(address(_ceRouter), type(uint256).max);
         emit CeRouterChanged(ceRouter);
     }
 }
