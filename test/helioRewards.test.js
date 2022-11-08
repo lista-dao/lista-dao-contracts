@@ -22,6 +22,25 @@ describe('===HelioRewards===', function () {
         this.Vat = await ethers.getContractFactory("Vat");
         this.HelioOracle = await ethers.getContractFactory("HelioOracle");
 
+        this.Spot = await hre.ethers.getContractFactory("Spotter");
+        this.Hay = await hre.ethers.getContractFactory("Hay");
+        this.GemJoin = await hre.ethers.getContractFactory("GemJoin");
+        this.HayJoin = await hre.ethers.getContractFactory("HayJoin");
+        this.Oracle = await hre.ethers.getContractFactory("Oracle");
+        this.Jug = await hre.ethers.getContractFactory("Jug");
+        this.Vow = await hre.ethers.getContractFactory("Vow");
+
+        this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
+
+        const auctionProxy = await this.AuctionProxy.deploy();
+        await auctionProxy.deployed();
+        this.Interaction = await hre.ethers.getContractFactory("Interaction", {
+            unsafeAllow: ["external-library-linking"],
+            libraries: {
+            AuctionProxy: auctionProxy.address,
+            },
+        });
+
         // Contract deployment
         heliorewards = await this.HelioRewards.connect(deployer).deploy();
         await heliorewards.deployed();
@@ -31,6 +50,27 @@ describe('===HelioRewards===', function () {
         await vat.deployed();
         heliooracle = await this.HelioOracle.connect(deployer).deploy();
         await heliooracle.deployed();
+
+        await vat.initialize();
+        spot = await this.Spot.connect(deployer).deploy();
+        await spot.deployed(); await spot.initialize(vat.address);
+        hay = await this.Hay.connect(deployer).deploy();
+        await hay.deployed(); await hay.initialize(97, "HAY", "100" + wad);
+        gem = await this.Hay.connect(deployer).deploy();
+        await gem.deployed(); await gem.initialize(97, "HAY", "100" + wad);
+        gemJoin = await this.GemJoin.connect(deployer).deploy();
+        await gemJoin.deployed(); await gemJoin.initialize(vat.address, collateral, gem.address);
+        hayJoin = await this.HayJoin.connect(deployer).deploy();
+        await hayJoin.deployed(); await hayJoin.initialize(vat.address, hay.address);
+        oracle = await this.Oracle.connect(deployer).deploy();
+        await oracle.deployed(); await oracle.setPrice("1" + wad);
+        jug = await this.Jug.connect(deployer).deploy();
+        await jug.deployed(); await jug.initialize(vat.address);
+        vow = await this.Vow.connect(deployer).deploy();
+        await vow.deployed(); await vow.initialize(vat.address, hayJoin.address, deployer.address);
+
+        
+
     });
 
     describe('--- initialize()', function () {
@@ -46,7 +86,7 @@ describe('===HelioRewards===', function () {
         });
         it('reverts: Rewards/not-live', async function () {
             await heliorewards.initialize(vat.address, "100" + wad);
-            await heliorewards.stop();
+            await heliorewards.cage();
             await expect(heliorewards.rely(signer1.address)).to.be.revertedWith("Rewards/not-live");
         });
         it('relies on address', async function () {
@@ -61,7 +101,7 @@ describe('===HelioRewards===', function () {
         });
         it('reverts: Rewards/not-live', async function () {
             await heliorewards.initialize(vat.address, "100" + wad);
-            await heliorewards.stop();
+            await heliorewards.cage();
             await expect(heliorewards.deny(NULL_ADDRESS)).to.be.revertedWith("Rewards/not-live");
         });
         it('denies an address', async function () {
@@ -72,20 +112,20 @@ describe('===HelioRewards===', function () {
             expect(await heliorewards.wards(signer1.address)).to.be.equal("0");
         });
     });
-    describe('--- stop()', function () {
+    describe('--- cage()', function () {
         it('disables the live flag', async function () {
             await heliorewards.initialize(vat.address, "100" + wad);
-            await heliorewards.stop();
+            await heliorewards.cage();
             expect(await heliorewards.live()).to.be.equal("0");
         });
     });
-    describe('--- start()', function () {
+    describe('--- uncage()', function () {
         it('enables the live flag', async function () {
             await heliorewards.initialize(vat.address, "100" + wad);
-            await heliorewards.stop();
+            await heliorewards.cage();
             expect(await heliorewards.live()).to.be.equal("0");
 
-            await heliorewards.start();
+            await heliorewards.uncage();
             expect(await heliorewards.live()).to.be.equal("1");
         });
     });
@@ -94,15 +134,15 @@ describe('===HelioRewards===', function () {
             await heliorewards.initialize(vat.address, "100" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await expect(heliorewards.initPool(heliotoken.address, collateral, "1" + ray)).to.be.revertedWith("Reward/not-enough-reward-token");
+            await expect(heliorewards.initPool(gem.address, collateral, "1" + ray)).to.be.revertedWith("Reward/not-enough-reward-token");
         });
         it('reverts: Reward/pool-existed', async function () {
             await heliorewards.initialize(vat.address, "40" + wad);
             await heliotoken.initialize("100" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray)
+            await heliorewards.initPool(gem.address, collateral, "1" + ray)
 
-            await expect(heliorewards.initPool(heliotoken.address, collateral, "1" + ray)).to.be.revertedWith("Reward/pool-existed");
+            await expect(heliorewards.initPool(gem.address, collateral, "1" + ray)).to.be.revertedWith("Reward/pool-existed");
         });
         it('reverts: Reward/invalid-token', async function () {
             await heliorewards.initialize(vat.address, "40" + wad);
@@ -114,8 +154,8 @@ describe('===HelioRewards===', function () {
             await heliorewards.initialize(vat.address, "40" + wad);
             await heliotoken.initialize("100" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray);
-            expect(await (await heliorewards.pools(heliotoken.address)).rewardRate).to.be.equal("1" + ray);
+            await heliorewards.initPool(gem.address, collateral, "1" + ray);
+            expect(await (await heliorewards.pools(gem.address)).rewardRate).to.be.equal("1" + ray);
         });
     });
     describe('--- setHelioToken()', function () {
@@ -166,34 +206,34 @@ describe('===HelioRewards===', function () {
             await heliorewards.initialize(vat.address, "50" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray);
-            await expect(heliorewards.setRate(heliotoken.address, "1" + ray)).to.be.revertedWith("Reward/pool-existed");
+            await heliorewards.initPool(gem.address, collateral, "1" + ray);
+            await expect(heliorewards.setRate(gem.address, "1" + ray)).to.be.revertedWith("Reward/pool-existed");
         });
         it('reverts: Reward/invalid-token', async function () {
             await heliorewards.initialize(vat.address, "50" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray);
+            await heliorewards.initPool(gem.address, collateral, "1" + ray);
             await expect(heliorewards.setRate(NULL_ADDRESS, "1" + ray)).to.be.revertedWith("Reward/invalid-token");
         });
         it('reverts: Reward/negative-rate', async function () {
             await heliorewards.initialize(vat.address, "50" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await expect(heliorewards.setRate(heliotoken.address, "1" + wad)).to.be.revertedWith("Reward/negative-rate");
+            await expect(heliorewards.setRate(gem.address, "1" + wad)).to.be.revertedWith("Reward/negative-rate");
         });
         it('reverts: Reward/high-rate', async function () {
             await heliorewards.initialize(vat.address, "50" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await expect(heliorewards.setRate(heliotoken.address, "3" + ray)).to.be.revertedWith("Reward/high-rate");
+            await expect(heliorewards.setRate(gem.address, "3" + ray)).to.be.revertedWith("Reward/high-rate");
         });
         it('sets rate', async function () {
             await heliorewards.initialize(vat.address, "50" + wad);
             await heliotoken.initialize("90" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.setRate(heliotoken.address, "1" + ray);
-            expect(await (await heliorewards.pools(heliotoken.address)).rewardRate).to.be.equal("1" + ray);
+            await heliorewards.setRate(gem.address, "1" + ray);
+            expect(await (await heliorewards.pools(gem.address)).rewardRate).to.be.equal("1" + ray);
         });
     });
     describe('--- helioPrice()', function () {
@@ -209,8 +249,8 @@ describe('===HelioRewards===', function () {
             await heliorewards.initialize(vat.address, "40" + wad);
             await heliotoken.initialize("100" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray);
-            expect(await heliorewards.rewardsRate(heliotoken.address)).to.be.equal("1" + ray);
+            await heliorewards.initPool(gem.address, collateral, "1" + ray);
+            expect(await heliorewards.rewardsRate(gem.address)).to.be.equal("1" + ray);
         });
     });
     describe('--- drop()', function () {
@@ -222,36 +262,76 @@ describe('===HelioRewards===', function () {
             expect(await (await heliorewards.pools(heliotoken.address)).rewardRate).to.be.equal("0");
         });
         it('drops rewards', async function () {
-            await vat.initialize();
-            await vat.init(collateral);
+            const interaction = await upgrades.deployProxy(this.Interaction, [vat.address, spot.address, hay.address, hayJoin.address, jug.address, NULL_ADDRESS, heliorewards.address],
+                {
+                  initializer: "initialize",
+                  unsafeAllowLinkedLibraries: true,
+                }
+              );
+            await interaction.deployed();
+    
+            // Initialize Core
+            await vat.rely(gemJoin.address);
+            await vat.rely(spot.address);
+            await vat.rely(hayJoin.address);
+            await vat.rely(jug.address);
+            await vat.rely(interaction.address);
+            await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "5000000" + rad);
+            await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("line"), "5000000" + rad);
+            await vat["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("dust"), "100" + ray);
 
-            await vat.connect(deployer)["file(bytes32,uint256)"](await ethers.utils.formatBytes32String("Line"), "200" + rad);
-            await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, await ethers.utils.formatBytes32String("line"), "200" + rad);  
-            await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, await ethers.utils.formatBytes32String("dust"), "10" + rad);              
-            await vat.connect(deployer)["file(bytes32,bytes32,uint256)"](collateral, await ethers.utils.formatBytes32String("spot"), "100" + ray);
+            await hay.rely(hayJoin.address);
 
-            await vat.slip(collateral, deployer.address, "1" + wad);
-            await vat.connect(deployer).frob(collateral, deployer.address, deployer.address, deployer.address, "1" + wad, 0);
-            await vat.connect(deployer).frob(collateral, deployer.address, deployer.address, deployer.address, 0, "15" + wad);
+            await spot.rely(interaction.address);
+            await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), oracle.address);
+            await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // Pegged to 1$
 
+            await gemJoin.rely(interaction.address);
+
+            await hayJoin.rely(interaction.address);
+            await hayJoin.rely(vow.address);
+    
+            await jug.rely(interaction.address);
+            // 1000000000315522921573372069 1% Borrow Rate
+            // 1000000000627937192491029810 2% Borrow Rate
+            // 1000000000937303470807876290 3% Borrow Rate
+            // 1000000003022266000000000000 10% Borrow Rate
+            await jug["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
+
+            await vow["file(bytes32,address)"](ethers.utils.formatBytes32String("hay"), hay.address);
+    
+            // Initialize Interaction
+            await interaction.setCollateralType(gem.address, gemJoin.address, collateral, NULL_ADDRESS, "1333333333333333333333333333", {gasLimit: 700000}); // 1.333.... <- 75% borrow ratio
+            await interaction.poke(gem.address, {gasLimit: 200000});
+            await interaction.drip(gem.address, {gasLimit: 200000});
+
+            // Initialize HelioRewards
             await heliorewards.initialize(vat.address, "40" + wad);
             await heliotoken.initialize("100" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1000000001847694957439350500");
+            await heliorewards.initPool(gem.address, collateral, "1000000000627937192491029810");
             await heliooracle.initialize("1" + wad);
             await heliorewards.setOracle(heliooracle.address);
+            await heliorewards.rely(interaction.address);
 
-            expect(await (await heliorewards.piles(deployer.address, heliotoken.address)).amount).to.be.equal("0");
+            expect(await (await heliorewards.piles(signer1.address, gem.address)).ts).to.be.equal("0");
 
-            await heliorewards.drop(heliotoken.address, deployer.address);
+            // Mint collateral to User, deposit and borrow from that user
+            await gem.mint(signer1.address, "10" + wad);
+            await gem.connect(signer1).approve(interaction.address, "10" + wad);
+            await interaction.connect(signer1).deposit(signer1.address, gem.address, "10" + wad);
+            await interaction.connect(signer1).borrow(gem.address, "5" + wad);
+
+            expect(await (await heliorewards.piles(signer1.address, gem.address)).ts).not.to.be.equal("0");
+            expect(await (await heliorewards.piles(signer1.address, gem.address)).amount).to.be.equal("0");
 
             tau = (await ethers.provider.getBlock()).timestamp;
             await network.provider.send("evm_setNextBlockTimestamp", [tau + 100]);
             await network.provider.send("evm_mine");
-            await heliorewards.drop(heliotoken.address, deployer.address);
-            expect(await (await heliorewards.piles(deployer.address, heliotoken.address)).amount).to.be.equal("2799258119129");
 
-            await heliorewards.claim("2799258119129");
+            await heliorewards.drop(gem.address, signer1.address);
+
+            expect(await (await heliorewards.piles(signer1.address, gem.address)).amount).to.be.equal("317108292164");
         });
     });
     describe('--- distributionApy()', function () {
@@ -259,8 +339,8 @@ describe('===HelioRewards===', function () {
             await heliorewards.initialize(vat.address, "40" + wad);
             await heliotoken.initialize("100" + wad, heliorewards.address);
             await heliorewards.setHelioToken(heliotoken.address);
-            await heliorewards.initPool(heliotoken.address, collateral, "1" + ray);
-            expect(await heliorewards.distributionApy(heliotoken.address)).to.be.equal("0");
+            await heliorewards.initPool(gem.address, collateral, "1" + ray);
+            expect(await heliorewards.distributionApy(gem.address)).to.be.equal("0");
         });
     });
 });
