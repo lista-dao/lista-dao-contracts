@@ -103,7 +103,7 @@ contract Flash is Initializable, ReentrancyGuardUpgradeable, IERC3156FlashLender
         vat.suck(address(this), address(this), amt);
         hayJoin.exit(address(receiver), amount);
 
-        emit FlashLoan(address(receiver), token, amount, 0);
+        emit FlashLoan(address(receiver), token, amount, fee);
 
         require(receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS, "Flash/callback-failed");
 
