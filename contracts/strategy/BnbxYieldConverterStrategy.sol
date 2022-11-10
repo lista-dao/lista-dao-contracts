@@ -133,7 +133,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
                 .getUserRequestStatus(address(this), idx);
 
             if (!isClaimable) continue;
-            _bnbToDistribute += amount;
+            _bnbToDistribute += amount; // amount here returned from stader will be a little more than requested to withdraw
             _stakeManager.claimWithdraw(idx);
             return true;
         }
@@ -177,7 +177,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     function _harvestTo(address to) private returns (uint256 yield) {
         yield = _calculateYield();
 
-        // TODO(helio): is this required ? as yield is already uint256
         require(yield > 0, "no yield to harvest");
 
         _bnbxToken.safeTransfer(to, yield);
