@@ -53,28 +53,25 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         _bnbxToken.approve(stakeManager, type(uint256).max);
     }
 
-    /// @dev deposits the given amount of BNB into Stader stakeManager through bnbxRouter
+    /// @dev deposits the given amount of BNB into Stader stakeManager
     function deposit() external payable onlyVault returns (uint256) {
         uint256 amount = msg.value;
-        require(amount <= address(this).balance, "insufficient balance");
-
         return _deposit(amount);
     }
 
-    /// @dev deposits all the available BNB into Stader stakeManager through bnbxRouter
+    /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Stader stakeManager
     function depositAll() external payable onlyVault returns (uint256) {
-        return _deposit(address(this).balance);
+        uint256 amount = address(this).balance - _bnbToDistribute;
+        return _deposit(amount);
     }
 
-    /// @dev internal function to deposit the given amount of BNB into Stader stakeManager through bnbxRouter
+    /// @dev internal function to deposit the given amount of BNB into Stader stakeManager
     /// @param amount amount of BNB to deposit
     function _deposit(uint256 amount)
         internal
         whenDepositNotPaused
         returns (uint256)
     {
-        require(canDeposit(amount), "invalid amount");
-
         _bnbDepositBalance += amount;
         _stakeManager.deposit{value: amount}();
         return amount;
