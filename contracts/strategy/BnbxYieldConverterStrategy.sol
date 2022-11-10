@@ -76,7 +76,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    /// @dev withdraws the given amount of BNB from Stader's stakeManager
+    /// @dev creates an entry to withdraw the given amount of BNB from Stader's stakeManager
     /// @param amount amount of BNB to withdraw
     function withdraw(address recipient, uint256 amount)
         external
@@ -86,13 +86,13 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return _withdraw(recipient, amount);
     }
 
-    /// @dev withdraws everything(bnbDeposited) from Stader's stakeManager
+    /// @dev creates an entry to withdraw everything(bnbDeposited) from Stader's stakeManager
     function panic() external onlyStrategist returns (uint256) {
         (, , uint256 debt) = vault.strategyParams(address(this));
         return _withdraw(address(vault), debt);
     }
 
-    /// @dev internal function to withdraw the given amount of BNB from Stader's stakeManager
+    /// @dev internal function to create an withdraw the given amount of BNB from Stader's stakeManager
     /// @param amount amount of BNB
     /// @return value - returns the amount of BNB that will be withdrawn from stader in future
     function _withdraw(address recipient, uint256 amount)
@@ -112,7 +112,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    // actual withdraw request to stader
+    // actual withdraw request to stader, should be called max once a day
     function batchWithdraw() external {
         require(_bnbxToUnstake > 0, "No BNBx to unstake");
 
