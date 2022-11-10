@@ -26,7 +26,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     uint256 private _firstDistributeIdx;
     uint256 private _nextWithdrawIdx;
 
-    uint256 private _bnbxHoldingBalance; // amount of bnbx held by this strategy
     uint256 private _bnbDepositBalance; // amount of bnb deposited by this strategy
     uint256 private _bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
     uint256 private _bnbToDistribute; // amount of bnb to distribute to users who unstaked
@@ -77,7 +76,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         require(canDeposit(amount), "invalid amount");
 
         _bnbDepositBalance += amount;
-        _bnbxHoldingBalance += _stakeManager.convertBnbToBnbX(amount);
         _stakeManager.deposit{value: amount}();
         return amount;
     }
@@ -100,7 +98,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev internal function to withdraw the given amount of BNB from Stader's stakeManager
     /// @param amount amount of BNB
-    /// @return value - returns the amount of BNB withdrawn from stader (currently 0 as no amount is withdrawn in this step)
+    /// @return value - returns the amount of BNB that will be withdrawn from stader in future
     function _withdraw(address recipient, uint256 amount)
         internal
         returns (uint256 value)
@@ -109,8 +107,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
         uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
         _bnbDepositBalance -= amount;
-        _bnbxHoldingBalance -= bnbxAmount;
-
         _bnbxToUnstake += bnbxAmount;
         _withdrawRequests[_nextWithdrawIdx++] = UserWithdrawRequest({
             recipient: recipient,
@@ -119,7 +115,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
             triggerTime: block.timestamp
         });
 
-        return 0;
+        return amount;
     }
 
     // actual withdraw request to stader
@@ -183,18 +179,18 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         }
     }
 
-    /// @dev claims yeild from stader in BNBx and transfers to rewardsAddr
+    /// @dev claims yield from stader in BNBx and transfers to rewardsAddr
     function harvest() external onlyStrategist {
         _harvestTo(rewards);
     }
 
-    /// @dev internal function to claim yeild from stader in BNBx and transfer them to desired address
+    /// @dev internal function to claim yield from stader in BNBx and transfer them to desired address
     function _harvestTo(address to) private returns (uint256 yield) {
         yield = _calculateYield();
         
-        require(yield > 0, "no yeild to harvest");
+        // TODO(helio): is this required ? as yield is already uint256
+        require(yield > 0, "no yield to harvest");
 
-        _bnbxHoldingBalance -= yield;
         _bnbxToken.safeTransfer(to, yield);
     }
 
@@ -203,7 +199,9 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
             _bnbDepositBalance
         );
 
-        yield = _bnbxHoldingBalance - bnbxEqAmount;
+        // yield = bnbxHoldingBalance - bnbxEqAmout
+        // bnbxHoldingBalance = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake
+        yield = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake - bnbxEqAmount;
     }
 
     // returns the total amount of tokens in the destination contract
