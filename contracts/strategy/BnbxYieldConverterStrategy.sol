@@ -23,7 +23,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         uint256 triggerTime;
     }
     mapping(uint256 => UserWithdrawRequest) private _withdrawRequests;
-    uint256 private _firstWithdrawIdx;
+    uint256 private _firstDistributeIdx;
     uint256 private _nextWithdrawIdx;
 
     uint256 private _bnbxHoldingBalance; // amount of bnbx held by this strategy
@@ -168,15 +168,15 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         reqCount = 0;
 
         while (
-            _firstWithdrawIdx < _nextWithdrawIdx &&
-            _withdrawRequests[_firstWithdrawIdx].amount <= _bnbToDistribute
+            _firstDistributeIdx < _nextWithdrawIdx &&
+            _withdrawRequests[_firstDistributeIdx].amount <= _bnbToDistribute
         ) {
             if (reqCount == maxNumRequests) break;
-            address recipient = _withdrawRequests[_firstWithdrawIdx].recipient;
-            uint256 amount = _withdrawRequests[_firstWithdrawIdx].amount;
+            address recipient = _withdrawRequests[_firstDistributeIdx].recipient;
+            uint256 amount = _withdrawRequests[_firstDistributeIdx].amount;
 
-            delete _withdrawRequests[_firstWithdrawIdx];
-            _firstWithdrawIdx++;
+            delete _withdrawRequests[_firstDistributeIdx];
+            _firstDistributeIdx++;
 
             _bnbToDistribute -= amount;
             AddressUpgradeable.sendValue(payable(recipient), amount);
