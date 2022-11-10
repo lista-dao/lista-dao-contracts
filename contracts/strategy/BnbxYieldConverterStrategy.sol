@@ -10,7 +10,6 @@ import "../bnbx/interfaces/IStakeManager.sol";
 import "./BaseStrategy.sol";
 
 contract BnbxYieldConverterStrategy is BaseStrategy {
-
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable private _bnbxToken;
@@ -87,7 +86,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return _withdraw(recipient, amount);
     }
 
-    /// @dev withdraws everything from Stader's stakeManager
+    /// @dev withdraws everything(bnbDeposited) from Stader's stakeManager
     function panic() external onlyStrategist returns (uint256) {
         (, , uint256 debt) = vault.strategyParams(address(this));
         return _withdraw(address(vault), debt);
@@ -100,8 +99,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         internal
         returns (uint256 value)
     {
-        require(amount > 0, "invalid amount");
-
         uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
         _bnbDepositBalance -= amount;
         _bnbxToUnstake += bnbxAmount;
@@ -128,27 +125,20 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @dev transfer funds(BNB) from stakeManager to strategy
     /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
     function claimNextBatch() external returns (bool foundClaimableReq) {
-        uint256 claimableIdx;
-        bool foundClaimableReq = false;
-
         IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
         for (uint256 idx = 0; idx < requests.length; idx++) {
             (bool isClaimable, uint256 amount) = _stakeManager
                 .getUserRequestStatus(address(this), idx);
-            if (isClaimable) {
-                foundClaimableReq = true;
-                claimableIdx = idx;
-                _bnbToDistribute += amount;
-                break;
-            }
+
+            if (!isClaimable) continue;
+            _bnbToDistribute += amount;
+            _stakeManager.claimWithdraw(idx);
+            return true;
         }
 
-        if (!foundClaimableReq) return foundClaimableReq;
-
-        _stakeManager.claimWithdraw(claimableIdx);
-        return foundClaimableReq;
+        return false;
     }
 
     /// @dev distribute claimed funds to users in FIFO order of withdraw requests
@@ -158,14 +148,16 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         external
         returns (uint256 reqCount)
     {
-        reqCount = 0;
-
-        while (
-            _firstDistributeIdx < _nextWithdrawIdx &&
-            _withdrawRequests[_firstDistributeIdx].amount <= _bnbToDistribute
+        for (
+            reqCount = 0;
+            reqCount < maxNumRequests &&
+                _firstDistributeIdx < _nextWithdrawIdx &&
+                _withdrawRequests[_firstDistributeIdx].amount <=
+                _bnbToDistribute;
+            reqCount++
         ) {
-            if (reqCount == maxNumRequests) break;
-            address recipient = _withdrawRequests[_firstDistributeIdx].recipient;
+            address recipient = _withdrawRequests[_firstDistributeIdx]
+                .recipient;
             uint256 amount = _withdrawRequests[_firstDistributeIdx].amount;
 
             delete _withdrawRequests[_firstDistributeIdx];
@@ -184,7 +176,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @dev internal function to claim yield from stader in BNBx and transfer them to desired address
     function _harvestTo(address to) private returns (uint256 yield) {
         yield = _calculateYield();
-        
+
         // TODO(helio): is this required ? as yield is already uint256
         require(yield > 0, "no yield to harvest");
 
@@ -198,7 +190,10 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
         // yield = bnbxHoldingBalance - bnbxEqAmout
         // bnbxHoldingBalance = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake
-        yield = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake - bnbxEqAmount;
+        yield =
+            _bnbxToken.balanceOf(address(this)) -
+            _bnbxToUnstake -
+            bnbxEqAmount;
     }
 
     // returns the total amount of tokens in the destination contract
