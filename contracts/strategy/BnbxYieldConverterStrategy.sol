@@ -15,7 +15,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     IERC20Upgradeable private _bnbxToken;
     IStakeManager private _stakeManager;
-    IMasterVault private _vault;
 
     struct UserWithdrawRequest {
         address recipient;
@@ -36,32 +35,23 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the stakeManager contract
-    /// @param feeRecipient Address of the fee recipient, which receives yield
+    /// @param rewardsAddr Address which receives yield
     /// @param bnbxToken Address of BNBx token
     /// @param masterVault Address of the masterVault contract
     /// @param stakeManager Address of stakeManager contract
     function initialize(
         address destination,
-        address feeRecipient,
+        address rewardsAddr,
         address bnbxToken,
         address masterVault,
         address stakeManager
     ) public initializer {
-        __BaseStrategy_init(destination, feeRecipient);
+        __BaseStrategy_init(destination, rewardsAddr, masterVault);
 
         _bnbxToken = IERC20Upgradeable(bnbxToken);
         _stakeManager = IStakeManager(stakeManager);
-        _vault = IMasterVault(masterVault);
 
         _bnbxToken.approve(stakeManager, type(uint256).max);
-    }
-
-    /**
-     * Modifiers
-     */
-    modifier onlyVault() {
-        require(msg.sender == address(_vault), "!vault");
-        _;
     }
 
     /// @dev deposits the given amount of BNB into Stader stakeManager through bnbxRouter
@@ -104,8 +94,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev withdraws everything from Stader's stakeManager
     function panic() external onlyStrategist returns (uint256) {
-        (, , uint256 debt) = _vault.strategyParams(address(this));
-        return _withdraw(address(_vault), debt);
+        (, , uint256 debt) = vault.strategyParams(address(this));
+        return _withdraw(address(vault), debt);
     }
 
     /// @dev internal function to withdraw the given amount of BNB from Stader's stakeManager
@@ -193,7 +183,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         }
     }
 
-    /// @dev claims yeild from stader in BNBx and transfers to feeRecipient
+    /// @dev claims yeild from stader in BNBx and transfers to rewardsAddr
     function harvest() external onlyStrategist {
         _harvestTo(rewards);
     }
