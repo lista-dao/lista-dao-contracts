@@ -29,6 +29,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     uint256 private _bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
     uint256 private _bnbToDistribute; // amount of bnb to distribute to users who unstaked
 
+    uint256 public lastUnstakeTriggerTime; // last time when batchWithdraw was invoked
+
     event StakeManagerChanged(address stakeManager);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
@@ -48,6 +50,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
         _bnbxToken = IERC20Upgradeable(bnbxToken);
         _stakeManager = IStakeManager(stakeManager);
+        lastUnstakeTriggerTime = block.timestamp;
 
         _bnbxToken.approve(stakeManager, type(uint256).max);
     }
@@ -114,10 +117,15 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     // actual withdraw request to stader, should be called max once a day
     function batchWithdraw() external {
+        require(
+            block.timestamp - lastUnstakeTriggerTime >= 24 hours,
+            "Allowed once daily"
+        );
         require(_bnbxToUnstake > 0, "No BNBx to unstake");
 
         uint256 bnbxToUnstake = _bnbxToUnstake; // To prevent reentrancy
         _bnbxToUnstake = 0;
+        lastUnstakeTriggerTime = block.timestamp;
         _stakeManager.requestWithdraw(bnbxToUnstake);
     }
 
