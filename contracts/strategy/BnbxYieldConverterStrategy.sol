@@ -183,14 +183,14 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev internal function to claim yield from stader in BNBx and transfer them to desired address
     function _harvestTo(address to) private returns (uint256 yield) {
-        yield = _calculateYield();
+        yield = calculateYield();
 
         require(yield > 0, "no yield to harvest");
 
         _bnbxToken.safeTransfer(to, yield);
     }
 
-    function _calculateYield() private view returns (uint256 yield) {
+    function calculateYield() public view returns (uint256 yield) {
         uint256 bnbxEqAmount = _stakeManager.convertBnbToBnbX(
             _bnbDepositBalance
         );
