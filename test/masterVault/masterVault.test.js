@@ -6,7 +6,7 @@ const ten = BigNumber.from(10);
 const tenPow18 = ten.pow(18);
 const NetworkSnapshotter = require("../helpers/NetworkSnapshotter");
 
-describe.only("MasterVault", function () {
+describe("MasterVault", function () {
   // Variables
   let CerosStrategy,
     dex,
