@@ -129,10 +129,21 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         _stakeManager.requestWithdraw(bnbxToUnstake);
     }
 
+    /// @param maxNumRequests : parameter to control max number of requests to refund
+    /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
+    /// @return reqCount : actual number requests refunded
+    function claimNextBatchAndDistribute(uint256 maxNumRequests)
+        external
+        returns (bool foundClaimableReq, uint256 reqCount)
+    {
+        foundClaimableReq = claimNextBatch();
+        reqCount = distributeFund(maxNumRequests);
+    }
+
     /// @dev claims the next available withdraw batch from stader
     /// @dev transfer funds(BNB) from stakeManager to strategy
     /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
-    function claimNextBatch() external returns (bool foundClaimableReq) {
+    function claimNextBatch() public returns (bool foundClaimableReq) {
         IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
@@ -153,7 +164,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @param maxNumRequests : parameter to control max number of requests to refund
     /// @return reqCount : actual number requests refunded
     function distributeFund(uint256 maxNumRequests)
-        external
+        public
         returns (uint256 reqCount)
     {
         for (
