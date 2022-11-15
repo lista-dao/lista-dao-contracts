@@ -131,13 +131,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev claims the next available withdraw batch from stader
     /// @dev transfer funds(BNB) from stakeManager to strategy
-    /// @param maxNumRequests : parameter to control max number of requests to refund
     /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
-    /// @return reqCount : actual number requests refunded
-    function claimNextBatch(uint256 maxNumRequests)
-        external
-        returns (bool foundClaimableReq, uint256 reqCount)
-    {
+    function claimNextBatch() external returns (bool foundClaimableReq) {
         IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
@@ -148,19 +143,17 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
             if (!isClaimable) continue;
             _bnbToDistribute += amount; // amount here returned from stader will be a little more than requested to withdraw
             _stakeManager.claimWithdraw(idx);
-
-            reqCount = distributeFund(maxNumRequests);
-            return (true, reqCount);
+            return true;
         }
 
-        return (false, 0);
+        return false;
     }
 
     /// @dev distribute claimed funds to users in FIFO order of withdraw requests
     /// @param maxNumRequests : parameter to control max number of requests to refund
     /// @return reqCount : actual number requests refunded
     function distributeFund(uint256 maxNumRequests)
-        public
+        external
         returns (uint256 reqCount)
     {
         for (
@@ -191,6 +184,9 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @dev internal function to claim yield from stader in BNBx and transfer them to desired address
     function _harvestTo(address to) private returns (uint256 yield) {
         yield = calculateYield();
+
+        require(yield > 0, "no yield to harvest");
+
         _bnbxToken.safeTransfer(to, yield);
     }
 
