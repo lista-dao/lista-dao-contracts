@@ -38,14 +38,12 @@ contract CerosYieldConverterStrategy is BaseStrategy {
 
     /// @dev deposits the given amount of underlying tokens into ceros
     function deposit() external payable onlyVault returns(uint256 value) {
-        uint256 amount = msg.value;
-        require(amount <= address(this).balance, "insufficient balance");
-        return _deposit(amount);
+        return _deposit(msg.value);
     }
 
     /// @dev deposits all the available underlying tokens into ceros
-    function depositAll() external payable onlyVault returns(uint256 value) {
-        return _deposit(address(this).balance);
+    function depositAll() external onlyStrategist {
+        _deposit(address(this).balance);
     }
 
     /// @dev internal function to deposit the given amount of underlying tokens into ceros
@@ -85,8 +83,6 @@ contract CerosYieldConverterStrategy is BaseStrategy {
             return amount;
         }
     }
-
-    receive() external payable {}
 
     function canDeposit(uint256 amount) public view returns(bool) {
         uint256 minimumStake = IBinancePool(_binancePool).getMinimumStake();
