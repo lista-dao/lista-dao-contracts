@@ -74,6 +74,14 @@ ReentrancyGuardUpgradeable {
         return balanceOfWant() + balanceOfPool();
     }
 
+    receive() external payable {
+        require(
+            msg.sender == destination ||
+            msg.sender == strategist,
+            "invalid sender"
+        );
+    }
+
     function pause() external onlyStrategist {
         depositPaused = true;
     }
