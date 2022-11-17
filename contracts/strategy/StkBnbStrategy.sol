@@ -169,10 +169,10 @@ contract StkBnbStrategy is BaseStrategy {
     }
 
     /// @dev Handy function to both claim the funds from StakePool and distribute it to the users in one go.
-    /// Might result in out of gas issue because of claimAll(), if there are too many withdrawals.
-    function claimAndDistribute(uint256 maxNumRequests) external {
+    /// Might result in out of gas issue, if there are too many withdrawals.
+    function claimAndDistribute() external {
         claimAll();
-        distribute(maxNumRequests);
+        distribute(_endIndex);
     }
 
     /// @dev Call this manually to actually get the unstaked BNB back from StakePool after 15 days of withdraw.
@@ -195,12 +195,12 @@ contract StkBnbStrategy is BaseStrategy {
     }
 
     /// @dev Anybody can call this, it will always distribute the amount to the original recipients to whom the withdraw was intended.
-    /// @param maxNumRequests the max number of withdraw requests to refund
-    function distribute(uint256 maxNumRequests) public {
-        require(maxNumRequests <= _endIndex, "maxNumRequests out of bound");
+    /// @param endIdx the index (exclusive) till which to distribute the funds for withdraw requests
+    function distribute(uint256 endIdx) public {
+        require(endIdx <= _endIndex, "maxNumRequests out of bound");
 
         // dispatch the amount in order of _withdrawReqs
-        while (_bnbToDistribute > 0 || _startIndex < maxNumRequests) {
+        while (_bnbToDistribute > 0 || _startIndex < endIdx) {
             address recipient = _withdrawReqs[_startIndex].recipient;
             uint256 amount = _withdrawReqs[_startIndex].amount;
             if (amount > _bnbToDistribute) {
@@ -253,6 +253,16 @@ contract StkBnbStrategy is BaseStrategy {
     // returns the actual deposit amount (amount - depositFee, if any)
     function assessDepositFee(uint256 amount) public view returns (uint256) {
         return amount - (amount * IStakePool(_addressStore.getStakePool()).config().fee.deposit)/1e11;
+    }
+
+    // expose startIndex so that it can be used for initiating off-chain requests
+    function startIndex() external view returns (uint256) {
+        return _startIndex;
+    }
+
+    // expose endIndex so that it can be used for initiating off-chain requests
+    function endIndex() external view returns (uint256) {
+        return _endIndex;
     }
 
     /// @dev only owner can change addressStore
