@@ -197,7 +197,7 @@ contract StkBnbStrategy is BaseStrategy {
     /// @dev Anybody can call this, it will always distribute the amount to the original recipients to whom the withdraw was intended.
     /// @param endIdx the index (exclusive) till which to distribute the funds for withdraw requests
     function distribute(uint256 endIdx) public {
-        require(endIdx <= _endIndex, "maxNumRequests out of bound");
+        require(endIdx <= _endIndex, "endIdx out of bound");
 
         // dispatch the amount in order of _withdrawReqs
         while (_bnbToDistribute > 0 || _startIndex < endIdx) {
