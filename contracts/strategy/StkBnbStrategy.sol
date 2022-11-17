@@ -45,11 +45,12 @@ contract StkBnbStrategy is BaseStrategy {
     event AddressStoreChanged(address addressStore);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
-    /// @param destination Address of ??
+    /// @param destination For our case, its the address of AddressStore contract, as that is constant by design not StakePool.
     /// @param rewards The address to which strategy earnings are transferred
+    /// @param masterVault Address of the master vault contract
     /// @param addressStore The contract which holds all the other contract addresses in the stkBNB ecosystem.
     function initialize(
-        address destination,
+        address destination, // we will never use this in our impl, its there only for legacy purposes.
         address rewards,
         address masterVault,
         address addressStore
@@ -59,29 +60,28 @@ contract StkBnbStrategy is BaseStrategy {
         _addressStore = IAddressStore(addressStore);
     }
 
-    // TODO(discuss): don't know if anyone wants to just donate to strategy (lol) or if this is part of some pre-defined
-    // use-case. It should be properly mentioned somewhere in docs. It wasn't there in the design doc. Neither is this
-    // part of the interface, nor defined in the abstract BaseStrategy. Would make better sense to put it in the
-    // abstract one, if at all it needs to be there.
-    receive() external payable {}
+    /// @dev to receive withdrawn funds back from StakePool
+    receive() external payable override {
+        require(
+            msg.sender == _addressStore.getStakePool() ||
+            msg.sender == strategist,
+            "invalid sender"
+        );
+    }
 
     // to deposit funds to a destination contract
     function deposit() payable onlyVault external returns (uint256) {
         return _deposit(msg.value);
     }
 
-    // to deposit msg.value + this contract's existing balance to destination
-    function depositAll() payable onlyVault external returns (uint256) {
-        // whatever is coming in msg.value is already part of address(this).balance
-        return _deposit(address(this).balance-_bnbToDistribute);
+    // to deposit this contract's existing balance to destination
+    function depositAll() onlyStrategist external {
+        _deposit(address(this).balance-_bnbToDistribute);
     }
 
     /// @dev internal function to deposit the given amount of BNB tokens into stakePool
     /// @param amount amount of BNB to deposit
     /// @return amount of BNB that this strategy owes to the master vault
-    /// TODO(discuss):
-    /// 1. Do both the return statements look fine??
-    /// 2. Also, considering the same func will be used with depositAll(), are the return statements okay?
     function _deposit(uint256 amount) whenDepositNotPaused internal returns (uint256) {
         IStakePool stakePool = IStakePool(_addressStore.getStakePool());
         // we don't accept dust, so just remove that. That will keep accumulating in this strategy contract, and later
@@ -196,8 +196,6 @@ contract StkBnbStrategy is BaseStrategy {
 
     /// @dev Anybody can call this, it will always distribute the amount to the original recipients to whom the withdraw was intended.
     /// @param maxNumRequests the max number of withdraw requests to refund
-    /// TODO(discuss):
-    /// 1. How to make this generically part of the Strategy interface? Would this be called by MainVault or strategist? Frequency?
     function distribute(uint256 maxNumRequests) public {
         require(maxNumRequests <= _endIndex, "maxNumRequests out of bound");
 

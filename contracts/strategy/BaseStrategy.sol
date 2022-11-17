@@ -74,7 +74,7 @@ ReentrancyGuardUpgradeable {
         return balanceOfWant() + balanceOfPool();
     }
 
-    receive() external payable {
+    receive() external payable virtual {
         require(
             msg.sender == destination ||
             msg.sender == strategist,
