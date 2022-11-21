@@ -25,6 +25,12 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     uint256 private _firstDistributeIdx;
     uint256 private _nextWithdrawIdx;
 
+    /**
+     * @dev for storing the withdraw requests that can't be fulfilled via the automated mechanism because of gas limits
+     * and have to be manually distributed. It stores the sum of all such requests for a recipient.
+     */
+    mapping(address => uint256) public manualWithdrawAmount;
+
     uint256 private _bnbDepositBalance; // amount of bnb deposited by this strategy
     uint256 private _bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
     uint256 private _bnbToDistribute; // amount of bnb to distribute to users who unstaked
@@ -181,10 +187,36 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
             delete _withdrawRequests[_firstDistributeIdx];
             _firstDistributeIdx++;
-
             _bnbToDistribute -= amount;
-            AddressUpgradeable.sendValue(payable(recipient), amount);
+
+            (
+                bool sent, /*memory data*/
+
+            ) = payable(recipient).call{gas: 5000, value: amount}("");
+
+            if (!sent) {
+                // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
+                // withdrawn by the recipient manually later
+                manualWithdrawAmount[recipient] += amount;
+                _bnbToDistribute += amount;
+            }
         }
+    }
+
+    /// @dev Anybody can call this to manually send the withdrawn funds to a recipient, if the recipient had funds that
+    /// need to be manually withdrawn.
+    function distributeManual(address recipient) external {
+        uint256 amount = manualWithdrawAmount[recipient];
+        require(amount > 0, "!distributeManual");
+
+        _bnbToDistribute -= amount;
+        delete manualWithdrawAmount[recipient];
+
+        (
+            bool sent, /*memory data*/
+
+        ) = payable(recipient).call{value: amount}("");
+        require(sent, "!sent");
     }
 
     /// @dev claims yield from stader in BNBx and transfers to rewardsAddr
