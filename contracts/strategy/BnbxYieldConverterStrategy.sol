@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
@@ -62,13 +61,25 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     /// @dev deposits the given amount of BNB into Stader stakeManager
-    function deposit() external payable onlyVault returns (uint256) {
+    function deposit()
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256)
+    {
         uint256 amount = msg.value;
         return _deposit(amount);
     }
 
     /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Stader stakeManager
-    function depositAll() external payable onlyVault returns (uint256) {
+    function depositAll()
+        external
+        payable
+        nonReentrant
+        onlyVault
+        returns (uint256)
+    {
         uint256 amount = address(this).balance - _bnbToDistribute;
         return _deposit(amount);
     }
@@ -89,6 +100,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @param amount amount of BNB to withdraw
     function withdraw(address recipient, uint256 amount)
         external
+        nonReentrant
         onlyVault
         returns (uint256)
     {
@@ -96,7 +108,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     /// @dev creates an entry to withdraw everything(bnbDeposited) from Stader's stakeManager
-    function panic() external onlyStrategist returns (uint256) {
+    function panic() external nonReentrant onlyStrategist returns (uint256) {
         (, , uint256 debt) = vault.strategyParams(address(this));
         return _withdraw(address(vault), debt);
     }
@@ -122,7 +134,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     // actual withdraw request to stader, should be called max once a day
-    function batchWithdraw() external {
+    function batchWithdraw() external nonReentrant {
         require(
             block.timestamp - lastUnstakeTriggerTime >= 24 hours,
             "Allowed once daily"
@@ -140,6 +152,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @return reqCount : actual number requests refunded
     function claimNextBatchAndDistribute(uint256 maxNumRequests)
         external
+        nonReentrant
         returns (bool foundClaimableReq, uint256 reqCount)
     {
         foundClaimableReq = claimNextBatch();
@@ -149,7 +162,11 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @dev claims the next available withdraw batch from stader
     /// @dev transfer funds(BNB) from stakeManager to strategy
     /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
-    function claimNextBatch() public returns (bool foundClaimableReq) {
+    function claimNextBatch()
+        public
+        nonReentrant
+        returns (bool foundClaimableReq)
+    {
         IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
@@ -171,6 +188,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @return reqCount : actual number requests refunded
     function distributeFund(uint256 maxNumRequests)
         public
+        nonReentrant
         returns (uint256 reqCount)
     {
         for (
@@ -205,7 +223,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     /// @dev Anybody can call this to manually send the withdrawn funds to a recipient, if the recipient had funds that
     /// need to be manually withdrawn.
-    function distributeManual(address recipient) external {
+    function distributeManual(address recipient) external nonReentrant {
         uint256 amount = manualWithdrawAmount[recipient];
         require(amount > 0, "!distributeManual");
 
@@ -220,7 +238,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     /// @dev claims yield from stader in BNBx and transfers to rewardsAddr
-    function harvest() external onlyStrategist {
+    function harvest() external nonReentrant onlyStrategist {
         _harvestTo(rewards);
     }
 
