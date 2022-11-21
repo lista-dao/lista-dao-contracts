@@ -8,11 +8,11 @@ import "../masterVault/interfaces/IMasterVault.sol";
 import "./IBaseStrategy.sol";
 
 abstract contract BaseStrategy is
-IBaseStrategy,
-OwnableUpgradeable,
-PausableUpgradeable,
-ReentrancyGuardUpgradeable {
-
+    IBaseStrategy,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     address public strategist;
     address public destination;
     address public rewards;
@@ -62,15 +62,15 @@ ReentrancyGuardUpgradeable {
         _;
     }
 
-    function balanceOfWant() public view returns(uint256) {
+    function balanceOfWant() public view returns (uint256) {
         return address(this).balance;
     }
 
-    function balanceOfPool() public virtual view returns(uint256) {
+    function balanceOfPool() public view virtual returns (uint256) {
         return address(destination).balance;
     }
 
-    function balanceOf() public view returns(uint256) {
+    function balanceOf() public view returns (uint256) {
         return balanceOfWant() + balanceOfPool();
     }
 
@@ -95,7 +95,7 @@ ReentrancyGuardUpgradeable {
         strategist = newStrategist;
         emit UpdatedStrategist(newStrategist);
     }
-    
+
     function setRewards(address newRewardsAddr) external onlyOwner {
         require(newRewardsAddr != address(0));
         rewards = newRewardsAddr;
