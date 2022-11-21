@@ -42,6 +42,12 @@ contract StkBnbStrategy is BaseStrategy {
     uint256 private _startIndex;
     uint256 private _endIndex;
 
+    /**
+     * @dev for storing the withdraw requests that can't be fulfilled via the automated mechanism because of gas limits
+     * and have to be manually distributed. It stores the sum of all such requests for a recipient.
+     */
+    mapping(address => uint256) public manualWithdrawAmount;
+
     event AddressStoreChanged(address addressStore);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
@@ -121,12 +127,14 @@ contract StkBnbStrategy is BaseStrategy {
 
         uint256 ethBalance = address(this).balance;
         if (amount <= ethBalance) {
-            payable(recipient).transfer(amount);
+            (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: amount }("");
+            require(sent, "!sent");
             return amount;
         }
 
         // otherwise, need to send all the balance of this strategy and also need to withdraw from the StakePool
-        payable(recipient).transfer(ethBalance);
+        (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: ethBalance }("");
+        require(sent, "!sent");
         amount -= ethBalance;
 
         // TODO(pSTAKE):
@@ -203,18 +211,45 @@ contract StkBnbStrategy is BaseStrategy {
         while (_bnbToDistribute > 0 || _startIndex < endIdx) {
             address recipient = _withdrawReqs[_startIndex].recipient;
             uint256 amount = _withdrawReqs[_startIndex].amount;
+            bool isPartial = false;
             if (amount > _bnbToDistribute) {
                 // reqs is getting partially fulfilled
                 amount = _bnbToDistribute;
-                _withdrawReqs[_startIndex].amount -= amount;
-            } else {
-                // reqs is getting completely fulfilled. Delete it, and go to next index.
-                delete _withdrawReqs[_startIndex++];
+                isPartial = true;
             }
 
-            payable(recipient).transfer(amount);
-            _bnbToDistribute -= amount;
+            // try sending the amount to recipient
+            (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: amount }("");
+            if (sent) {
+                if (isPartial) {
+                    // reqs is getting partially fulfilled
+                    _withdrawReqs[_startIndex].amount -= amount;
+                } else {
+                    // reqs is getting completely fulfilled. Delete it, and go to next index.
+                    delete _withdrawReqs[_startIndex++];
+                }
+                _bnbToDistribute -= amount;
+            } else {
+                // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
+                // withdrawn by the recipient manually later, and remove it from the automated flow.
+                manualWithdrawAmount[recipient] += _withdrawReqs[_startIndex].amount;
+                delete _withdrawReqs[_startIndex++];
+            }
         }
+    }
+
+    /// @dev Anybody can call this to manually send the withdrawn funds to a recipient, if the recipient had funds that
+    /// need to be manually withdrawn.
+    function distributeManual(address recipient) external {
+        uint256 amount = manualWithdrawAmount[recipient];
+        require(amount > 0, "!distributeManual");
+
+        // do state changes upfront to prevent reentrancy
+        _bnbToDistribute -= amount; // so that if there weren't enough bnb to distribute, it would revert here itself
+        delete manualWithdrawAmount[recipient];
+
+        (bool sent, /*memory data*/) = recipient.call{ value: amount }("");
+        require(sent, "!sent");
     }
 
     // claim or collect rewards functions
