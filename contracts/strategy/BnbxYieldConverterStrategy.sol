@@ -75,13 +75,10 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Stader stakeManager
     function depositAll()
         external
-        payable
         nonReentrant
-        onlyVault
-        returns (uint256)
+        onlyStrategist
     {
-        uint256 amount = address(this).balance - _bnbToDistribute;
-        return _deposit(amount);
+        _deposit(address(this).balance - _bnbToDistribute);
     }
 
     /// @dev internal function to deposit the given amount of BNB into Stader stakeManager
@@ -268,8 +265,6 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     function balanceOfPool() public view override returns (uint256) {
         return _bnbDepositBalance;
     }
-
-    receive() external payable {}
 
     function canDeposit(uint256 amount) public pure returns (bool) {
         return (amount > 0);

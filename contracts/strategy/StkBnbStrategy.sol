@@ -82,7 +82,7 @@ contract StkBnbStrategy is BaseStrategy {
 
     // to deposit this contract's existing balance to destination
     function depositAll() onlyStrategist external {
-        _deposit(address(this).balance-_bnbToDistribute);
+        _deposit(address(this).balance - _bnbToDistribute);
     }
 
     /// @dev internal function to deposit the given amount of BNB tokens into stakePool
@@ -185,7 +185,7 @@ contract StkBnbStrategy is BaseStrategy {
 
     /// @dev Call this manually to actually get the unstaked BNB back from StakePool after 15 days of withdraw.
     /// Claims all the claimable withdraw requests from StakePool. Ignores non-claimable requests.
-    function claimAll() public {
+    function claimAll() nonReentrant public {
         uint256 prevBalance = address(this).balance;
         // this can result in out of gas, if there have been too many withdraw requests from this Strategy
         IStakePool(_addressStore.getStakePool()).claimAll();
@@ -196,7 +196,7 @@ contract StkBnbStrategy is BaseStrategy {
     // claims a single request from StakePool if it was claimable, i.e., has passed cooldown period of 15 days, reverts otherwise.
     // to be used as a failsafe, in case claimAll() gives out-of-gas issues.
     // You have to know the right index for this call to succeed.
-    function claim(uint256 index) external {
+    function claim(uint256 index) nonReentrant external {
         uint256 prevBalance = address(this).balance;
         IStakePool(_addressStore.getStakePool()).claim(index);
         _bnbToDistribute += address(this).balance - prevBalance;
@@ -204,7 +204,7 @@ contract StkBnbStrategy is BaseStrategy {
 
     /// @dev Anybody can call this, it will always distribute the amount to the original recipients to whom the withdraw was intended.
     /// @param endIdx the index (exclusive) till which to distribute the funds for withdraw requests
-    function distribute(uint256 endIdx) public {
+    function distribute(uint256 endIdx) nonReentrant public {
         require(endIdx <= _endIndex, "endIdx out of bound");
 
         // dispatch the amount in order of _withdrawReqs
@@ -240,7 +240,7 @@ contract StkBnbStrategy is BaseStrategy {
 
     /// @dev Anybody can call this to manually send the withdrawn funds to a recipient, if the recipient had funds that
     /// need to be manually withdrawn.
-    function distributeManual(address recipient) external {
+    function distributeManual(address recipient) nonReentrant external {
         uint256 amount = manualWithdrawAmount[recipient];
         require(amount > 0, "!distributeManual");
 
@@ -253,17 +253,21 @@ contract StkBnbStrategy is BaseStrategy {
     }
 
     // claim or collect rewards functions
-    function harvest() onlyStrategist external {
+    function harvest() nonReentrant onlyStrategist external {
+        uint256 yieldStkBNB = calculateYield();
+
+        // send the yield tokens to the reward address
+        IStakedBNBToken(_addressStore.getStkBNB()).send(rewards, yieldStkBNB, "");
+    }
+
+    function calculateYield() public view returns (uint256 yieldStkBNB) {
         IStakedBNBToken stkBNB = IStakedBNBToken(_addressStore.getStkBNB());
         uint256 stkBnbBalance = stkBNB.balanceOf(address(this));
         ExchangeRate.Data memory exchangeRate = IStakePool(_addressStore.getStakePool()).exchangeRate();
 
         uint256 depositsWithYield = exchangeRate._calcWeiWithdrawAmount(stkBnbBalance);
         uint256 yield = depositsWithYield - _bnbDepositsInStakePool;
-        uint256 yieldStkBNB = exchangeRate._calcPoolTokensForDeposit(yield);
-
-        // send the yield tokens to the reward address
-        stkBNB.send(rewards, yieldStkBNB, "");
+        yieldStkBNB = exchangeRate._calcPoolTokensForDeposit(yield);
     }
 
     // calculate the total amount of tokens in the destination contract
