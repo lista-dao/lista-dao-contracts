@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { IMasterVault } from "../masterVault/interfaces/IMasterVault.sol";
+
 interface IBaseStrategy {
 
     // to deposit funds to a destination contract
@@ -40,4 +42,7 @@ interface IBaseStrategy {
 
     // returns the actual deposit amount (amount - depositFee, if any)
     function assessDepositFee(uint256 amount) external view returns(uint256);
+
+    // returns the masterVault address
+    function vault() external view returns(IMasterVault);
 }
