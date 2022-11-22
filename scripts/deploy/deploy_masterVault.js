@@ -27,12 +27,22 @@ async function main() {
         const { m_ceaBNBc, m_ceVault, m_cerosRouter, m_bnbJoin, m_helioProvider } = require('./masterVault_config.json');
         _aBNBc = m_aBNBc; _wBnb = m_wBnb; _aBnbb = m_aBnbb; _dex = m_dex; _binancePool = m_pool;
         _ceaBNBc = m_ceaBNBc, _ceVault = m_ceVault, _cerosRouter = m_cerosRouter, _bnbJoin = m_bnbJoin, _helioProvider = m_helioProvider;
+        _pStake_addressStore = m_pStake_addressStore; _stader_stake_manager = m_stader_stake_manager; _bnbxToken = m_bnbxToken;
     } else if (hre.network.name == "bsc_testnet") {
         const { t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool } = require('./1_deploy_all.json'); // testnet
         const { t_ceaBNBc, t_ceVault, t_cerosRouter, t_bnbJoin, t_helioProvider } = require('./masterVault_config.json');
         _aBNBc = t_aBNBc; _wBnb = t_wBnb; _aBnbb = t_aBnbb; _dex = t_dex; _binancePool = t_pool;
         _ceaBNBc = t_ceaBNBc, _ceVault = t_ceVault, _cerosRouter = t_cerosRouter, _bnbJoin = t_bnbJoin, _helioProvider = t_helioProvider;
+        _pStake_addressStore = t_pStake_addressStore; _stader_stake_manager = t_stader_stake_manager; _bnbxToken = t_bnbxToken;
     }
+
+    let cerosStr_allocation = 85 * 10000,  // 85%
+        bnbxStr_allocation = 7 * 10000,    // 7% 
+        pStakeStr_allocation = 3 * 10000;  // 3%
+        _maxDepositFee = 50 * 10000,       // 50%
+        _maxWithdrawalFee = 50 * 10000,
+        _maxStrategies = 10,
+        _waitingPoolCap = 50;
 
     // Contracts Fetching
     const CeaBNBc = await hre.ethers.getContractFactory("CeToken");
@@ -48,7 +58,10 @@ async function main() {
     // claim yield
     this.HelioProvider = await hre.ethers.getContractFactory("HelioProvider");
     const oldHelioProvider = await this.HelioProvider.attach(_helioProvider);
-    await (await oldHelioProvider.claimInABNBc(deployer.address)).wait();
+    const yield = await ceVault.getYieldFor(oldHelioProvider.address);
+    if (yield.gt(ethers.BigNumber.from("0"))) {
+        await (await oldHelioProvider.claimInABNBc(deployer.address)).wait();
+    }
 
     // deploy new cerosVault token
     cerosVaultToken = await upgrades.deployProxy(CeaBNBc, ["CEROS aBNBc Vault Token", "ceABNBc"], {initializer: "initialize"});
@@ -56,11 +69,6 @@ async function main() {
     let cerosVaultTokenImplementation = await upgrades.erc1967.getImplementationAddress(cerosVaultToken.address);
     console.log("Deployed: ceaBNBc    : " + cerosVaultToken.address);
     console.log("Imp                  : " + cerosVaultTokenImplementation);
-
-    let _maxDepositFee = 500000,
-        _maxWithdrawalFee = 500000,
-        _maxStrategies = 10,
-        _waitingPoolCap = 10;
 
     // deploy masterVault
     masterVault = await upgrades.deployProxy(MasterVault, [_maxDepositFee, _maxWithdrawalFee, _wBnb, _maxStrategies, ceaBNBc.address, _binancePool], {initializer: "initialize"});
@@ -87,6 +95,22 @@ async function main() {
     console.log("cerosYieldConverterStrategy    : " + cerosYieldConverterStrategy.address);
     console.log("imp        : " + cerosYieldConverterStrategyImp);
 
+    // deploy ceros strategy
+    const StkBnbStrategy = await hre.ethers.getContractFactory("StkBnbStrategy");    
+    let stkBnbStrategy = await upgrades.deployProxy(StkBnbStrategy, [t_pStake_addressStore, _rewards, masterVault.address, t_pStake_addressStore], {initializer: "initialize"});
+    await stkBnbStrategy.deployed();
+    let stkBnbStrategyImp = await upgrades.erc1967.getImplementationAddress(stkBnbStrategy.address);
+    console.log("stkBnbStrategy    : " + stkBnbStrategy.address);
+    console.log("imp        : " + stkBnbStrategyImp);
+
+    // deploy ceros strategy
+    const BnbxYieldConverterStrategy = await hre.ethers.getContractFactory("BnbxYieldConverterStrategy");  
+    let bnbxYieldConverterStrategy = await upgrades.deployProxy(BnbxYieldConverterStrategy, [_stader_stake_manager, _rewards, _bnbxToken, masterVault.address, _stader_stake_manager], {initializer: "initialize"});
+    await bnbxYieldConverterStrategy.deployed();
+    let bnbxYieldConverterStrategyImp = await upgrades.erc1967.getImplementationAddress(bnbxYieldConverterStrategy.address);
+    console.log("bnbxYieldConverterStrategy    : " + bnbxYieldConverterStrategy.address);
+    console.log("imp        : " + bnbxYieldConverterStrategyImp);
+
     // pause helioProvider
     console.log("Pausing HelioProvider...");
     await (await oldHelioProvider.pause()).wait();
@@ -98,7 +122,9 @@ async function main() {
     console.log("Configuring MasterVault...");
     await (await masterVault.setWaitingPool(waitingPool.address)).wait();
     await (await masterVault.changeProvider(_helioProvider)).wait();
-    await (await masterVault.setStrategy(cerosYieldConverterStrategy.address, 80 * 10000)).wait();   // 80%
+    await (await masterVault.setStrategy(cerosYieldConverterStrategy.address, cerosStr_allocation)).wait();     // 85%
+    await (await masterVault.setStrategy(bnbxYieldConverterStrategy.address, bnbxStr_allocation)).wait();       // 7%
+    await (await masterVault.setStrategy(stkBnbStrategy.address, pStakeStr_allocation)).wait();                 // 3%
 
     // deploy and upgrade helioProvider
     console.log("Upgrading HelioProviderV2...");
