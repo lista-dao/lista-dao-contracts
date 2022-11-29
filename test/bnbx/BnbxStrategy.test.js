@@ -232,6 +232,7 @@ describe("BNBx Strategy", () => {
     expect(await ethers.provider.getBalance(strategy.address)).be.eq(0);
     expect(await strategy.bnbToDistribute()).be.eq(0);
 
+    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
     await strategy.claimNextBatch();
     expect(await ethers.provider.getBalance(strategy.address)).be.eq(twoBNB);
     expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
@@ -257,6 +258,7 @@ describe("BNBx Strategy", () => {
     await strategy.batchWithdraw();
 
     expect(await strategy.bnbToDistribute()).be.eq(0);
+    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
     await strategy.claimNextBatch();
     expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
 
@@ -299,6 +301,7 @@ describe("BNBx Strategy", () => {
     );
     const userPrevBalance = await ethers.provider.getBalance(user.address);
 
+    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
     await strategy.claimNextBatchAndDistribute(4);
 
     expect(await strategy.bnbToDistribute()).be.eq(0);
@@ -308,6 +311,57 @@ describe("BNBx Strategy", () => {
     expect(await ethers.provider.getBalance(user.address)).be.eq(
       userPrevBalance.add(oneBNB)
     );
+  });
+
+  it("Manual Distribute", async () => {
+    const oneBNB = parseEther("1");
+    const twoBNB = parseEther("2");
+    const threeBNB = parseEther("3");
+
+    mockReceiver = await (
+      await ethers.getContractFactory("ReceiverMock")
+    ).deploy();
+    await mockReceiver.deployed();
+
+    // send 3 BNB to bnbxStakeManager so that it has funds
+    await deployer.sendTransaction({
+      to: bnbxStakeManager.address,
+      value: threeBNB,
+    });
+
+    await masterVault.deposit({ value: threeBNB });
+    await masterVault.withdraw(mockReceiver.address, twoBNB);
+
+    // increase time by 24 hours
+    await ethers.provider.send("evm_increaseTime", [3600 * 24]);
+    await strategy.batchWithdraw();
+
+    const receiverPrevBalance = await ethers.provider.getBalance(
+      mockReceiver.address
+    );
+
+    expect(await strategy.bnbToDistribute()).be.eq(0);
+    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
+    await strategy.claimNextBatch();
+    expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
+
+    await strategy.distributeFund(5);
+    expect(await strategy.bnbToDistribute()).be.eq(twoBNB); // bnbToDistribute still 2, means it was unable to distribute
+    expect(await ethers.provider.getBalance(mockReceiver.address)).be.eq(
+      receiverPrevBalance
+    );
+
+    // lets try manual distribute, which has no gas restriction
+    await strategy.distributeManual(mockReceiver.address);
+    expect(await strategy.bnbToDistribute()).be.eq(0);
+    expect(await ethers.provider.getBalance(mockReceiver.address)).be.eq(
+      receiverPrevBalance.add(twoBNB)
+    );
+
+    // lets try again, it should fail
+    await expect(
+      strategy.distributeManual(mockReceiver.address)
+    ).be.revertedWith("!distributeManual");
   });
 
   it("harvest fails, when no yield", async () => {
