@@ -270,7 +270,7 @@ ReentrancyGuardUpgradeable
     ) external onlyOwner {
         require(strategy != address(0));
         require(strategies.length < MAX_STRATEGIES, "max strategies exceeded");
-        require(IBaseStrategy(strategy).vault() == address(this), "invalid strategy");
+        require(address(IBaseStrategy(strategy).vault()) == address(this), "invalid strategy");
         uint256 totalAllocations;
         for(uint256 i = 0; i < strategies.length; i++) {
             if(strategies[i] == strategy) {
