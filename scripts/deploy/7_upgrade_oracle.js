@@ -9,7 +9,7 @@ const binanceDependencies = {
     binanceFeed: "0x1a26d803c2e796601794f8c5609549643832702c", // bnb
     pythContract: "0xd7308b14bf4008e7c7196ec35610b1427c5702ea",
     priceID: "0xecf553770d9b10965f8fb64771e93f5690a182edc32be4a3236e0caaa6e0581a", //bnb
-    thredhold: 120
+    threshold: 120
 };
 
 const binanceTestDependencies = {
@@ -17,7 +17,7 @@ const binanceTestDependencies = {
     binanceFeed: "0x1a26d803c2e796601794f8c5609549643832702c", //bnb
     pythContract: "0xd7308b14bf4008e7c7196ec35610b1427c5702ea",
     priceID: "0xecf553770d9b10965f8fb64771e93f5690a182edc32be4a3236e0caaa6e0581a", //bnb
-    thredhold: 120
+    threshold: 120
 };
 
 async function main() {
@@ -38,14 +38,14 @@ async function main() {
             binanceDependencies.binanceFeed,
             binanceDependencies.pythContract,
             binanceDependencies.priceID,
-            binanceDependencies.thredhold)).wait();
+            binanceDependencies.threshold)).wait();
     } else {
         await (await upgraded.upgradeToV2(
             binanceTestDependencies.chainlinkFeed,
             binanceTestDependencies.binanceFeed,
             binanceTestDependencies.pythContract,
             binanceTestDependencies.priceID,
-            binanceTestDependencies.thredhold)).wait();
+            binanceTestDependencies.threshold)).wait();
     }
 
     console.log('Validating code');

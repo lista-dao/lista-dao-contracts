@@ -13,7 +13,7 @@ contract BnbOracleV2 is Initializable {
     IPyth pyth;
 
     bytes32 pythPriceID;
-    uint256 thredhold; // 2mins
+    uint256 threshold; // 2mins
     bool isUpgradedForV2;
 
     function initialize(address aggregatorAddress) external initializer {
@@ -25,7 +25,7 @@ contract BnbOracleV2 is Initializable {
         address _binanceAdapter,
         address _pythAddress,
         bytes32 _priceId,
-        uint256 _thredhold
+        uint256 _threshold
     ) external {
         require(!isUpgradedForV2, "BnbOracleV2/already-upgraded");
         isUpgradedForV2 = true;
@@ -33,7 +33,7 @@ contract BnbOracleV2 is Initializable {
         binancePriceFeed = AggregatorV3Interface(_binanceAdapter);
         pyth = IPyth(_pythAddress);
         pythPriceID = _priceId;
-        thredhold = _thredhold;
+        threshold = _threshold;
     }
 
     /**
@@ -49,7 +49,7 @@ contract BnbOracleV2 is Initializable {
             /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
 
-        if (block.timestamp - timeStamp <= thredhold && price >= 0) {
+        if (block.timestamp - timeStamp <= threshold && price >= 0) {
             return (bytes32(uint256(price) * (10**10)), true);
         }
 
@@ -62,7 +62,7 @@ contract BnbOracleV2 is Initializable {
             /* uint80 answeredInRound*/
         ) = binancePriceFeed.latestRoundData();
 
-        if (block.timestamp - updatedAt <= thredhold && answer >= 0) {
+        if (block.timestamp - updatedAt <= threshold && answer >= 0) {
             return (bytes32(uint256(answer) * (10**10)), true);
         }
 
