@@ -49,16 +49,12 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
 
     uint256 public supplyCap;
 
+    event SupplyCapSet(uint256 oldCap, uint256 newCap);
+
     // --- EIP712 niceties ---
     bytes32 public DOMAIN_SEPARATOR;
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
-
-    mapping (address => bool) public isBlackListed;
-
-    event SupplyCapSet(uint256 oldCap, uint256 newCap);
-    event BlackListed(address[] users);
-    event UnBlackListed(address[] users);
 
     function initialize(uint256 chainId_, string memory symbol_, uint256 supplyCap_) external initializer {
         wards[msg.sender] = 1;
@@ -78,8 +74,6 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
         return transferFrom(msg.sender, dst, wad);
     }
     function transferFrom(address src, address dst, uint wad) public returns (bool) {
-        require(isBlackListed[src] != true, "Hay/transfer-from-blacklist-address");
-        require(isBlackListed[dst] != true, "Hay/transfer-to-blacklist-address");
         require(src != address(0), "Hay/transfer-from-zero-address");
         require(dst != address(0), "Hay/transfer-to-zero-address");
         require(balanceOf[src] >= wad, "Hay/insufficient-balance");
@@ -196,18 +190,5 @@ contract Hay is Initializable, IERC20MetadataUpgradeable {
             chainId_,
             address(this)
         ));
-    }
-
-    function addToBlackList(address[] memory _evilUsers) public auth {
-        for(uint256 i = 0; i < _evilUsers.length; i++) {
-            isBlackListed[_evilUsers[i]] = true;
-        }
-        emit BlackListed(_evilUsers);
-    }
-    function removeFromBlackList(address[] memory _clearedUsers) public auth {
-        for(uint256 i = 0; i < _clearedUsers.length; i++) {
-            isBlackListed[_clearedUsers[i]] = false;
-        }
-        emit UnBlackListed(_clearedUsers);
     }
 }

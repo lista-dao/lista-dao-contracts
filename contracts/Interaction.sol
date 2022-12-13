@@ -21,7 +21,6 @@ import "./ceros/interfaces/IDao.sol";
 
 import "./libraries/AuctionProxy.sol";
 
-
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
@@ -145,16 +144,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         _checkIsLive(collateralType.live);
         jug.drip(collateralType.ilk);
         jug.file(collateralType.ilk, "duty", data);
-    }
-
-    function removeBaseRate(address token) external auth {
-        CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
-
-        jug.drip(collateralType.ilk);
-        jug.file(collateralType.ilk, "duty", jug.base());
-        jug.file("base", 0);
-        jug.drip(collateralType.ilk);
     }
 
     function setHelioProvider(address token, address helioProvider) external auth {
@@ -417,7 +406,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     // Collateral minus borrowed. Basically free collateral (nominated in HAY)
-    function availableToBorrow(address token, address usr) external view returns (int256) {
+    function availableToBorrow(address token, address usr) external view returns (int256 amount) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
@@ -425,7 +414,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (, uint256 rate, uint256 spot,,) = vat.ilks(collateralType.ilk);
         uint256 collateral = ink * spot;
         uint256 debt = rate * art;
-        return (int256(collateral) - int256(debt)) / 1e27;
+        amount = (int256(collateral) - int256(debt)) / 1e27;
+        
+        if(amount < 0) return 0;
     }
 
     // Collateral + `amount` minus borrowed. Basically free collateral (nominated in HAY)
