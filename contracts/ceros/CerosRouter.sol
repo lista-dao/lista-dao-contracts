@@ -133,10 +133,11 @@ ReentrancyGuardUpgradeable
     nonReentrant
     returns (uint256 value)
     {
-        _certToken.transferFrom(msg.sender, address(this), amount);
-        value = _vault.depositFor(msg.sender, amount);
-        emit Deposit(msg.sender, address(_certToken), amount, 0);
-        return value;
+        revert("CeRouter/Disabled");
+        // _certToken.transferFrom(msg.sender, address(this), amount);
+        // value = _vault.depositFor(msg.sender, amount);
+        // emit Deposit(msg.sender, address(_certToken), amount, 0);
+        // return value;
     }
     /**
      * CLAIM
