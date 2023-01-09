@@ -75,31 +75,23 @@ ReentrancyGuardUpgradeable
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @dev Deploys the contract and sets msg.sender as owner
-    // /// @param name name of the vault token
-    // /// @param symbol symbol of the vault token
     /// @param maxDepositFees Fees charged in parts per million; 1% = 10000ppm
     /// @param maxWithdrawalFees Fees charged in parts per million; 1% = 10000ppm
-    /// @param wETH underlying asset address
     /// @param maxStrategies Number of maximum strategies
     /// @param binancePoolAddr Address of binancePool contract
     function initialize(
-        // string memory name,
-        // string memory symbol,
         uint256 maxDepositFees,
         uint256 maxWithdrawalFees,
-        address wETH,
         uint8 maxStrategies,
         address ceToken,
         address binancePoolAddr
     ) public initializer {
         require(maxDepositFees > 0 && maxDepositFees <= 1e6, "invalid maxDepositFee");
-        require(maxWithdrawalFees > 0 && maxDepositFees <= 1e6, "invalid maxWithdrawalFees");
+        require(maxWithdrawalFees > 0 && maxWithdrawalFees <= 1e6, "invalid maxWithdrawalFees");
 
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        // __ERC20_init(name, symbol);
-        // __ERC4626_init(asset);
         manager[msg.sender] = true;
         maxDepositFee = maxDepositFees;
         maxWithdrawalFee = maxWithdrawalFees;
@@ -107,7 +99,6 @@ ReentrancyGuardUpgradeable
         feeReceiver = payable(msg.sender);
         vaultToken = ceToken;
         binancePool = IBinancePool(binancePoolAddr);
-        asset = wETH;
     }
 
     /// @dev deposits assets and mints shares(amount - (swapFee + depositFee)) to caller's address
@@ -124,16 +115,6 @@ ReentrancyGuardUpgradeable
         require(amount > 0, "invalid amount");
         shares = _assessFee(amount, depositFee);
         shares = _assessDepositFee(shares);
-        uint256 waitingPoolDebt = waitingPool.totalDebt();
-        uint256 waitingPoolBalance = address(waitingPool).balance;
-
-        // check and fullfil the pending withdrawals of the waiting pool first
-        if(waitingPoolDebt > 0 && waitingPoolBalance < waitingPoolDebt) {
-            uint256 waitingPoolDebtDiff = waitingPoolDebt - waitingPoolBalance;
-            uint256 poolAmount = (waitingPoolDebtDiff < shares) ? waitingPoolDebtDiff : shares;
-            (bool success,) = address(waitingPool).call{ value: poolAmount }("");
-            require(success);
-        }
         ICertToken(vaultToken).mint(src, shares);
         emit Deposit(src, src, amount, shares);
     }
@@ -152,19 +133,11 @@ ReentrancyGuardUpgradeable
         address src = msg.sender;
         ICertToken(vaultToken).burn(src, amount);
         uint256 ethBalance = totalAssetInVault();
-        shares = _assessFee(amount, withdrawalFee);   // TODO: check again
-        // deduct withdrawalFee and then submit to waiting pool
+        shares = _assessFee(amount, withdrawalFee);
         if(ethBalance < shares) {
-            uint256 withdrawn = withdrawFromActiveStrategies(account, shares);  // TODO: withdraw shares or shares - ethBalance
-            if(withdrawn == 0) {
-                waitingPool.addToQueue(account, shares);
-                if(ethBalance > 0) {
-                    (bool success,) = address(waitingPool).call{ value: ethBalance }("");
-                    require(success);
-                }
-                emit Withdraw(src, src, src, amount, shares);
-                return amount;
-            }
+            payable(account).transfer(ethBalance);
+            uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
+            shares = ethBalance + withdrawn;
         } else {
             payable(account).transfer(shares);
         } 
@@ -172,21 +145,22 @@ ReentrancyGuardUpgradeable
         return amount;
     }
 
-    /// @dev Triggers tryRemove() of waiting pool contract
-    function payDebt() public {
-        waitingPool.tryRemove();
-    }
-
     /// @dev attemps withdrawal from the strategies
     /// @param amount assets to withdraw from strategy
     /// @return withdrawn - assets withdrawn from the strategy
     function withdrawFromActiveStrategies(address recipient, uint256 amount) private returns(uint256 withdrawn) {
         for(uint8 i = 0; i < strategies.length; i++) {
-           if(strategyParams[strategies[i]].active && 
-              strategyParams[strategies[i]].debt >= amount) {
-                return _withdrawFromStrategy(strategies[i], recipient, amount);
-           }
+            if (strategyParams[strategies[i]].active && withdrawn < amount) {
+                if (strategyParams[strategies[i]].debt >= amount - withdrawn) {
+                    withdrawn += _withdrawFromStrategy(strategies[i], recipient, amount - withdrawn);
+                    return withdrawn;
+                } 
+                else {
+                    withdrawn += _withdrawFromStrategy(strategies[i], recipient, strategyParams[strategies[i]].debt);
+                }
+            }
         }
+        return withdrawn;
     }
 
     /// @dev internal method to deposit assets into the given strategy
@@ -194,11 +168,8 @@ ReentrancyGuardUpgradeable
     /// @param amount assets to deposit into strategy
     function _depositToStrategy(address strategy, uint256 amount) private returns (bool success){
         require(amount > 0, "invalid deposit amount");
-        // IWETH weth = IWETH(asset);
         require(totalAssetInVault() >= amount, "insufficient balance");
         if (IBaseStrategy(strategy).canDeposit(amount)) {
-            // weth.transfer(strategy, amount);
-            // payable(strategy).transfer(amount);
             uint256 value = IBaseStrategy(strategy).deposit{value: amount}();
             if(value > 0) {
                 totalDebt += value;
@@ -231,15 +202,13 @@ ReentrancyGuardUpgradeable
     /// @param strategy address of the strategy
     /// @param amount assets to withdraw from the strategy
     function withdrawFromStrategy(address strategy, uint256 amount) public onlyManager {
-        uint256 withdrawn = _withdrawFromStrategy(strategy, address(this), amount);
-        require(withdrawn > 0, "cannot withdraw from strategy");
+        _withdrawFromStrategy(strategy, address(this), amount);
     }
 
     /// @dev withdraw strategy's total debt
     /// @param strategy address of the strategy
     function withdrawAllFromStrategy(address strategy) external onlyManager {
-        uint256 withdrawn = _withdrawFromStrategy(strategy, address(this), strategyParams[strategy].debt);
-        require(withdrawn > 0, "cannot withdraw from strategy");
+        _withdrawFromStrategy(strategy, address(this), strategyParams[strategy].debt);
     }
 
     /// @dev internal function to withdraw specific amount of assets from the given strategy
@@ -252,11 +221,14 @@ ReentrancyGuardUpgradeable
         require(amount > 0, "invalid withdrawal amount");
         require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
         uint256 value = IBaseStrategy(strategy).withdraw(recipient, amount);
-        if(value > 0) {
-            totalDebt -= amount;
-            strategyParams[strategy].debt -= amount;
-            emit WithdrawnFromStrategy(strategy, amount);
-        }
+        require(
+            value <= amount && 
+            value >= _assessDepositFee(amount) - 100,
+            "invalid withdrawn amount"
+        );
+        totalDebt -= amount;
+        strategyParams[strategy].debt -= amount;
+        emit WithdrawnFromStrategy(strategy, amount);
         return value;
     }
 
@@ -270,7 +242,7 @@ ReentrancyGuardUpgradeable
     ) external onlyOwner {
         require(strategy != address(0));
         require(strategies.length < MAX_STRATEGIES, "max strategies exceeded");
-        require(IBaseStrategy(strategy).vault() == address(this), "invalid strategy");
+        require(address(IBaseStrategy(strategy).vault()) == address(this), "invalid strategy");
         uint256 totalAllocations;
         for(uint256 i = 0; i < strategies.length; i++) {
             if(strategies[i] == strategy) {
@@ -321,7 +293,7 @@ ReentrancyGuardUpgradeable
     /// @dev Tries to allocate funds to strategies based on their allocations.
     /// NOTE: OnlyManager can trigger this function
     ///      (It will be triggered mostly in case of deposits)
-    function allocate() external onlyManager {
+    function allocate() public {
         for(uint8 i = 0; i < strategies.length; i++) {
             if(strategyParams[strategies[i]].active) {
                 StrategyParams memory strategy =  strategyParams[strategies[i]];
@@ -354,7 +326,6 @@ ReentrancyGuardUpgradeable
     /// @dev Returns the amount of assets that can be withdrawn instantly
     function availableToWithdraw() public view returns(uint256 available) {
         for(uint8 i = 0; i < strategies.length; i++) {
-            // available += IWETH(asset).balanceOf(strategies[i]);   // excluding the amount that is deposited to strategies
             available += strategies[i].balance;   // excluding the amount that is deposited to strategies
         }
         available += totalAssetInVault();
@@ -362,7 +333,6 @@ ReentrancyGuardUpgradeable
 
     function totalAssets() public view returns (uint256) {
         return address(this).balance;
-        // return IWETH(asset).balanceOf(address(this));
     }
 
     /// @dev Returns the amount of assets present in the contract(assetBalance - feeEarned)
@@ -424,14 +394,11 @@ ReentrancyGuardUpgradeable
         return amount - binancePool.getRelayerFee();
     }
 
-    receive() external payable {
-        // require(msg.sender == asset, "invalid sender");
-    }
+    receive() external payable {}
 
     /// @dev only owner can call this function to withdraw earned fees
     function withdrawFee() external onlyOwner{
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
-            // IWETH(asset).withdraw(feeEarned);
             feeReceiver.transfer(feeEarned);
             feeEarned = 0;
         }
@@ -451,21 +418,6 @@ ReentrancyGuardUpgradeable
         require(maxWithdrawalFee > newWithdrawalFee,"more than maxWithdrawalFee");
         withdrawalFee = newWithdrawalFee;
         emit WithdrawalFeeChanged(newWithdrawalFee);
-    }
-
-    /// @dev only owner can set new waiting pool address
-    /// @param _waitingPool new waiting pool address
-    function setWaitingPool(address _waitingPool) external onlyOwner {
-        require(_waitingPool != address(0));
-        waitingPool = IWaitingPool(_waitingPool);
-        emit WaitingPoolChanged(_waitingPool);
-    }
-
-    /// @dev only owner can set new cap limit of waiting pool
-    /// @param _cap new cap limit
-    function setWaitingPoolCap(uint256 _cap) external onlyOwner {
-        waitingPool.setCapLimit(_cap);
-        emit WaitingPoolCapChanged(_cap);
     }
 
     /// @dev only owner can add new manager
