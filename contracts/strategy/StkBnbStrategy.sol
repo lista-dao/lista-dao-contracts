@@ -27,7 +27,7 @@ contract StkBnbStrategy is BaseStrategy {
     /**
      * @dev the amount of BNB held by this strategy that needs to be distributed back to the users after withdrawal.
      */
-    uint256 private _bnbToDistribute;
+    uint256 internal _bnbToDistribute;
 
     struct WithdrawRequest {
         address recipient;
@@ -38,9 +38,9 @@ contract StkBnbStrategy is BaseStrategy {
      * @dev for bookkeeping the withdrawals initiated from this strategy so that they can later be claimed.
      * This mapping always contains reqs between [_startIndex, _endIndex).
      */
-    mapping(uint256 => WithdrawRequest) private _withdrawReqs;
-    uint256 private _startIndex;
-    uint256 private _endIndex;
+    mapping(uint256 => WithdrawRequest) public withdrawReqs;
+    uint256 internal _startIndex;
+    uint256 internal _endIndex;
 
     /**
      * @dev for storing the withdraw requests that can't be fulfilled via the automated mechanism because of gas limits
@@ -168,7 +168,7 @@ contract StkBnbStrategy is BaseStrategy {
         stkBNB.send(address(stakePool), poolTokens, "");
 
         // save it so that we can later dispatch the amount to the recipient on claim
-        _withdrawReqs[_endIndex++] = WithdrawRequest(recipient, value);
+        withdrawReqs[_endIndex++] = WithdrawRequest(recipient, value);
 
         // keep track of _netDeposits in StakePool
         _bnbDepositsInStakePool -= value;
@@ -208,9 +208,9 @@ contract StkBnbStrategy is BaseStrategy {
         require(endIdx <= _endIndex, "endIdx out of bound");
 
         // dispatch the amount in order of _withdrawReqs
-        while (_bnbToDistribute > 0 || _startIndex < endIdx) {
-            address recipient = _withdrawReqs[_startIndex].recipient;
-            uint256 amount = _withdrawReqs[_startIndex].amount;
+        while (_bnbToDistribute > 0 && _startIndex < endIdx) {
+            address recipient = withdrawReqs[_startIndex].recipient;
+            uint256 amount = withdrawReqs[_startIndex].amount;
             bool isPartial = false;
             if (amount > _bnbToDistribute) {
                 // reqs is getting partially fulfilled
@@ -223,17 +223,17 @@ contract StkBnbStrategy is BaseStrategy {
             if (sent) {
                 if (isPartial) {
                     // reqs is getting partially fulfilled
-                    _withdrawReqs[_startIndex].amount -= amount;
+                    withdrawReqs[_startIndex].amount -= amount;
                 } else {
                     // reqs is getting completely fulfilled. Delete it, and go to next index.
-                    delete _withdrawReqs[_startIndex++];
+                    delete withdrawReqs[_startIndex++];
                 }
                 _bnbToDistribute -= amount;
             } else {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later, and remove it from the automated flow.
-                manualWithdrawAmount[recipient] += _withdrawReqs[_startIndex].amount;
-                delete _withdrawReqs[_startIndex++];
+                manualWithdrawAmount[recipient] += withdrawReqs[_startIndex].amount;
+                delete withdrawReqs[_startIndex++];
             }
         }
     }
