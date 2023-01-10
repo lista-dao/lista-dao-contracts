@@ -30,9 +30,9 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
      */
     mapping(address => uint256) public manualWithdrawAmount;
 
-    uint256 private _bnbDepositBalance; // amount of bnb deposited by this strategy
-    uint256 private _bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
-    uint256 private _bnbToDistribute; // amount of bnb to distribute to users who unstaked
+    uint256 public bnbDepositBalance; // amount of bnb deposited by this strategy
+    uint256 public bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
+    uint256 public bnbToDistribute; // amount of bnb to distribute to users who unstaked
 
     uint256 public lastUnstakeTriggerTime; // last time when batchWithdraw was invoked
 
@@ -43,21 +43,19 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     /// @param rewardsAddr Address which receives yield
     /// @param bnbxToken Address of BNBx token
     /// @param masterVault Address of the masterVault contract
-    /// @param stakeManager Address of stakeManager contract
     function initialize(
         address destination,
         address rewardsAddr,
         address bnbxToken,
-        address masterVault,
-        address stakeManager
+        address masterVault
     ) public initializer {
         __BaseStrategy_init(destination, rewardsAddr, masterVault);
 
         _bnbxToken = IERC20Upgradeable(bnbxToken);
-        _stakeManager = IStakeManager(stakeManager);
+        _stakeManager = IStakeManager(destination);
         lastUnstakeTriggerTime = block.timestamp;
 
-        _bnbxToken.approve(stakeManager, type(uint256).max);
+        _bnbxToken.approve(destination, type(uint256).max);
     }
 
     /// @dev deposits the given amount of BNB into Stader stakeManager
@@ -73,12 +71,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Stader stakeManager
-    function depositAll()
-        external
-        nonReentrant
-        onlyStrategist
-    {
-        _deposit(address(this).balance - _bnbToDistribute);
+    function depositAll() external nonReentrant onlyStrategist {
+        _deposit(address(this).balance - bnbToDistribute);
     }
 
     /// @dev internal function to deposit the given amount of BNB into Stader stakeManager
@@ -88,7 +82,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         whenDepositNotPaused
         returns (uint256)
     {
-        _bnbDepositBalance += amount;
+        require(canDeposit(amount), "invalid amount");
+        bnbDepositBalance += amount;
         _stakeManager.deposit{value: amount}();
         return amount;
     }
@@ -118,8 +113,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         returns (uint256 value)
     {
         uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
-        _bnbDepositBalance -= amount;
-        _bnbxToUnstake += bnbxAmount;
+        bnbDepositBalance -= amount;
+        bnbxToUnstake += bnbxAmount;
         _withdrawRequests[_nextWithdrawIdx++] = UserWithdrawRequest({
             recipient: recipient,
             amount: amount,
@@ -136,12 +131,12 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
             block.timestamp - lastUnstakeTriggerTime >= 24 hours,
             "Allowed once daily"
         );
-        require(_bnbxToUnstake > 0, "No BNBx to unstake");
+        require(bnbxToUnstake > 0, "No BNBx to unstake");
 
-        uint256 bnbxToUnstake = _bnbxToUnstake; // To prevent reentrancy
-        _bnbxToUnstake = 0;
+        uint256 bnbxToUnstake_ = bnbxToUnstake; // To prevent reentrancy
+        bnbxToUnstake = 0;
         lastUnstakeTriggerTime = block.timestamp;
-        _stakeManager.requestWithdraw(bnbxToUnstake);
+        _stakeManager.requestWithdraw(bnbxToUnstake_);
     }
 
     /// @param maxNumRequests : parameter to control max number of requests to refund
@@ -152,8 +147,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         nonReentrant
         returns (bool foundClaimableReq, uint256 reqCount)
     {
-        foundClaimableReq = claimNextBatch();
-        reqCount = distributeFund(maxNumRequests);
+        foundClaimableReq = _claimNextBatch();
+        reqCount = _distributeFund(maxNumRequests);
     }
 
     /// @dev claims the next available withdraw batch from stader
@@ -164,6 +159,10 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         nonReentrant
         returns (bool foundClaimableReq)
     {
+        return _claimNextBatch();
+    }
+
+    function _claimNextBatch() private returns (bool foundClaimableReq) {
         IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
@@ -172,7 +171,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
                 .getUserRequestStatus(address(this), idx);
 
             if (!isClaimable) continue;
-            _bnbToDistribute += amount; // amount here returned from stader will be a little more than requested to withdraw
+            bnbToDistribute += amount; // amount here returned from stader will be a little more than requested to withdraw
             _stakeManager.claimWithdraw(idx);
             return true;
         }
@@ -188,12 +187,19 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         nonReentrant
         returns (uint256 reqCount)
     {
+        return _distributeFund(maxNumRequests);
+    }
+
+    function _distributeFund(uint256 maxNumRequests)
+        private
+        returns (uint256 reqCount)
+    {
         for (
             reqCount = 0;
             reqCount < maxNumRequests &&
                 _firstDistributeIdx < _nextWithdrawIdx &&
                 _withdrawRequests[_firstDistributeIdx].amount <=
-                _bnbToDistribute;
+                bnbToDistribute;
             reqCount++
         ) {
             address recipient = _withdrawRequests[_firstDistributeIdx]
@@ -202,7 +208,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
             delete _withdrawRequests[_firstDistributeIdx];
             _firstDistributeIdx++;
-            _bnbToDistribute -= amount;
+            bnbToDistribute -= amount;
 
             (
                 bool sent, /*memory data*/
@@ -213,7 +219,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later
                 manualWithdrawAmount[recipient] += amount;
-                _bnbToDistribute += amount;
+                bnbToDistribute += amount;
             }
         }
     }
@@ -224,7 +230,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         uint256 amount = manualWithdrawAmount[recipient];
         require(amount > 0, "!distributeManual");
 
-        _bnbToDistribute -= amount;
+        bnbToDistribute -= amount;
         delete manualWithdrawAmount[recipient];
 
         (
@@ -250,20 +256,20 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
     function calculateYield() public view returns (uint256 yield) {
         uint256 bnbxEqAmount = _stakeManager.convertBnbToBnbX(
-            _bnbDepositBalance
+            bnbDepositBalance
         );
 
         // yield = bnbxHoldingBalance - bnbxEqAmout
         // bnbxHoldingBalance = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake
         yield =
             _bnbxToken.balanceOf(address(this)) -
-            _bnbxToUnstake -
+            bnbxToUnstake -
             bnbxEqAmount;
     }
 
     // returns the total amount of tokens in the destination contract
     function balanceOfPool() public view override returns (uint256) {
-        return _bnbDepositBalance;
+        return bnbDepositBalance;
     }
 
     function canDeposit(uint256 amount) public pure returns (bool) {
