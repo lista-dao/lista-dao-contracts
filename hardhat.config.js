@@ -36,7 +36,7 @@ module.exports = {
         },
 
         bsc_testnet: {
-            url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
+            url: `https://data-seed-prebsc-2-s3.binance.org:8545/`,
             chainId: 97,
             accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
         },

@@ -39,4 +39,8 @@ interface VatLike {
     function suck(address u, address v, uint rad) external;
 
     function live() external view returns (uint256);
+
+    function cage() external;
+    
+    function uncage() external;
 }
