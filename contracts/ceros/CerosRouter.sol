@@ -8,6 +8,7 @@ import "./interfaces/IVault.sol";
 import "./interfaces/IDex.sol";
 import "./interfaces/ICerosRouter.sol";
 import "./interfaces/IBinancePool.sol";
+import "./interfaces/IBNBStakingPool.sol";
 import "./interfaces/ICertToken.sol";
 
 contract CerosRouter is
@@ -28,6 +29,7 @@ ReentrancyGuardUpgradeable
     IERC20 private _ceToken; // (default ceABNBc)
     mapping(address => uint256) private _profits;
     address private _provider;
+    IBNBStakingPool private _pool2; // new
     /**
      * Modifiers
      */
@@ -73,15 +75,15 @@ ReentrancyGuardUpgradeable
     returns (uint256 value)
     {
         uint256 amount = msg.value;
-        // get returned amount from Dex
-        address[] memory path = new address[](2);
-        path[0] = _wBnbAddress;
-        path[1] = address(_certToken);
-        uint256[] memory outAmounts = _dex.getAmountsOut(amount, path);
-        uint256 dexABNBcAmount = outAmounts[outAmounts.length - 1];
-        // let's calculate returned amount of aBNBc from BinancePool
-        uint256 minimumStake = _pool.getMinimumStake();
-        uint256 relayerFee = _pool.getRelayerFee();
+        // // get returned amount from Dex
+        // address[] memory path = new address[](2);
+        // path[0] = _wBnbAddress;
+        // path[1] = address(_certToken);
+        // uint256[] memory outAmounts = _dex.getAmountsOut(amount, path);
+        // uint256 dexABNBcAmount = outAmounts[outAmounts.length - 1];
+        // // let's calculate returned amount of aBNBc from BinancePool
+        uint256 minimumStake = _pool2.getMinStake();
+        uint256 relayerFee = /*_pool.getRelayerFee()*/0;
         uint256 ratio = _certToken.ratio();
         uint256 poolABNBcAmount;
         if (amount >= minimumStake + relayerFee) {
@@ -92,17 +94,19 @@ ReentrancyGuardUpgradeable
         // else -> swap on Dex
         uint256 realAmount;
         uint256 profit;
-        if (poolABNBcAmount >= dexABNBcAmount) {
+        if (poolABNBcAmount >= 0) {//TODO
             realAmount = poolABNBcAmount;
-            _pool.stakeAndClaimCerts{value: amount}();
+            // _pool.stakeAndClaimCerts{value: amount}();
+            _pool2.stakeCerts{value: amount}();
         } else {
-            uint256[] memory amounts = _dex.swapExactETHForTokens{
-            value: amount
-            }(dexABNBcAmount, path, address(this), block.timestamp + 300);
-            realAmount = amounts[1];
-            if (realAmount > poolABNBcAmount && poolABNBcAmount != 0) {
-                profit = realAmount - poolABNBcAmount;
-            }
+            revert("DEX PATH");
+            // uint256[] memory amounts = _dex.swapExactETHForTokens{
+            // value: amount
+            // }(dexABNBcAmount, path, address(this), block.timestamp + 300);
+            // realAmount = amounts[1];
+            // if (realAmount > poolABNBcAmount && poolABNBcAmount != 0) {
+            //     profit = realAmount - poolABNBcAmount;
+            // }
         }
         // let's check balance of CeRouter in aBNBc
         require(
@@ -268,6 +272,9 @@ ReentrancyGuardUpgradeable
     function changeProvider(address provider) external onlyOwner {
         _provider = provider;
         emit ChangeProvider(provider);
+    }
+    function changeBNBStakingPool(address pool) external onlyOwner {
+        _pool2 = IBNBStakingPool(pool);
     }
     function getProvider() external view returns(address) {
         return _provider;

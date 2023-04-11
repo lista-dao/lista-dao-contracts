@@ -214,4 +214,8 @@ ReentrancyGuardUpgradeable
         _operator = operator;
         emit ChangeOperator(operator);
     }
+    function changeCertToken(address token) external onlyOwner {
+        _certToken = token;
+        emit ChangeCertToken(token);
+    }
 }

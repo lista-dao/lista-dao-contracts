@@ -207,4 +207,7 @@ ReentrancyGuardUpgradeable
     function getRouter() external view returns(address) {
         return address(_router);
     }
+    function changeCertToken(address token) external onlyOwner {
+        _aBNBc = ICertToken(token);
+    }
 }

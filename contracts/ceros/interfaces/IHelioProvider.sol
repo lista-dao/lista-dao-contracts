@@ -26,6 +26,8 @@ interface IHelioProvider {
 
     event ChangeOperator(address operator);
 
+    event ChangeCertToken(address token);
+
     /**
      * Deposit
      */
