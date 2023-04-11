@@ -23,6 +23,7 @@ ReentrancyGuardUpgradeable
     mapping(address => uint256) private _claimed; // in aBNBc
     mapping(address => uint256) private _depositors; // in aBNBc
     mapping(address => uint256) private _ceTokenBalances; // in aBNBc
+    
     /**
      * Modifiers
      */

@@ -22,14 +22,14 @@ ReentrancyGuardUpgradeable
      */
     IVault private _vault;
     IDex private _dex;
-    IBinancePool private _pool; // default (BinancePool)
+    IBinancePool private _binancePool; // default (BinancePool)
     // Tokens
     ICertToken private _certToken; // (default aBNBc)
     address private _wBnbAddress;
     IERC20 private _ceToken; // (default ceABNBc)
     mapping(address => uint256) private _profits;
     address private _provider;
-    IBNBStakingPool private _pool2; // new
+    IBNBStakingPool private _bnbStakingPool; // new
     /**
      * Modifiers
      */
@@ -57,7 +57,7 @@ ReentrancyGuardUpgradeable
         _ceToken = IERC20(ceToken);
         _vault = IVault(vault);
         _dex = IDex(dexAddress);
-        _pool = IBinancePool(pool);
+        _binancePool = IBinancePool(pool);
         IERC20(wBnbToken).approve(dexAddress, type(uint256).max);
         IERC20(certToken).approve(dexAddress, type(uint256).max);
         IERC20(certToken).approve(bondToken, type(uint256).max);
@@ -82,8 +82,8 @@ ReentrancyGuardUpgradeable
         // uint256[] memory outAmounts = _dex.getAmountsOut(amount, path);
         // uint256 dexABNBcAmount = outAmounts[outAmounts.length - 1];
         // // let's calculate returned amount of aBNBc from BinancePool
-        uint256 minimumStake = _pool2.getMinStake();
-        uint256 relayerFee = /*_pool.getRelayerFee()*/0;
+        uint256 minimumStake = _bnbStakingPool.getMinStake();
+        uint256 relayerFee = /*_binancePool.getRelayerFee()*/0;
         uint256 ratio = _certToken.ratio();
         uint256 poolABNBcAmount;
         if (amount >= minimumStake + relayerFee) {
@@ -96,8 +96,8 @@ ReentrancyGuardUpgradeable
         uint256 profit;
         if (poolABNBcAmount >= 0) {//TODO
             realAmount = poolABNBcAmount;
-            // _pool.stakeAndClaimCerts{value: amount}();
-            _pool2.stakeCerts{value: amount}();
+            // _binancePool.stakeAndClaimCerts{value: amount}();
+            _bnbStakingPool.stakeCerts{value: amount}();
         } else {
             revert("DEX PATH");
             // uint256[] memory amounts = _dex.swapExactETHForTokens{
@@ -183,11 +183,11 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         require(
-            amount >= _pool.getMinimumStake(),
+            amount >= _binancePool.getMinimumStake(),
             "value must be greater than min unstake amount"
         );
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
-        _pool.unstakeCertsFor(recipient, realAmount);
+        _binancePool.unstakeCertsFor(recipient, realAmount);
         emit Withdrawal(msg.sender, recipient, _wBnbAddress, amount);
         return realAmount;
     }
@@ -212,7 +212,7 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
-        _pool.unstakeCertsFor(recipient, realAmount); // realAmount -> BNB
+        _binancePool.unstakeCertsFor(recipient, realAmount); // realAmount -> BNB
         emit Withdrawal(msg.sender, recipient, _wBnbAddress, realAmount);
         return realAmount;
     }
@@ -244,7 +244,7 @@ ReentrancyGuardUpgradeable
     view
     returns (uint256)
     {
-        return _pool.pendingUnstakesOf(account);
+        return _binancePool.pendingUnstakesOf(account);
     }
     function changeVault(address vault) external onlyOwner {
         // update allowances
@@ -264,9 +264,9 @@ ReentrancyGuardUpgradeable
     }
     function changePool(address pool) external onlyOwner {
         // update allowances
-        _certToken.approve(address(_pool), 0);
-        _pool = IBinancePool(pool);
-        _certToken.approve(address(_pool), type(uint256).max);
+        _certToken.approve(address(_binancePool), 0);
+        _binancePool = IBinancePool(pool);
+        _certToken.approve(address(_binancePool), type(uint256).max);
         emit ChangePool(pool);
     }
     function changeProvider(address provider) external onlyOwner {
@@ -274,7 +274,18 @@ ReentrancyGuardUpgradeable
         emit ChangeProvider(provider);
     }
     function changeBNBStakingPool(address pool) external onlyOwner {
-        _pool2 = IBNBStakingPool(pool);
+        _bnbStakingPool = IBNBStakingPool(pool);
+    }
+    function changeCertToken(address certToken) external onlyOwner {
+        // update allowances
+        _certToken.approve(address(_binancePool), 0);
+        _certToken.approve(address(_dex), 0);
+        _certToken.approve(address(_vault), 0);
+        _certToken = ICertToken(certToken);
+        _certToken.approve(address(_binancePool), type(uint256).max);
+        _certToken.approve(address(_dex), type(uint256).max);
+        _certToken.approve(address(_vault), type(uint256).max);
+        emit ChangeCertToken(certToken);
     }
     function getProvider() external view returns(address) {
         return _provider;
@@ -289,7 +300,7 @@ ReentrancyGuardUpgradeable
         return address(_certToken);
     }
     function getPoolAddress() external view returns(address) {
-        return address(_pool);
+        return address(_binancePool);
     }
     function getDexAddress() external view returns(address) {
         return address(_dex);

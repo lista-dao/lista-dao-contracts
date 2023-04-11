@@ -29,6 +29,7 @@ ReentrancyGuardUpgradeable
     IDao public _dao;
     IBinancePool public _pool;
     address public _proxy;
+    
     /**
      * Modifiers
      */
