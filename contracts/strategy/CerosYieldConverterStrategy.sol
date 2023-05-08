@@ -5,13 +5,15 @@ import "../masterVault/interfaces/IMasterVault.sol";
 import "../ceros/interfaces/IBinancePool.sol";
 import "../ceros/interfaces/ICertToken.sol";
 import "../ceros/interfaces/ICerosRouter.sol";
+import "../ceros/interfaces/IVault.sol";
 import "./BaseStrategy.sol";
 
 contract CerosYieldConverterStrategy is BaseStrategy {
 
     ICerosRouter private _ceRouter;
     ICertToken private _certToken;
-    IBinancePool private _binancePool; 
+    IBinancePool private _binancePool;
+    IVault private _ceVault;
 
     event BinancePoolChanged(address binancePool);
     event CeRouterChanged(address ceRouter);
@@ -27,12 +29,14 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         address rewards,
         address certToekn,
         address masterVault,
-        address binancePool
+        address binancePool,
+        address ceVault
     ) public initializer {
         __BaseStrategy_init(destination, rewards, masterVault);
         _ceRouter = ICerosRouter(destination);
         _certToken = ICertToken(certToekn);
         _binancePool = IBinancePool(binancePool);
+        _ceVault = IVault(ceVault);
         _certToken.approve(binancePool, type(uint256).max);
     }
 
@@ -82,6 +86,29 @@ contract CerosYieldConverterStrategy is BaseStrategy {
             require(value <= amount, "invalid out amount");
             return amount;
         }
+    }
+
+    // withdrawal aBNBc
+    /// @param recipient address to receive withdrawan aBNBc
+    /// @param amount in BNB
+    function withdrawInToken(address recipient, uint256 amount)
+    external
+    override
+    nonReentrant
+    returns (uint256 realAmount)
+    {
+        return _ceRouter.withdrawABNBc(recipient, amount);
+    }
+
+    //estimate how much token(aBNBc) can get when do withdrawInToken
+    function estimateInToken(uint256 amount) external view returns(uint256){
+        uint256 ratio = _certToken.ratio();
+        return (amount * ratio) / 1e18;
+    }
+
+    // calculate the total(aBNBc) in the strategy contract
+    function balanceOfToken() external view returns(uint256){
+        return _ceVault.getDepositOf(address(this));
     }
 
     function canDeposit(uint256 amount) public view returns(bool) {
