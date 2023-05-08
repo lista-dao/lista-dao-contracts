@@ -113,6 +113,43 @@ contract StkBnbStrategy is BaseStrategy {
         return _withdraw(recipient, amount);
     }
 
+    // @dev get stxBNB from strategy
+    /// @param amount amount of BNB to withdraw
+    /// returns the amount of stxBNB that will be transfer to recipient
+    function withdrawInToken(address recipient, uint256 amount)
+    external
+    nonReentrant
+    onlyVault
+    returns (uint256){
+        IStakePool stakePool = IStakePool(_addressStore.getStakePool());
+        IStakedBNBToken stkBNB = IStakedBNBToken(_addressStore.getStkBNB());
+        ExchangeRate.Data memory exchangeRate = stakePool.exchangeRate();
+
+        uint256 poolTokens = exchangeRate._calcPoolTokensForDeposit(amount);
+
+        require(
+            stkBNB.balanceOf(address(this)) >= poolTokens,
+            "not such amount"
+        );
+
+        stkBNB.send(recipient, poolTokens);
+        _bnbDepositsInStakePool -= amount;
+        return poolTokens;
+    }
+
+    // calculate the total(stkBNB) in the strategy contract
+    function balanceOfToken() external view returns(uint256){
+        IStakedBNBToken stkBNB = IStakedBNBToken(_addressStore.getStkBNB());
+        return stkBNB.balanceOf(address(this));
+    }
+
+    //estimate how much token(stkBNB) can get when do withdrawInToken
+    function estimateInToken(uint256 amount) external view returns(uint256){
+        IStakePool stakePool = IStakePool(_addressStore.getStakePool());
+        ExchangeRate.Data memory exchangeRate = stakePool.exchangeRate();
+        return exchangeRate._calcPoolTokensForDeposit(amount);
+    }
+
     // withdraw all funds from the destination contract
     function panic() onlyStrategist external returns (uint256) {
         (,, uint256 debt) = vault.strategyParams(address(this));
@@ -264,10 +301,8 @@ contract StkBnbStrategy is BaseStrategy {
         IStakedBNBToken stkBNB = IStakedBNBToken(_addressStore.getStkBNB());
         uint256 stkBnbBalance = stkBNB.balanceOf(address(this));
         ExchangeRate.Data memory exchangeRate = IStakePool(_addressStore.getStakePool()).exchangeRate();
-
-        uint256 depositsWithYield = exchangeRate._calcWeiWithdrawAmount(stkBnbBalance);
-        uint256 yield = depositsWithYield - _bnbDepositsInStakePool;
-        yieldStkBNB = exchangeRate._calcPoolTokensForDeposit(yield);
+        //direct calc directly with stkBNB, Not first change to BNB, then get delta BNB -> stkBNB
+        yieldStkBNB = stkBnbBalance - exchangeRate._calcPoolTokensForDeposit(_bnbDepositsInStakePool);
     }
 
     // calculate the total amount of tokens in the destination contract
