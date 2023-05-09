@@ -132,7 +132,7 @@ contract StkBnbStrategy is BaseStrategy {
             "not such amount"
         );
 
-        stkBNB.send(recipient, poolTokens);
+        stkBNB.send(recipient, poolTokens, "");
         _bnbDepositsInStakePool -= amount;
         return poolTokens;
     }
