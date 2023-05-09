@@ -2,46 +2,46 @@ const { expect } = require("chai");
 const { parseEther, formatEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
-describe("BNBx Strategy", () => {
+describe("SnBNB Strategy", () => {
   let deployer,
     otherAddrs,
     user,
     rewardsAddr,
     strategy,
-    bnbxStakeManager,
-    bnbxToken,
+    snbnbStakeManager,
+    snbnbToken,
     masterVault;
 
   beforeEach(async () => {
     [deployer, user, ...otherAddrs] = await ethers.getSigners();
     rewardsAddr = otherAddrs[1];
 
-    bnbxStakeManager = await (
-      await ethers.getContractFactory("BnbxStakeManagerMock")
+    snbnbStakeManager = await (
+      await ethers.getContractFactory("SnBnbStakeManagerMock")
     ).deploy();
-    await bnbxStakeManager.deployed();
+    await snbnbStakeManager.deployed();
 
     masterVault = await (
       await ethers.getContractFactory("MasterVaultMock")
     ).deploy();
     await masterVault.deployed();
 
-    bnbxToken = await (await ethers.getContractFactory("BnbxMock")).deploy();
-    await bnbxToken.deployed();
+    snbnbToken = await (await ethers.getContractFactory("SnBnbMock")).deploy();
+    await snbnbToken.deployed();
 
     strategy = await upgrades.deployProxy(
-      await ethers.getContractFactory("BnbxYieldConverterStrategy"),
+      await ethers.getContractFactory("SnBnbYieldConverterStrategy"),
       [
-        bnbxStakeManager.address,
+        snbnbStakeManager.address,
         rewardsAddr.address,
-        bnbxToken.address,
+        snbnbToken.address,
         masterVault.address,
       ]
     );
     await strategy.deployed();
 
-    await bnbxStakeManager.changeBnbx(bnbxToken.address);
-    await bnbxStakeManager.changeER(parseEther("1"));
+    await snbnbStakeManager.changeSnBnb(snbnbToken.address);
+    await snbnbStakeManager.changeER(parseEther("1"));
     await masterVault.changeStrategy(strategy.address);
   });
 
@@ -60,7 +60,7 @@ describe("BNBx Strategy", () => {
     let amount = parseEther("1.23");
 
     await masterVault.deposit({ value: amount });
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(amount);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(amount);
     expect(await strategy.balanceOfPool()).eq(amount);
   });
 
@@ -86,22 +86,22 @@ describe("BNBx Strategy", () => {
       value: amount,
     });
     await strategy.depositAll();
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(amount);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(amount);
 
     // no bnb in strategy contract
     await expect(strategy.depositAll()).revertedWith("invalid amount");
   });
 
   it("withdraw fails if invoked by anyone except master vault", async () => {
-    let amountInBnbx = parseEther("1");
+    let amountInSnBnb = parseEther("1");
 
     // invoked by deployer
-    await expect(strategy.withdraw(user.address, amountInBnbx)).revertedWith(
+    await expect(strategy.withdraw(user.address, amountInSnBnb)).revertedWith(
       "!vault"
     );
 
     await expect(
-      strategy.connect(user).withdraw(user.address, amountInBnbx)
+      strategy.connect(user).withdraw(user.address, amountInSnBnb)
     ).revertedWith("!vault");
   });
 
@@ -119,14 +119,14 @@ describe("BNBx Strategy", () => {
     // withdraw 1 BNB to deployer
     await masterVault.withdraw(deployer.address, oneBNB);
     expect(await strategy.bnbDepositBalance()).eq(twoBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).eq(oneBNB);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).eq(oneBNB);
 
     // withdraw 1 BNB to user
     await masterVault.withdraw(user.address, oneBNB);
     expect(await strategy.bnbDepositBalance()).eq(oneBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).eq(twoBNB);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).eq(twoBNB);
   });
 
   it("withdrawInToken via masterVault", async () => {
@@ -143,7 +143,7 @@ describe("BNBx Strategy", () => {
     // withdraw 2 BNB to user
     await masterVault.withdrawInToken(user.address, twoBNB);
     expect(await strategy.bnbDepositBalance()).eq(oneBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(oneBNB);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(oneBNB);
   });
 
   it("panic fails if invoked by anyone except strategist", async () => {
@@ -170,10 +170,10 @@ describe("BNBx Strategy", () => {
     // case 3
     await masterVault.deposit({ value: oneBNB });
     expect(await strategy.bnbDepositBalance()).be.eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).be.eq(0);
+    expect(await strategy.snBnbToUnstake()).be.eq(0);
     await masterVault.withdraw(deployer.address, oneBNB);
     expect(await strategy.bnbDepositBalance()).be.eq(twoBNB);
-    expect(await strategy.bnbxToUnstake()).be.eq(oneBNB);
+    expect(await strategy.snBnbToUnstake()).be.eq(oneBNB);
     await expect(strategy.panic()).be.revertedWith("underflowed or overflowed");
   });
 
@@ -181,11 +181,11 @@ describe("BNBx Strategy", () => {
     const threeBNB = parseEther("3");
     await masterVault.deposit({ value: threeBNB });
     expect(await strategy.bnbDepositBalance()).be.eq(threeBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).be.eq(0);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).be.eq(0);
     await strategy.panic();
     expect(await strategy.bnbDepositBalance()).be.eq(0);
-    expect(await strategy.bnbxToUnstake()).be.eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).be.eq(threeBNB);
   });
 
   it("batchWithdraw fails if invoked before 24 hours", async () => {
@@ -202,7 +202,7 @@ describe("BNBx Strategy", () => {
     // increase block time by 20 hours, so total 25 hours
     await ethers.provider.send("evm_increaseTime", [3600 * 20]);
     await expect(strategy.batchWithdraw()).be.revertedWith(
-      "No BNBx to unstake"
+      "No SnBNB to unstake"
     );
   });
 
@@ -214,7 +214,7 @@ describe("BNBx Strategy", () => {
     // increase block time by 24 hours
     await ethers.provider.send("evm_increaseTime", [3600 * 24]);
     await expect(strategy.batchWithdraw()).be.revertedWith(
-      "No BNBx to unstake"
+      "No SnBNB to unstake"
     );
 
     const oneBNB = parseEther("1");
@@ -223,33 +223,33 @@ describe("BNBx Strategy", () => {
 
     await masterVault.deposit({ value: threeBNB });
     expect(await strategy.bnbDepositBalance()).be.eq(threeBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).be.eq(0);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).be.eq(0);
 
     await masterVault.withdraw(deployer.address, oneBNB);
     await masterVault.withdraw(user.address, oneBNB);
     expect(await strategy.bnbDepositBalance()).be.eq(oneBNB);
-    expect(await bnbxToken.balanceOf(strategy.address)).eq(threeBNB);
-    expect(await strategy.bnbxToUnstake()).be.eq(twoBNB);
+    expect(await snbnbToken.balanceOf(strategy.address)).eq(threeBNB);
+    expect(await strategy.snBnbToUnstake()).be.eq(twoBNB);
 
     await strategy.batchWithdraw();
-    expect(await strategy.bnbxToUnstake()).be.eq(0);
+    expect(await strategy.snBnbToUnstake()).be.eq(0);
   });
 
   it("claimNextBatch", async () => {
     const twoBNB = parseEther("2");
     const threeBNB = parseEther("3");
 
-    // send 3 BNB to bnbxStakeManager so that it has funds
+    // send 3 BNB to snbnbStakeManager so that it has funds
     await deployer.sendTransaction({
-      to: bnbxStakeManager.address,
+      to: snbnbStakeManager.address,
       value: threeBNB,
     });
 
     expect(await ethers.provider.getBalance(strategy.address)).be.eq(0);
     expect(await strategy.bnbToDistribute()).be.eq(0);
 
-    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
+    // always claims 2 BNB, as it is hardcoded in snbnb stakeManager mock
     await strategy.claimNextBatch();
     expect(await ethers.provider.getBalance(strategy.address)).be.eq(twoBNB);
     expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
@@ -260,9 +260,9 @@ describe("BNBx Strategy", () => {
     const twoBNB = parseEther("2");
     const threeBNB = parseEther("3");
 
-    // send 3 BNB to bnbxStakeManager so that it has funds
+    // send 3 BNB to snbnbStakeManager so that it has funds
     await deployer.sendTransaction({
-      to: bnbxStakeManager.address,
+      to: snbnbStakeManager.address,
       value: threeBNB,
     });
 
@@ -275,7 +275,7 @@ describe("BNBx Strategy", () => {
     await strategy.batchWithdraw();
 
     expect(await strategy.bnbToDistribute()).be.eq(0);
-    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
+    // always claims 2 BNB, as it is hardcoded in snbnb stakeManager mock
     await strategy.claimNextBatch();
     expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
 
@@ -299,9 +299,9 @@ describe("BNBx Strategy", () => {
     const twoBNB = parseEther("2");
     const threeBNB = parseEther("3");
 
-    // send 3 BNB to bnbxStakeManager so that it has funds
+    // send 3 BNB to snbnbStakeManager so that it has funds
     await deployer.sendTransaction({
-      to: bnbxStakeManager.address,
+      to: snbnbStakeManager.address,
       value: threeBNB,
     });
 
@@ -318,7 +318,7 @@ describe("BNBx Strategy", () => {
     );
     const userPrevBalance = await ethers.provider.getBalance(user.address);
 
-    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
+    // always claims 2 BNB, as it is hardcoded in snbnb stakeManager mock
     await strategy.claimNextBatchAndDistribute(4);
 
     expect(await strategy.bnbToDistribute()).be.eq(0);
@@ -340,9 +340,9 @@ describe("BNBx Strategy", () => {
     ).deploy();
     await mockReceiver.deployed();
 
-    // send 3 BNB to bnbxStakeManager so that it has funds
+    // send 3 BNB to snbnbStakeManager so that it has funds
     await deployer.sendTransaction({
-      to: bnbxStakeManager.address,
+      to: snbnbStakeManager.address,
       value: threeBNB,
     });
 
@@ -358,7 +358,7 @@ describe("BNBx Strategy", () => {
     );
 
     expect(await strategy.bnbToDistribute()).be.eq(0);
-    // always claims 2 BNB, as it is hardcoded in bnbx stakeManager mock
+    // always claims 2 BNB, as it is hardcoded in snbnb stakeManager mock
     await strategy.claimNextBatch();
     expect(await strategy.bnbToDistribute()).be.eq(twoBNB);
 
@@ -388,33 +388,33 @@ describe("BNBx Strategy", () => {
     await expect(strategy.harvest()).be.revertedWith("no yield to harvest");
   });
 
-  it("harvest succeeds, when bnbx/bnb exchange rate increases", async () => {
+  it("harvest succeeds, when snbnb/bnb exchange rate increases", async () => {
     await masterVault.deposit({ value: parseEther("2") });
-    expect(await bnbxToken.balanceOf(strategy.address)).be.eq(parseEther("2"));
+    expect(await snbnbToken.balanceOf(strategy.address)).be.eq(parseEther("2"));
     await expect(strategy.harvest()).be.revertedWith("no yield to harvest");
 
-    await bnbxStakeManager.changeER(parseEther("5"));
+    await snbnbStakeManager.changeER(parseEther("5"));
     await strategy.harvest();
-    // bnbx left in strategy = 0.4 ( = bnbDepositBalance / ER)
-    expect(await bnbxToken.balanceOf(strategy.address)).be.eq(
+    // snbnb left in strategy = 0.4 ( = bnbDepositBalance / ER)
+    expect(await snbnbToken.balanceOf(strategy.address)).be.eq(
       parseEther("0.4")
     );
-    expect(await bnbxToken.balanceOf(rewardsAddr.address)).be.eq(
+    expect(await snbnbToken.balanceOf(rewardsAddr.address)).be.eq(
       parseEther("1.6")
     );
   });
 
-  it("change bnbxStakeManager", async () => {
+  it("change snbnbStakeManager", async () => {
     await expect(
       strategy.changeStakeManager(ethers.constants.AddressZero)
     ).be.revertedWith("zero address");
 
     await expect(
-      strategy.changeStakeManager(bnbxStakeManager.address)
+      strategy.changeStakeManager(snbnbStakeManager.address)
     ).be.revertedWith("old address provided");
 
     await expect(strategy.changeStakeManager(rewardsAddr.address))
-      .emit(strategy, "StakeManagerChanged")
+      .emit(strategy, "SnBnbStakeManagerChanged")
       .withArgs(rewardsAddr.address);
   });
 
