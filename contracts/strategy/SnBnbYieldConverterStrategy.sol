@@ -9,7 +9,7 @@ import "../synclub/interfaces/ISnBnbStakeManager.sol";
 import "./BaseStrategy.sol";
 
 contract SnBnbYieldConverterStrategy is BaseStrategy {
-
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     IERC20Upgradeable private _snBnbToken;
     ISnBnbStakeManager private _stakeManager;
 
@@ -51,7 +51,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         __BaseStrategy_init(destination, rewardsAddr, masterVault);
 
         _snBnbToken = IERC20Upgradeable(snBnbToken);
-        _stakeManager = IStakeManager(destination);
+        _stakeManager = ISnBnbStakeManager(destination);
         lastUnstakeTriggerTime = block.timestamp;
 
         _snBnbToken.approve(destination, type(uint256).max);
