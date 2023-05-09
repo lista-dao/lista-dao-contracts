@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../masterVault/interfaces/IMasterVault.sol";
-import "../synclub/interfaces/ISnBnbStakeManager.sol";
+import "../snbnb/interfaces/ISnBnbStakeManager.sol";
 import "./BaseStrategy.sol";
 
 contract SnBnbYieldConverterStrategy is BaseStrategy {
