@@ -97,6 +97,34 @@ ReentrancyGuardUpgradeable
         emit Withdrawal(msg.sender, recipient, amount);
         return realAmount;
     }
+
+    /**
+     * releaseInToken, recipient will get (aBNBc/stkBNB/snBNB/BNBx)
+     */
+    function releaseInToken(address strategy, address recipient, uint256 amount)
+    external
+    override
+    whenNotPaused
+    nonReentrant
+    returns (uint256 realAmount)
+    {
+        require(recipient != address(0));
+        _withdrawCollateral(msg.sender, amount);
+        realAmount = _masterVault.withdrawInTokenFromStrategy(strategy, recipient, amount);
+        emit WithdrawalInToken(msg.sender, recipient, amount);
+        return realAmount;
+    }
+
+    //Estimate how much token(aBNBc/stkBNB/snBNB/BNBx) can get when call releaseInToken
+    function estimateInToken(address strategy, uint256 amount) external view override returns(uint256) {
+        return _masterVault.estimateInTokenFromStrategy(strategy, amount);
+    }
+
+    //Calculate the balance(aBNBc/stkBNB/snBNB/BNBx) in the strategy contract
+    function balanceOfToken(address strategy) external view override returns(uint256) {
+        return _masterVault.balanceOfTokenFromStrategy(strategy);
+    }
+
     /**
      * DAO FUNCTIONALITY
      */

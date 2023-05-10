@@ -232,6 +232,41 @@ ReentrancyGuardUpgradeable
         return value;
     }
 
+    /// @dev withdraw specific amount of assets from the given strategy, will get (aBNBc/stkBNB/snBNB/BNBx)
+    /// @param strategy address of the strategy
+    /// @param amount assets to withdrawInToken from the strategy
+    function withdrawInTokenFromStrategy(address strategy, address recipient, uint256 amount)
+    external
+    override
+    nonReentrant
+    whenNotPaused
+    onlyProvider returns(uint256) {
+        _withdrawInTokenFromStrategy(strategy, recipient, amount);
+    }
+
+    /// @dev internal function to withdraw specific amount of assets from the given strategy,
+    ///    will get (aBNBc/stkBNB/snBNB/BNBx)
+    /// @param strategy address of the strategy
+    /// @param amount assets to withdraw from the strategy
+    function _withdrawInTokenFromStrategy(address strategy, address recipient, uint256 amount) private returns(uint256) {
+        require(amount > 0, "invalid withdrawal amount");
+        require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
+        uint256 value = IBaseStrategy(strategy).withdrawInToken(recipient, amount);
+        totalDebt -= amount;
+        strategyParams[strategy].debt -= amount;
+        emit WithdrawnInTokenFromStrategy(strategy, amount);
+        return value;
+    }
+
+    //estimate how much token(aBNBc/stkBNB/snBNB/BNBx) can get when do withdrawInToken
+    function estimateInTokenFromStrategy(address strategy, uint256 amount) external view returns(uint256) {
+        return IBaseStrategy(strategy).estimateInToken(amount);
+    }
+    // calculate the total(aBNBc/stkBNB/snBNB/BNBx) in the strategy contract
+    function balanceOfTokenFromStrategy(address strategy) external view returns(uint256) {
+        return IBaseStrategy(strategy).balanceOfToken();
+    }
+
     /// @dev sets new strategy
     /// @param strategy address of the strategy
     /// @param allocation percentage of total assets available in the contract 

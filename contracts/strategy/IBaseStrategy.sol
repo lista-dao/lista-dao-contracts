@@ -13,10 +13,10 @@ interface IBaseStrategy {
     // to withdraw funds from the destination contract
     function withdraw(address recipient, uint256 amount) external returns(uint256);
 
-    // to withdraw token(aNBN/stkBNB/snBNB/BNBx) from the destination contract
+    // to withdraw token(aBNBc/stkBNB/snBNB/BNBx) from the destination contract
     function withdrawInToken(address recipient, uint256 amount) external returns(uint256);
 
-    //estimate how much token(aNBN/stkBNB/snBNB/BNBx) can get when do withdrawInToken
+    //estimate how much token(aBNBc/stkBNB/snBNB/BNBx) can get when do withdrawInToken
     function estimateInToken(uint256 amount) external view returns(uint256);
 
     // claim or collect rewards functions
@@ -34,7 +34,7 @@ interface IBaseStrategy {
     // calculate the total underlying token in the strategy contract and destination contract
     function balanceOf() external view returns(uint256);
 
-    // calculate the total(aNBN/stkBNB/snBNB/BNBx) in the strategy contract
+    // calculate the total(aBNBc/stkBNB/snBNB/BNBx) in the strategy contract
     function balanceOfToken() external view returns(uint256);
 
     // calculate the total amount of tokens in the strategy contract

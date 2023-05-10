@@ -22,10 +22,18 @@ interface IMasterVault {
     event StrategyMigrated(address oldStrategy, address newStrategy, uint256 newAllocation);
     event DepositedToStrategy(address strategy, uint256 amount);
     event WithdrawnFromStrategy(address strategy, uint256 value);
+    event WithdrawnInTokenFromStrategy(address strategy, uint256 value);
 
     function withdrawETH(address account, uint256 amount) external  returns (uint256);
     function depositETH() external payable returns (uint256);
     function feeReceiver() external returns (address payable);
     function withdrawalFee() external view returns (uint256);
     function strategyParams(address strategy) external view returns(bool active, uint256 allocation, uint256 debt);
+    function withdrawInTokenFromStrategy(address strategy, address recipient, uint256 amount) external returns (uint256);
+
+    //estimate how much token(aBNBc/stkBNB/snBNB/BNBx) can get when do withdrawInToken
+    function estimateInTokenFromStrategy(address strategy, uint256 amount) external view returns(uint256);
+    // calculate the total(aBNBc/stkBNB/snBNB/BNBx) in the strategy contract
+    function balanceOfTokenFromStrategy(address strategy) external view returns(uint256);
+
 }
