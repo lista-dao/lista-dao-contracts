@@ -1,0 +1,24 @@
+{
+    "BSC_MAINNET": "BSC_MAINNET_VARIABLES",
+  
+    "m_ceaBNBc": "", 
+    "m_ceVault": "", 
+    "m_cerosRouter": "", 
+    "m_bnbJoin": "", 
+    "m_helioProvider": "",
+    "m_pStake_addressStore": "",
+    "m_bnbxToken": "",
+    "m_stader_stake_manager": "",
+  
+    "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
+  
+    "t_ceaBNBc": "", 
+    "t_ceVault": "", 
+    "t_cerosRouter": "", 
+    "t_bnbJoin": "", 
+    "t_helioProvider": "",
+    "t_pStake_addressStore": "0x8bf7bF5945A356106CCbDF9C9c8838eb347Bfb27",
+    "t_bnbxToken": "0xDAdcae6bF110c0e70E5624bCdcCBe206f92A2Df9",
+    "_stader_stake_manager": "0x3ECB02c703C815e9cFFd8d9437B7A2F93638d7Cb"
+}
+  

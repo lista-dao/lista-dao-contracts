@@ -235,6 +235,9 @@ ReentrancyGuardUpgradeable
     function getProfitFor(address account) external view returns (uint256) {
         return _profits[account];
     }
+    function getYieldFor(address account) external view returns(uint256) {
+        return _vault.getYieldFor(account);
+    }
     function getPendingWithdrawalOf(address account)
     external
     view
