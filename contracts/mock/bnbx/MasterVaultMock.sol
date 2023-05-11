@@ -21,6 +21,13 @@ contract MasterVaultMock {
         return strategy.withdraw(recipient, amount);
     }
 
+    function withdrawInToken(address recipient, uint256 amount)
+    external
+    returns (uint256)
+    {
+        return strategy.withdrawInToken(recipient, amount);
+    }
+
     function strategyParams(address strategy_)
         external
         pure

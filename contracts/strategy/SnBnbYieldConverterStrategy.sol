@@ -5,19 +5,18 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../masterVault/interfaces/IMasterVault.sol";
-import "../bnbx/interfaces/IStakeManager.sol";
+import "../snbnb/interfaces/ISnBnbStakeManager.sol";
 import "./BaseStrategy.sol";
 
-contract BnbxYieldConverterStrategy is BaseStrategy {
+contract SnBnbYieldConverterStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    IERC20Upgradeable private _bnbxToken;
-    IStakeManager private _stakeManager;
+    IERC20Upgradeable private _snBnbToken;
+    ISnBnbStakeManager private _stakeManager;
 
     struct UserWithdrawRequest {
         address recipient;
-        uint256 amount;
-        uint256 bnbxAmount;
+        uint256 amount; //BNB
+        uint256 snBnbAmount;
         uint256 triggerTime;
     }
     mapping(uint256 => UserWithdrawRequest) private _withdrawRequests;
@@ -31,34 +30,34 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     mapping(address => uint256) public manualWithdrawAmount;
 
     uint256 public bnbDepositBalance; // amount of bnb deposited by this strategy
-    uint256 public bnbxToUnstake; // amount of bnbx to withdraw from stader in next batchWithdraw
+    uint256 public snBnbToUnstake; // amount of snBnb to withdraw from synclub in next batchWithdraw
     uint256 public bnbToDistribute; // amount of bnb to distribute to users who unstaked
 
     uint256 public lastUnstakeTriggerTime; // last time when batchWithdraw was invoked
 
-    event StakeManagerChanged(address stakeManager);
+    event SnBnbStakeManagerChanged(address stakeManager);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the stakeManager contract
     /// @param rewardsAddr Address which receives yield
-    /// @param bnbxToken Address of BNBx token
+    /// @param snBnbToken Address of snBNB token
     /// @param masterVault Address of the masterVault contract
     function initialize(
         address destination,
         address rewardsAddr,
-        address bnbxToken,
+        address snBnbToken,
         address masterVault
     ) public initializer {
         __BaseStrategy_init(destination, rewardsAddr, masterVault);
 
-        _bnbxToken = IERC20Upgradeable(bnbxToken);
-        _stakeManager = IStakeManager(destination);
+        _snBnbToken = IERC20Upgradeable(snBnbToken);
+        _stakeManager = ISnBnbStakeManager(destination);
         lastUnstakeTriggerTime = block.timestamp;
 
-        _bnbxToken.approve(destination, type(uint256).max);
+        _snBnbToken.approve(destination, type(uint256).max);
     }
 
-    /// @dev deposits the given amount of BNB into Stader stakeManager
+    /// @dev deposits the given amount of BNB into Synclub stakeManager
     function deposit()
         external
         payable
@@ -70,12 +69,12 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return _deposit(amount);
     }
 
-    /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Stader stakeManager
+    /// @dev deposits all the available BNB(extraBNB if any + BNB passed) into Synclub stakeManager
     function depositAll() external nonReentrant onlyStrategist {
         _deposit(address(this).balance - bnbToDistribute);
     }
 
-    /// @dev internal function to deposit the given amount of BNB into Stader stakeManager
+    /// @dev internal function to deposit the given amount of BNB into Synclub stakeManager
     /// @param amount amount of BNB to deposit
     function _deposit(uint256 amount)
         internal
@@ -88,7 +87,8 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    /// @dev creates an entry to withdraw the given amount of BNB from Stader's stakeManager
+
+    /// @dev creates an entry to withdraw the given amount of BNB from Synclub's stakeManager
     /// @param amount amount of BNB to withdraw
     function withdraw(address recipient, uint256 amount)
         external
@@ -99,68 +99,68 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         return _withdraw(recipient, amount);
     }
 
-    // @dev get BNBx from strategy
+    // @dev get SnBNB from strategy
     /// @param amount amount of BNB to withdraw
-    /// returns the amount of BNBx that will be transfer to recipient
+    /// returns the amount of SnBNB that will be transfer to recipient
     function withdrawInToken(address recipient, uint256 amount)
-    external
-    nonReentrant
-    onlyVault
-    returns (uint256){
-        uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
-        _bnbxToken.safeTransfer(recipient, bnbxAmount);
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256){
+        uint256 snBnbAmount = _stakeManager.convertBnbToSnBnb(amount);
+        _snBnbToken.safeTransfer(recipient, snBnbAmount);
         bnbDepositBalance -= amount;
-        return bnbxAmount;
+        return snBnbAmount;
     }
 
-    //estimate how much token(BNBx) can get when do withdrawInToken
+    //estimate how much token(snBNB) can get when do withdrawInToken
     function estimateInToken(uint256 amount) external view returns(uint256){
-        return _stakeManager.convertBnbToBnbX(amount);
+        return _stakeManager.convertBnbToSnBnb(amount);
     }
 
-    // calculate the total(BNBx) in the strategy contract
+    // calculate the total(snBNB) in the strategy contract
     function balanceOfToken() external view returns(uint256){
-        return _bnbxToken.balanceOf(address(this));
+        return _snBnbToken.balanceOf(address(this));
     }
 
-    /// @dev creates an entry to withdraw everything(bnbDeposited) from Stader's stakeManager
+    /// @dev creates an entry to withdraw everything(bnbDeposited) from Synclub's stakeManager
     function panic() external nonReentrant onlyStrategist returns (uint256) {
         (, , uint256 debt) = vault.strategyParams(address(this));
         return _withdraw(address(vault), debt);
     }
 
-    /// @dev internal function to create an withdraw the given amount of BNB from Stader's stakeManager
+    /// @dev internal function to create an withdraw the given amount of BNB from Synclub's stakeManager
     /// @param amount amount of BNB
-    /// @return value - returns the amount of BNB that will be withdrawn from stader in future
+    /// @return value - returns the amount of BNB that will be withdrawn from Synclub in future
     function _withdraw(address recipient, uint256 amount)
         internal
         returns (uint256 value)
     {
-        uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
+        uint256 snBnbAmount = _stakeManager.convertBnbToSnBnb(amount);
         bnbDepositBalance -= amount;
-        bnbxToUnstake += bnbxAmount;
+        snBnbToUnstake += snBnbAmount;
         _withdrawRequests[_nextWithdrawIdx++] = UserWithdrawRequest({
             recipient: recipient,
             amount: amount,
-            bnbxAmount: bnbxAmount,
+            snBnbAmount: snBnbAmount,
             triggerTime: block.timestamp
         });
 
         return amount;
     }
 
-    // actual withdraw request to stader, should be called max once a day
+    // actual withdraw request to Snyclub, should be called max once a day
     function batchWithdraw() external nonReentrant {
         require(
             block.timestamp - lastUnstakeTriggerTime >= 24 hours,
             "Allowed once daily"
         );
-        require(bnbxToUnstake > 0, "No BNBx to unstake");
+        require(snBnbToUnstake > 0, "No SnBNB to unstake");
 
-        uint256 bnbxToUnstake_ = bnbxToUnstake; // To prevent reentrancy
-        bnbxToUnstake = 0;
+        uint256 snBnbToUnstake_ = snBnbToUnstake; // To prevent reentrancy
+        snBnbToUnstake = 0;
         lastUnstakeTriggerTime = block.timestamp;
-        _stakeManager.requestWithdraw(bnbxToUnstake_);
+        _stakeManager.requestWithdraw(snBnbToUnstake_);
     }
 
     /// @param maxNumRequests : parameter to control max number of requests to refund
@@ -175,7 +175,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         reqCount = _distributeFund(maxNumRequests);
     }
 
-    /// @dev claims the next available withdraw batch from stader
+    /// @dev claims the next available withdraw batch from Synclub
     /// @dev transfer funds(BNB) from stakeManager to strategy
     /// @return foundClaimableReq : true if claimed any batch, false if no batch is available to claim
     function claimNextBatch()
@@ -187,7 +187,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     }
 
     function _claimNextBatch() private returns (bool foundClaimableReq) {
-        IStakeManager.WithdrawalRequest[] memory requests = _stakeManager
+        ISnBnbStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
         for (uint256 idx = 0; idx < requests.length; idx++) {
@@ -195,7 +195,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
                 .getUserRequestStatus(address(this), idx);
 
             if (!isClaimable) continue;
-            bnbToDistribute += amount; // amount here returned from stader will be a little more than requested to withdraw
+            bnbToDistribute += amount; // amount here returned from Synclub will be a little more than requested to withdraw BNB:snBNB > 1 ?
             _stakeManager.claimWithdraw(idx);
             return true;
         }
@@ -259,36 +259,32 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
 
         (
             bool sent, /*memory data*/
-
         ) = payable(recipient).call{value: amount}("");
         require(sent, "!sent");
     }
 
-    /// @dev claims yield from stader in BNBx and transfers to rewardsAddr
+    /// @dev claims yield from Synclub in SnBNB and transfers to rewardsAddr
     function harvest() external nonReentrant onlyStrategist {
         _harvestTo(rewards);
     }
 
-    /// @dev internal function to claim yield from stader in BNBx and transfer them to desired address
+    /// @dev internal function to claim yield from Synclub in SnBNB and transfer them to desired address
     function _harvestTo(address to) private returns (uint256 yield) {
         yield = calculateYield();
 
         require(yield > 0, "no yield to harvest");
 
-        _bnbxToken.safeTransfer(to, yield);
+        _snBnbToken.safeTransfer(to, yield);
     }
 
     function calculateYield() public view returns (uint256 yield) {
-        uint256 bnbxEqAmount = _stakeManager.convertBnbToBnbX(
+        uint256 snBnbEqAmount = _stakeManager.convertBnbToSnBnb(
             bnbDepositBalance
         );
 
-        // yield = bnbxHoldingBalance - bnbxEqAmout
-        // bnbxHoldingBalance = _bnbxToken.balanceOf(address(this)) - _bnbxToUnstake
-        yield =
-            _bnbxToken.balanceOf(address(this)) -
-            bnbxToUnstake -
-            bnbxEqAmount;
+        // yield = snBnbHoldingBalance - snBnbEqAmount
+        // bnbxHoldingBalance = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake
+        yield = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake - snBnbEqAmount;
     }
 
     // returns the total amount of tokens in the destination contract
@@ -310,9 +306,9 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         require(stakeManager != address(0), "zero address");
         require(address(_stakeManager) != stakeManager, "old address provided");
 
-        _bnbxToken.approve(address(_stakeManager), 0);
-        _stakeManager = IStakeManager(stakeManager);
-        _bnbxToken.approve(address(_stakeManager), type(uint256).max);
-        emit StakeManagerChanged(stakeManager);
+        _snBnbToken.approve(address(_stakeManager), 0);
+        _stakeManager = ISnBnbStakeManager(stakeManager);
+        _snBnbToken.approve(address(_stakeManager), type(uint256).max);
+        emit SnBnbStakeManagerChanged(stakeManager);
     }
 }
