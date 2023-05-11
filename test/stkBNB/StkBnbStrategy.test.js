@@ -137,6 +137,26 @@ describe('StkBnbStrategy', () => {
             });
         });
 
+
+        describe('withdrawInToken', () => {
+
+            it('should work', async () => {
+                // deposit something to stakePool to make pool balance +ve
+                const strategyBalance = WeiPerEther;
+                const depositAmt = BigNumber.from(2).mul(WeiPerEther);
+                await deposit(depositAmt);
+
+                const amount = strategyBalance.mul(2);
+                await stkBNB.mock.send.returns();
+                await stkBNB.mock.balanceOf.withArgs(strategy.address).returns(amount);
+                // withdrawInToken
+                const prevPoolBalance = await strategy.balanceOfPool();
+                await strategy.connect(masterVault).withdrawInToken(user.address, strategyBalance);
+                console.log("after", await strategy.balanceOfPool());
+                expect(await strategy.balanceOfPool()).to.be.equal(prevPoolBalance.sub(strategyBalance));
+            });
+        });
+
         describe('claimAndDistribute', () => {
             it('should work', async () => {
                 await stakePool.mock.claimAll.returns();
