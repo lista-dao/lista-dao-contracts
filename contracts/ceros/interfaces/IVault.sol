@@ -43,4 +43,8 @@ interface IVault {
     function getPrincipalOf(address account) external view returns (uint256);
     function getYieldFor(address account) external view returns (uint256);
     function getTotalAmountInVault() external view returns (uint256);
+
+    // get aBNBs balance
+    function getDepositOf(address account) external view returns (uint256);
+
 }
