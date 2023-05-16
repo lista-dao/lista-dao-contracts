@@ -241,6 +241,10 @@ ReentrancyGuardUpgradeable
     nonReentrant
     whenNotPaused
     onlyProvider returns(uint256) {
+        require(amount > 0, "invalid withdrawal amount");
+        require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
+        address src = msg.sender;
+        ICertToken(vaultToken).burn(src, amount);
         _withdrawInTokenFromStrategy(strategy, recipient, amount);
     }
 
@@ -249,8 +253,6 @@ ReentrancyGuardUpgradeable
     /// @param strategy address of the strategy
     /// @param amount assets to withdraw from the strategy
     function _withdrawInTokenFromStrategy(address strategy, address recipient, uint256 amount) private returns(uint256) {
-        require(amount > 0, "invalid withdrawal amount");
-        require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
         uint256 value = IBaseStrategy(strategy).withdrawInToken(recipient, amount);
         totalDebt -= amount;
         strategyParams[strategy].debt -= amount;
