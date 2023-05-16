@@ -149,7 +149,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    // actual withdraw request to Snyclub, should be called max once a day
+    // Anybody can call. actual withdraw request to Snyclub, should be called max once a day
     function batchWithdraw() external nonReentrant {
         require(
             block.timestamp - lastUnstakeTriggerTime >= 24 hours,
@@ -283,7 +283,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         );
 
         // yield = snBnbHoldingBalance - snBnbEqAmount
-        // bnbxHoldingBalance = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake
+        // snHoldingBalance = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake
         yield = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake - snBnbEqAmount;
     }
 
