@@ -21,20 +21,21 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the ceros router contract
     /// @param rewards Address of the fee recipient
-    /// @param certToekn Address of aBNBc token
+    /// @param certToken Address of aBNBc token
     /// @param masterVault Address of the masterVault contract
     /// @param binancePool Address of binancePool contract
+    /// @param ceVault Address of CeVault
     function initialize(
         address destination,
         address rewards,
-        address certToekn,
+        address certToken,
         address masterVault,
         address binancePool,
         address ceVault
     ) public initializer {
         __BaseStrategy_init(destination, rewards, masterVault);
         _ceRouter = ICerosRouter(destination);
-        _certToken = ICertToken(certToekn);
+        _certToken = ICertToken(certToken);
         _binancePool = IBinancePool(binancePool);
         _ceVault = IVault(ceVault);
         _certToken.approve(binancePool, type(uint256).max);
