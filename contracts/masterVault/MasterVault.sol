@@ -245,10 +245,13 @@ ReentrancyGuardUpgradeable
         require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
         address src = msg.sender;
         ICertToken(vaultToken).burn(src, amount);
-        uint256 shares = _assessFee(amount, withdrawalFee);
-        _withdrawInTokenFromStrategy(strategy, recipient, shares);
-        _withdrawInTokenFromStrategy(strategy, feeReceiver, amount - shares);
-        return shares;
+        if (withdrawalFee > 0) {
+            uint256 shares = _assessFee(amount, withdrawalFee);
+            _withdrawInTokenFromStrategy(strategy, recipient, shares);
+            _withdrawInTokenFromStrategy(strategy, feeReceiver, amount - shares);
+            return shares;
+        }
+        _withdrawInTokenFromStrategy(strategy, recipient, amount);
     }
 
     /// @dev internal function to withdraw specific amount of assets from the given strategy,
