@@ -28,22 +28,29 @@ module.exports = {
     },
 
     networks: {
-        hardhat : {
-            accounts: {
-                accountsBalance: "100000000000000000000000000",
-            },
-        },
-        bsc: {
-            url: `https://bsc-dataseed.binance.org/`,
-            chainId: 56,
-            accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
-        },
+        localhost : {
+            url: "http://127.0.0.1:8545",
+            allowUnlimitedContractSize: true,
+            blockNumber: 20000000,
+            gas: 2100000,
+            gasPrice: 8000000000
+        }
+        // hardhat : {
+        //     accounts: {
+        //         accountsBalance: "100000000000000000000000000",
+        //     },
+        // },
+        // bsc: {
+        //     url: `https://bsc-dataseed.binance.org/`,
+        //     chainId: 56,
+        //     accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
+        // },
 
-        bsc_testnet: {
-            url: `https://data-seed-prebsc-2-s3.binance.org:8545/`,
-            chainId: 97,
-            accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
-        },
+        // bsc_testnet: {
+        //     url: `https://data-seed-prebsc-2-s3.binance.org:8545/`,
+        //     chainId: 97,
+        //     accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
+        // },
     },
 
     etherscan: {
