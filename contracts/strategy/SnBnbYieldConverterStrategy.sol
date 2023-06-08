@@ -275,6 +275,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         require(yield > 0, "no yield to harvest");
 
         _snBnbToken.safeTransfer(to, yield);
+        emit Harvested(to, yield);
     }
 
     function calculateYield() public view returns (uint256 yield) {
