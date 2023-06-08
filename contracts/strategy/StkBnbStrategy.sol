@@ -1,13 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
 import "./BaseStrategy.sol";
 import "../stkBNB/interfaces/IAddressStore.sol";
 import "../stkBNB/interfaces/IStakedBNBToken.sol";
 import "../stkBNB/interfaces/IStakePool.sol";
+import "../stkBNB/interfaces/IERC1820Registry.sol";
 import "../stkBNB/ExchangeRate.sol";
 
-contract StkBnbStrategy is BaseStrategy {
+contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
 
     using ExchangeRate for ExchangeRate.Data;
 
@@ -48,8 +50,19 @@ contract StkBnbStrategy is BaseStrategy {
      */
     mapping(address => uint256) public manualWithdrawAmount;
 
+    bytes32 private constant _TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
+    IERC1820Registry internal constant _ERC1820_REGISTRY = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
+
     event AddressStoreChanged(address addressStore);
 
+    event TokenReceived(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256 amount,
+        bytes data,
+        bytes operatorData
+    );
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination For our case, its the address of AddressStore contract, as that is constant by design not StakePool.
     /// @param rewards The address to which strategy earnings are transferred
@@ -64,6 +77,12 @@ contract StkBnbStrategy is BaseStrategy {
         __BaseStrategy_init(destination, rewards, masterVault);
 
         _addressStore = IAddressStore(addressStore);
+
+        _ERC1820_REGISTRY.setInterfaceImplementer(
+            address(this),
+            keccak256("ERC777TokensRecipient"),
+            address(this)
+        );
     }
 
     /// @dev to receive withdrawn funds back from StakePool
@@ -347,4 +366,28 @@ contract StkBnbStrategy is BaseStrategy {
         emit AddressStoreChanged(addressStore);
     }
 
+    function tokensReceived(
+        address operator,
+        address from,
+        address to,
+        uint256 amount,
+        bytes calldata data,
+        bytes calldata operatorData
+    ) external override {
+        
+        // Handle token transfer event
+        // Implement custom logic here
+        
+        // Log the token transfer details
+        emit TokenReceived(operator, from, to, amount, data, operatorData);
+    }
+
+    function setInterfaceImplementer() external onlyOwner {
+        // register interfaces
+        _ERC1820_REGISTRY.setInterfaceImplementer(
+            address(this),
+            keccak256("ERC777TokensRecipient"),
+            address(this)
+        );
+    }
 }

@@ -80,7 +80,8 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         require(amount > 0, "invalid amount");
         uint256 ethBalance = address(this).balance;
         if(amount < ethBalance) {
-            payable(recipient).transfer(amount);
+            (bool sent, ) = payable(recipient).call{gas: 5000, value: amount}("");
+            require(sent, "transfer failed");
             return amount;
         } else {
             value = _ceRouter.withdraw(recipient, amount);
