@@ -139,6 +139,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
             yield += profit;
             _ceRouter.claimProfit(to);
         }
+        emit Harvested(to, yield);
     }
 
     /// @dev only owner can change binance pool address

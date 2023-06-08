@@ -28,7 +28,7 @@ contract HelioOracle is PipLike, OwnableUpgradeable  {
     }
 
     function changePriceToken(uint256 price_) external {
-        require(msg.sender == _owner, "HelioOracle/forbidden");
+        require(msg.sender == owner(), "HelioOracle/forbidden");
         price = price_;
         emit PriceChanged(price);
     }
