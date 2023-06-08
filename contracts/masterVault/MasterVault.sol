@@ -44,7 +44,6 @@ ReentrancyGuardUpgradeable
     address payable public feeReceiver;
 
     IWaitingPool public waitingPool;
-    IBinancePool public binancePool; 
 
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
@@ -78,13 +77,11 @@ ReentrancyGuardUpgradeable
     /// @param maxDepositFees Fees charged in parts per million; 1% = 10000ppm
     /// @param maxWithdrawalFees Fees charged in parts per million; 1% = 10000ppm
     /// @param maxStrategies Number of maximum strategies
-    /// @param binancePoolAddr Address of binancePool contract
     function initialize(
         uint256 maxDepositFees,
         uint256 maxWithdrawalFees,
         uint8 maxStrategies,
-        address ceToken,
-        address binancePoolAddr
+        address ceToken
     ) public initializer {
         require(maxDepositFees > 0 && maxDepositFees <= 1e6, "invalid maxDepositFee");
         require(maxWithdrawalFees > 0 && maxWithdrawalFees <= 1e6, "invalid maxWithdrawalFees");
@@ -98,7 +95,6 @@ ReentrancyGuardUpgradeable
         MAX_STRATEGIES = maxStrategies;
         feeReceiver = payable(msg.sender);
         vaultToken = ceToken;
-        binancePool = IBinancePool(binancePoolAddr);
     }
 
     /// @dev deposits assets and mints shares(amount - (swapFee + depositFee)) to caller's address
@@ -114,7 +110,7 @@ ReentrancyGuardUpgradeable
         uint256 amount = msg.value;
         require(amount > 0, "invalid amount");
         shares = _assessFee(amount, depositFee);
-        shares = _assessDepositFee(shares);
+        // shares = _assessDepositFee(shares);
         ICertToken(vaultToken).mint(src, shares);
         emit Deposit(src, src, amount, shares);
     }
@@ -135,11 +131,13 @@ ReentrancyGuardUpgradeable
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);
         if(ethBalance < shares) {
-            payable(account).transfer(ethBalance);
+            (bool sent, ) = payable(account).call{gas: 5000, value: ethBalance}("");
+            require(sent, "transfer failed");
             uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
             shares = ethBalance + withdrawn;
         } else {
-            payable(account).transfer(shares);
+            (bool sent, ) = payable(account).call{gas: 5000, value: shares}("");
+            require(sent, "transfer failed");
         } 
         emit Withdraw(src, src, src, amount, shares);
         return amount;
@@ -222,8 +220,7 @@ ReentrancyGuardUpgradeable
         require(strategyParams[strategy].debt >= amount, "insufficient assets in strategy");
         uint256 value = IBaseStrategy(strategy).withdraw(recipient, amount);
         require(
-            value <= amount && 
-            value >= _assessDepositFee(amount) - 100,
+            value <= amount,
             "invalid withdrawn amount"
         );
         totalDebt -= amount;
@@ -336,7 +333,7 @@ ReentrancyGuardUpgradeable
     /// @dev Tries to allocate funds to strategies based on their allocations.
     /// NOTE: OnlyManager can trigger this function
     ///      (It will be triggered mostly in case of deposits)
-    function allocate() public {
+    function allocate() public onlyManager {
         for(uint8 i = 0; i < strategies.length; i++) {
             if(strategyParams[strategies[i]].active) {
                 StrategyParams memory strategy =  strategyParams[strategies[i]];
@@ -432,17 +429,13 @@ ReentrancyGuardUpgradeable
         }
     }
 
-    function _assessDepositFee(uint256 amount) private view returns(uint256) {
-        // due to precision loss in cerosRouter/ceVault contract during allocate()
-        return amount - binancePool.getRelayerFee();
-    }
-
     receive() external payable {}
 
     /// @dev only owner can call this function to withdraw earned fees
     function withdrawFee() external onlyOwner{
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
-            feeReceiver.transfer(feeEarned);
+            (bool sent, ) = payable(feeReceiver).call{gas: 5000, value: feeEarned}("");
+            require(sent, "transfer failed");
             feeEarned = 0;
         }
     }

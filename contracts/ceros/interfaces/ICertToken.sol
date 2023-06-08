@@ -17,4 +17,6 @@ interface ICertToken is IERC20 {
     function isRebasing() external returns (bool);
 
     function ratio() external view returns (uint256);
+
+    function bondsToShares(uint256 amount) external view returns (uint256);
 }

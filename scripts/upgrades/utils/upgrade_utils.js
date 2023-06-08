@@ -17,7 +17,7 @@ async function upgradeProxy(proxyAddress, impAddress) {
     }
 }
 
-async function deployImplementatoin(contractName) {
+async function deployImplementation(contractName) {
     let contractFactory = await hre.ethers.getContractFactory(contractName);
     let contractImpl = await contractFactory.deploy();
     await contractImpl.deployed();
@@ -38,4 +38,4 @@ function parseAddress(addressString){
   return ethers.utils.getAddress(address);
 }
 
-module.exports = { upgradeProxy , deployImplementatoin , verifyImpContract}
+module.exports = { upgradeProxy , deployImplementation , verifyImpContract}

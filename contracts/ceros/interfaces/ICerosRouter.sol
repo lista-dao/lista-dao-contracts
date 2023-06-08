@@ -32,6 +32,8 @@ interface ICerosRouter {
 
     event ChangePool(address pool);
 
+    event ChangeBNBStakingPool(address pool);
+
     event ChangeDao(address dao);
 
     event ChangeCeToken(address ceToken);
