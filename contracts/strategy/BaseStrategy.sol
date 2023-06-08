@@ -23,7 +23,8 @@ abstract contract BaseStrategy is
 
     event UpdatedStrategist(address strategist);
     event UpdatedRewards(address rewards);
-
+    event Harvested(address to, uint256 amount);
+    
     function __BaseStrategy_init(
         address destinationAddr,
         address rewardsAddr,

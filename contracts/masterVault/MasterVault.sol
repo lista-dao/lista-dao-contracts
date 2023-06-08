@@ -54,6 +54,8 @@ ReentrancyGuardUpgradeable
         uint256 assets,
         uint256 shares
     );
+
+    event FeeClaimed(address indexed receiver, uint256 amount);
     /**
      * Modifiers
      */
@@ -134,6 +136,7 @@ ReentrancyGuardUpgradeable
             (bool sent, ) = payable(account).call{gas: 5000, value: ethBalance}("");
             require(sent, "transfer failed");
             uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
+            require(withdrawn == shares - ethBalance, "insufficient withdrawn amount");
             shares = ethBalance + withdrawn;
         } else {
             (bool sent, ) = payable(account).call{gas: 5000, value: shares}("");
@@ -436,6 +439,7 @@ ReentrancyGuardUpgradeable
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
             (bool sent, ) = payable(feeReceiver).call{gas: 5000, value: feeEarned}("");
             require(sent, "transfer failed");
+            emit FeeClaimed(feeReceiver, feeEarned);
             feeEarned = 0;
         }
     }

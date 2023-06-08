@@ -128,7 +128,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
     }
 
     // to withdraw funds from the destination contract
-    function withdraw(address recipient, uint256 amount) onlyVault external returns (uint256) {
+    function withdraw(address recipient, uint256 amount) onlyVault nonReentrant external returns (uint256) {
         return _withdraw(recipient, amount);
     }
 
@@ -314,6 +314,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
 
         // send the yield tokens to the reward address
         IStakedBNBToken(_addressStore.getStkBNB()).send(rewards, yieldStkBNB, "");
+        emit Harvested(rewards, yieldStkBNB);
     }
 
     function calculateYield() public view returns (uint256 yieldStkBNB) {

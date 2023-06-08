@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
@@ -25,7 +26,7 @@ uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
+contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuardUpgradeable {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -174,7 +175,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address participant,
         address token,
         uint256 dink
-    ) external whitelisted(participant) returns (uint256) {
+    ) external whitelisted(participant) nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
@@ -201,7 +202,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return dink;
     }
 
-    function borrow(address token, uint256 hayAmount) external returns (uint256) {
+    function borrow(address token, uint256 hayAmount) external nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
@@ -232,7 +233,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     // Burn user's HAY.
     // N.B. User collateral stays the same.
-    function payback(address token, uint256 hayAmount) external returns (int256) {
+    function payback(address token, uint256 hayAmount) external nonReentrant returns (int256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
@@ -272,7 +273,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address participant,
         address token,
         uint256 dink
-    ) external returns (uint256) {
+    ) external nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
         if (helioProviders[token] != address(0)) {
