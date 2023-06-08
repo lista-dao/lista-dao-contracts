@@ -11,9 +11,9 @@
   
     "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
   
-    "t_aBNBc": "0x46dE2FBAf41499f298457cD2d9288df4Eb1452Ab", 
+    "t_aBNBc": "0x3C1039C346bd5141BF2D5e855928E61655658fA7", 
     "t_wBnb": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd", 
-    "t_aBnbb": "0xaB56897fE4e9f0757e02B54C27E81B9ddd6A30AE", 
+    "t_aBnbb": "0x93405327644eDF8aD908e41F9a2Ecbb6714769D1", 
     "t_dex": "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3", 
     "t_pool": "0x3C9205b5d4B312cA7C4d28110C91Fe2c74718a94",
     "t_chainID": "97",
@@ -22,7 +22,7 @@
     "COMMON": "COMMON_NETWORK_VARIABLES",
   
     "ilkString": "ceABNBc",
-    "multiSig": "",
-    "whiteListOperator": ""
+    "multiSig": "0x5CF60EF42a098733ef939255F86d08156D302895",
+    "whiteListOperator": "0x5CF60EF42a098733ef939255F86d08156D302895"
   }
   
