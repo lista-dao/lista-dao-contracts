@@ -114,11 +114,8 @@ contract HelioRewards is IRewards, OwnableUpgradeable {
     function helioPrice() public view returns(uint256) {
         // 1 HAY is helioPrice() helios
         (bytes32 price, bool has) = oracle.peek();
-        if (has) {
-            return uint256(price);
-        } else {
-            return 0;
-        }
+        require(has, "Reward/invalid-price");
+        return uint256(price);
     }
     function rewardsRate(address token) public view returns(uint256) {
         return pools[token].rewardRate;

@@ -4,6 +4,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IDex.sol";
 import "./interfaces/IDao.sol";
@@ -29,6 +30,7 @@ ReentrancyGuardUpgradeable
     IDao public _dao;
     IBinancePool public _pool;
     address public _proxy;
+    using SafeERC20 for IERC20;
     /**
      * Modifiers
      */
@@ -64,7 +66,7 @@ ReentrancyGuardUpgradeable
         _ceRouter = ICerosRouter(ceRouter);
         _dao = IDao(daoAddress);
         _pool = IBinancePool(pool);
-        IERC20(_ceToken).approve(daoAddress, type(uint256).max);
+        IERC20(_ceToken).safeApprove(daoAddress, type(uint256).max);
     }
     /**
      * DEPOSIT
@@ -191,15 +193,15 @@ ReentrancyGuardUpgradeable
      * UPDATING FUNCTIONALITY
      */
     function changeDao(address dao) external onlyOwner {
-        IERC20(_ceToken).approve(address(_dao), 0);
+        IERC20(_ceToken).safeApprove(address(_dao), 0);
         _dao = IDao(dao);
-        IERC20(_ceToken).approve(address(_dao), type(uint256).max);
+        IERC20(_ceToken).safeApprove(address(_dao), type(uint256).max);
         emit ChangeDao(dao);
     }
     function changeCeToken(address ceToken) external onlyOwner {
-        IERC20(_ceToken).approve(address(_dao), 0);
+        IERC20(_ceToken).safeApprove(address(_dao), 0);
         _ceToken = ceToken;
-        IERC20(_ceToken).approve(address(_dao), type(uint256).max);
+        IERC20(_ceToken).safeApprove(address(_dao), type(uint256).max);
         emit ChangeCeToken(ceToken);
     }
     function changeProxy(address auctionProxy) external onlyOwner {

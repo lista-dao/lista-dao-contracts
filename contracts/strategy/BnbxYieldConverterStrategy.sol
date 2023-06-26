@@ -55,7 +55,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         _stakeManager = IStakeManager(destination);
         lastUnstakeTriggerTime = block.timestamp;
 
-        _bnbxToken.approve(destination, type(uint256).max);
+        _bnbxToken.safeApprove(destination, type(uint256).max);
     }
 
     /// @dev deposits the given amount of BNB into Stader stakeManager
@@ -311,9 +311,9 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
         require(stakeManager != address(0), "zero address");
         require(address(_stakeManager) != stakeManager, "old address provided");
 
-        _bnbxToken.approve(address(_stakeManager), 0);
+        _bnbxToken.safeApprove(address(_stakeManager), 0);
         _stakeManager = IStakeManager(stakeManager);
-        _bnbxToken.approve(address(_stakeManager), type(uint256).max);
+        _bnbxToken.safeApprove(address(_stakeManager), type(uint256).max);
         emit StakeManagerChanged(stakeManager);
     }
 }

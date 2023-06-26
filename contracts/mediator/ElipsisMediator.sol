@@ -56,7 +56,7 @@ contract ElipsisMediator is Initializable{
     function notifyRewardAmount(address _rewardsToken, uint256 reward) external authOrOperator {
         require(live == 1, "mediator/not-live");
         IERC20Upgradeable(_rewardsToken).safeTransferFrom(msg.sender, address(this), reward);
-        IERC20Upgradeable(_rewardsToken).approve(address(target), reward);
+        IERC20Upgradeable(_rewardsToken).safeApprove(address(target), reward);
         target.notifyRewardAmount(_rewardsToken, reward);
     }
     function setRewardsDuration(address _rewardsToken, uint256 _rewardsDuration) external authOrOperator {

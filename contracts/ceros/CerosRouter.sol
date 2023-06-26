@@ -4,6 +4,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IDex.sol";
 import "./interfaces/ICerosRouter.sol";
@@ -30,6 +31,7 @@ ReentrancyGuardUpgradeable
     mapping(address => uint256) private _profits;
     address private _provider;
     IBNBStakingPool private _bnbStakingPool; // new
+    using SafeERC20 for IERC20;
     /**
      * Modifiers
      */
@@ -58,11 +60,11 @@ ReentrancyGuardUpgradeable
         _vault = IVault(vault);
         _dex = IDex(dexAddress);
         _pool = IBinancePool(pool);
-        IERC20(wBnbToken).approve(dexAddress, type(uint256).max);
-        IERC20(certToken).approve(dexAddress, type(uint256).max);
-        IERC20(certToken).approve(bondToken, type(uint256).max);
-        IERC20(certToken).approve(pool, type(uint256).max);
-        IERC20(certToken).approve(vault, type(uint256).max);
+        IERC20(wBnbToken).safeApprove(dexAddress, type(uint256).max);
+        IERC20(certToken).safeApprove(dexAddress, type(uint256).max);
+        IERC20(certToken).safeApprove(bondToken, type(uint256).max);
+        IERC20(certToken).safeApprove(pool, type(uint256).max);
+        IERC20(certToken).safeApprove(vault, type(uint256).max);
     }
     /**
      * DEPOSIT
@@ -125,7 +127,7 @@ ReentrancyGuardUpgradeable
     nonReentrant
     returns (uint256 value)
     {
-        _certToken.transferFrom(owner, address(this), amount);
+        IERC20(_certToken).safeTransferFrom(owner, address(this), amount);
         value = _vault.depositFor(msg.sender, amount);
         emit Deposit(msg.sender, address(_certToken), amount, 0);
         return value;
@@ -165,7 +167,7 @@ ReentrancyGuardUpgradeable
             _certToken.balanceOf(address(this)) >= profit,
             "insufficient amount"
         );
-        _certToken.transfer(recipient, profit);
+        IERC20(_certToken).safeTransfer(recipient, profit);
         _profits[msg.sender] -= profit;
         emit Claim(recipient, address(_certToken), profit);
     }
@@ -250,25 +252,25 @@ ReentrancyGuardUpgradeable
     }
     function changeVault(address vault) external onlyOwner {
         // update allowances
-        _certToken.approve(address(_vault), 0);
+        IERC20(_certToken).safeApprove(address(_vault), 0);
         _vault = IVault(vault);
-        _certToken.approve(address(_vault), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_vault), type(uint256).max);
         emit ChangeVault(vault);
     }
     function changeDex(address dex) external onlyOwner {
-        IERC20(_wBnbAddress).approve(address(_dex), 0);
-        _certToken.approve(address(_dex), 0);
+        IERC20(_wBnbAddress).safeApprove(address(_dex), 0);
+        IERC20(_certToken).safeApprove(address(_dex), 0);
         _dex = IDex(dex);
         // update allowances
-        IERC20(_wBnbAddress).approve(address(_dex), type(uint256).max);
-        _certToken.approve(address(_dex), type(uint256).max);
+        IERC20(_wBnbAddress).safeApprove(address(_dex), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_dex), type(uint256).max);
         emit ChangeDex(dex);
     }
     function changePool(address pool) external onlyOwner {
         // update allowances
-        _certToken.approve(address(_pool), 0);
+        IERC20(_certToken).safeApprove(address(_pool), 0);
         _pool = IBinancePool(pool);
-        _certToken.approve(address(_pool), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_pool), type(uint256).max);
         emit ChangePool(pool);
     }
     function changeProvider(address provider) external onlyOwner {
@@ -277,10 +279,10 @@ ReentrancyGuardUpgradeable
     }
     function changeBNBStakingPool(address pool) external onlyOwner {
         if (address(_bnbStakingPool) != address(0))
-            _certToken.approve(address(_bnbStakingPool), 0);
+            IERC20(_certToken).safeApprove(address(_bnbStakingPool), 0);
 
         _bnbStakingPool = IBNBStakingPool(pool);
-        _certToken.approve(address(_bnbStakingPool), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_bnbStakingPool), type(uint256).max);
         emit ChangeBNBStakingPool(pool);
     }
     function getProvider() external view returns(address) {
