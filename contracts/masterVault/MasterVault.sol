@@ -133,13 +133,13 @@ ReentrancyGuardUpgradeable
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);
         if(ethBalance < shares) {
-            (bool sent, ) = payable(account).call{gas: 5000, value: ethBalance}("");
+            (bool sent, ) = payable(account).call{value: ethBalance}("");
             require(sent, "transfer failed");
             uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
             require(withdrawn == shares - ethBalance, "insufficient withdrawn amount");
             shares = ethBalance + withdrawn;
         } else {
-            (bool sent, ) = payable(account).call{gas: 5000, value: shares}("");
+            (bool sent, ) = payable(account).call{value: shares}("");
             require(sent, "transfer failed");
         } 
         emit Withdraw(src, src, src, amount, shares);
@@ -151,7 +151,7 @@ ReentrancyGuardUpgradeable
     /// @return withdrawn - assets withdrawn from the strategy
     function withdrawFromActiveStrategies(address recipient, uint256 amount) private returns(uint256 withdrawn) {
         for(uint8 i = 0; i < strategies.length; i++) {
-            if (strategyParams[strategies[i]].active && withdrawn < amount) {
+            if (strategyParams[strategies[i]].active && strategyParams[strategies[i]].debt > 0 && withdrawn < amount) {
                 if (strategyParams[strategies[i]].debt >= amount - withdrawn) {
                     withdrawn += _withdrawFromStrategy(strategies[i], recipient, amount - withdrawn);
                     return withdrawn;
@@ -435,9 +435,9 @@ ReentrancyGuardUpgradeable
     receive() external payable {}
 
     /// @dev only owner can call this function to withdraw earned fees
-    function withdrawFee() external onlyOwner{
+    function withdrawFee() external nonReentrant onlyOwner{
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
-            (bool sent, ) = payable(feeReceiver).call{gas: 5000, value: feeEarned}("");
+            (bool sent, ) = payable(feeReceiver).call{value: feeEarned}("");
             require(sent, "transfer failed");
             emit FeeClaimed(feeReceiver, feeEarned);
             feeEarned = 0;

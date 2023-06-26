@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../masterVault/interfaces/IMasterVault.sol";
 import "../ceros/interfaces/IBinancePool.sol";
 import "../ceros/interfaces/ICertToken.sol";
@@ -14,6 +15,8 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     ICertToken private _certToken;
     IBinancePool private _binancePool;
     IVault private _ceVault;
+
+    using SafeERC20 for IERC20;
 
     event BinancePoolChanged(address binancePool);
     event CeRouterChanged(address ceRouter);
@@ -38,7 +41,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         _certToken = ICertToken(certToken);
         _binancePool = IBinancePool(binancePool);
         _ceVault = IVault(ceVault);
-        _certToken.approve(binancePool, type(uint256).max);
+        IERC20(_certToken).safeApprove(binancePool, type(uint256).max);
     }
 
     /// @dev deposits the given amount of underlying tokens into ceros
@@ -62,12 +65,12 @@ contract CerosYieldConverterStrategy is BaseStrategy {
 
     /// @dev withdraws the given amount of underlying tokens from ceros and transfers to masterVault
     /// @param amount amount of underlying tokens
-    function withdraw(address recipient, uint256 amount) onlyVault external returns(uint256 value) {
+    function withdraw(address recipient, uint256 amount) nonReentrant onlyVault external returns(uint256 value) {
         return _withdraw(recipient, amount);
     }
 
     /// @dev withdraws everything from ceros and transfers to masterVault
-    function panic() external onlyStrategist returns (uint256 value) {
+    function panic() external nonReentrant onlyStrategist returns (uint256 value) {
         (,, uint256 debt) = vault.strategyParams(address(this));
         return _withdraw(address(vault), debt);
     }
@@ -80,7 +83,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         require(amount > 0, "invalid amount");
         uint256 ethBalance = address(this).balance;
         if(amount < ethBalance) {
-            (bool sent, ) = payable(recipient).call{gas: 5000, value: amount}("");
+            (bool sent, ) = payable(recipient).call{value: amount}("");
             require(sent, "transfer failed");
             return amount;
         } else {
@@ -146,9 +149,9 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @param binancePool new binance pool address
     function changeBinancePool(address binancePool) external onlyOwner {
         require(binancePool != address(0));
-        _certToken.approve(address(_binancePool), 0);
+        IERC20(_certToken).safeApprove(address(_binancePool), 0);
         _binancePool = IBinancePool(binancePool);
-        _certToken.approve(address(_binancePool), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_binancePool), type(uint256).max);
         emit BinancePoolChanged(binancePool);
     }
 
