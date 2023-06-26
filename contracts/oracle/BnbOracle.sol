@@ -20,9 +20,12 @@ contract BnbOracle is Initializable {
             /*uint80 roundID*/,
             int price,
             /*uint startedAt*/,
-            /*uint timeStamp*/,
+            uint timeStamp,
             /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
+        
+        require(block.timestamp - timeStamp < 300, "BnbOracle/timestamp-too-old");
+        
         if (price < 0) {
             return (0, false);
         }

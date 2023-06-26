@@ -332,11 +332,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
 
         (PipLike pip,) = spotter.ilks(collateralType.ilk);
         (bytes32 price, bool has) = pip.peek();
-        if (has) {
-            return uint256(price);
-        } else {
-            return 0;
-        }
+        require(has, "Interaction/invalid-price");
+        return uint256(price);
     }
 
     // Returns the HAY price in $
