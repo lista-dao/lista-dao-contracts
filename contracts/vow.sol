@@ -21,7 +21,7 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interfaces/VatLike.sol";
 import "./interfaces/HayJoinLike.sol";
 
@@ -54,7 +54,7 @@ contract Vow is Initializable {
 
     address public hay;  // Hay token
     
-
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     // --- Init ---
     function initialize(address vat_, address _hayJoin, address multisig_) external initializer {
         wards[msg.sender] = 1;
@@ -96,8 +96,8 @@ contract Vow is Initializable {
 
     // Feed stablecoin to vow
     function feed(uint wad) external {
-        IERC20Upgradeable(hay).transferFrom(msg.sender, address(this), wad);
-        IERC20Upgradeable(hay).approve(hayJoin, wad);
+        IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), wad);
+        IERC20Upgradeable(hay).safeApprove(hayJoin, wad);
         HayJoinLike(hayJoin).join(address(this), wad);
     }
     // Send surplus to multisig
