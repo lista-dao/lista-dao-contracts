@@ -101,13 +101,13 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
 
         vat.hope(hayJoin_);
 
-        hay.approve(hayJoin_, type(uint256).max);
+        hay.safeApprove(hayJoin_, type(uint256).max);
     }
 
     function setCores(address vat_, address spot_, address hayJoin_,
         address jug_) public auth {
         // Reset previous approval
-        hay.approve(address(hayJoin), 0);
+        hay.safeApprove(address(hayJoin), 0);
 
         vat = VatLike(vat_);
         spotter = SpotLike(spot_);
@@ -116,11 +116,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
 
         vat.hope(hayJoin_);
 
-        hay.approve(hayJoin_, type(uint256).max);
+        hay.safeApprove(hayJoin_, type(uint256).max);
     }
 
     function setHayApprove() public auth {
-        hay.approve(address(hayJoin), type(uint256).max);
+        hay.safeApprove(address(hayJoin), type(uint256).max);
     }
 
     function setCollateralType(

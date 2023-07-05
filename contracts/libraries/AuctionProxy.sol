@@ -36,7 +36,7 @@ library AuctionProxy {
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
-    hay.transfer(keeper, hayBal);
+    hay.safeTransfer(keeper, hayBal);
 
     // Burn any derivative token (hBNB incase of ceabnbc collateral)
     if (address(helioProvider) != address(0)) {
@@ -59,7 +59,7 @@ library AuctionProxy {
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
-    hay.transfer(keeper, hayBal);
+    hay.safeTransfer(keeper, hayBal);
   }
 
   // Returns lefover from auction
@@ -80,7 +80,7 @@ library AuctionProxy {
 
     uint256 hayMaxAmount = FullMath.mulDiv(maxPrice, collateralAmount, RAY) + 1;
 
-    hay.transferFrom(msg.sender, address(this), hayMaxAmount);
+    hay.safeTransferFrom(msg.sender, address(this), hayMaxAmount);
     hayJoin.join(address(this), hayMaxAmount);
 
     vat.hope(address(collateral.clip));
@@ -96,7 +96,7 @@ library AuctionProxy {
     // Balances rest
     hayBal = hay.balanceOf(address(this)) - hayBal;
     gemBal = collateral.gem.gem().balanceOf(address(this)) - gemBal;
-    hay.transfer(receiverAddress, hayBal);
+    hay.safeTransfer(receiverAddress, hayBal);
 
     vat.nope(address(collateral.clip));
 
