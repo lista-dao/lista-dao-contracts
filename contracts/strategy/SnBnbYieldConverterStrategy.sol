@@ -54,7 +54,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         _stakeManager = ISnBnbStakeManager(destination);
         lastUnstakeTriggerTime = block.timestamp;
 
-        _snBnbToken.approve(destination, type(uint256).max);
+        _snBnbToken.safeApprove(destination, type(uint256).max);
     }
 
     /// @dev deposits the given amount of BNB into Synclub stakeManager
@@ -307,9 +307,9 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         require(stakeManager != address(0), "zero address");
         require(address(_stakeManager) != stakeManager, "old address provided");
 
-        _snBnbToken.approve(address(_stakeManager), 0);
+        _snBnbToken.safeApprove(address(_stakeManager), 0);
         _stakeManager = ISnBnbStakeManager(stakeManager);
-        _snBnbToken.approve(address(_stakeManager), type(uint256).max);
+        _snBnbToken.safeApprove(address(_stakeManager), type(uint256).max);
         emit SnBnbStakeManagerChanged(stakeManager);
     }
 }
