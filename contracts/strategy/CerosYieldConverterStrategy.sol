@@ -41,7 +41,6 @@ contract CerosYieldConverterStrategy is BaseStrategy {
         _certToken = ICertToken(certToken);
         _binancePool = IBinancePool(binancePool);
         _ceVault = IVault(ceVault);
-        IERC20(_certToken).safeApprove(binancePool, type(uint256).max);
     }
 
     /// @dev deposits the given amount of underlying tokens into ceros
@@ -87,8 +86,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
             require(sent, "transfer failed");
             return amount;
         } else {
-            value = _ceRouter.withdraw(recipient, amount);
-            require(value <= amount, "invalid out amount");
+            _ceRouter.withdraw(recipient, amount);
             return amount;
         }
     }
@@ -100,6 +98,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     external
     override
     nonReentrant
+    onlyVault
     returns (uint256 realAmount)
     {
         return _ceRouter.withdrawABNBc(recipient, amount);
@@ -113,7 +112,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
 
     // calculate the total(aBNBc) in the strategy contract
     function balanceOfToken() external view returns(uint256){
-        return _ceVault.getDepositOf(address(this));
+        return _ceVault.getDepositOf(address(this)) - _ceVault.getClaimedOf(address(this)) - _ceVault.getYieldFor(address(this));
     }
 
     function canDeposit(uint256 amount) public view returns(bool) {
@@ -149,9 +148,7 @@ contract CerosYieldConverterStrategy is BaseStrategy {
     /// @param binancePool new binance pool address
     function changeBinancePool(address binancePool) external onlyOwner {
         require(binancePool != address(0));
-        IERC20(_certToken).safeApprove(address(_binancePool), 0);
         _binancePool = IBinancePool(binancePool);
-        IERC20(_certToken).safeApprove(address(_binancePool), type(uint256).max);
         emit BinancePoolChanged(binancePool);
     }
 

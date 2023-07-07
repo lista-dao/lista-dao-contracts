@@ -46,5 +46,5 @@ interface IVault {
 
     // get aBNBs balance
     function getDepositOf(address account) external view returns (uint256);
-
+    function getClaimedOf(address account) external view returns (uint256);
 }

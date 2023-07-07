@@ -214,7 +214,7 @@ ReentrancyGuardUpgradeable
     {
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
         _pool.unstakeCertsFor(recipient, realAmount); // realAmount -> BNB
-        emit Withdrawal(msg.sender, recipient, _wBnbAddress, realAmount);
+        emit Withdrawal(msg.sender, recipient, _wBnbAddress, amount);
         return realAmount;
     }
     // withdrawal in BNB via DEX
