@@ -108,6 +108,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
     onlyVault
     returns (uint256){
         uint256 bnbxAmount = _stakeManager.convertBnbToBnbX(amount);
+        require(bnbxAmount > 0, "invalid amount");
         _bnbxToken.safeTransfer(recipient, bnbxAmount);
         bnbDepositBalance -= amount;
         return bnbxAmount;
@@ -237,7 +238,7 @@ contract BnbxYieldConverterStrategy is BaseStrategy {
             (
                 bool sent, /*memory data*/
 
-            ) = payable(recipient).call{gas: 5000, value: amount}("");
+            ) = payable(recipient).call{value: amount}("");
 
             if (!sent) {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be

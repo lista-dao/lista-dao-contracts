@@ -237,7 +237,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
             (
                 bool sent, /*memory data*/
 
-            ) = payable(recipient).call{gas: 5000, value: amount}("");
+            ) = payable(recipient).call{value: amount}("");
 
             if (!sent) {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be

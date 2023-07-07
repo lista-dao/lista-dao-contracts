@@ -3,14 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../masterVault/interfaces/IMasterVault.sol";
 import "./IBaseStrategy.sol";
 
 abstract contract BaseStrategy is
     IBaseStrategy,
     OwnableUpgradeable,
-    PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
     address public strategist;
@@ -24,14 +22,15 @@ abstract contract BaseStrategy is
     event UpdatedStrategist(address strategist);
     event UpdatedRewards(address rewards);
     event Harvested(address to, uint256 amount);
-    
+    event DepositPaused();
+    event DepositUnpaused();
+
     function __BaseStrategy_init(
         address destinationAddr,
         address rewardsAddr,
         address masterVault
-    ) internal initializer {
+    ) internal onlyInitializing {
         __Ownable_init();
-        __Pausable_init();
         __ReentrancyGuard_init();
         strategist = msg.sender;
         destination = destinationAddr;
@@ -85,10 +84,12 @@ abstract contract BaseStrategy is
 
     function pause() external onlyStrategist {
         depositPaused = true;
+        emit DepositPaused();
     }
 
     function unpause() external onlyStrategist {
         depositPaused = false;
+        emit DepositUnpaused();
     }
 
     function setStrategist(address newStrategist) external onlyOwner {
