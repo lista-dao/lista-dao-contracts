@@ -118,8 +118,10 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
             uint256 amountDeposited = assessDepositFee(dustFreeAmount);
             _bnbDepositsInStakePool += amountDeposited; // keep track of _netDeposits in StakePool
 
-            // add dust as that is still owed to the master vault
-            return amountDeposited + dust;
+            // send dust back to msg.sender
+            (bool sent, /*memory data*/) = msg.sender.call{value: dust }("");
+            require(sent, "!sent");
+            return amountDeposited;
         }
 
         // the amount was so small that it couldn't be deposited to destination but it would remain with this strategy,
@@ -145,7 +147,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
         ExchangeRate.Data memory exchangeRate = stakePool.exchangeRate();
 
         uint256 poolTokens = exchangeRate._calcPoolTokensForDeposit(amount);
-
+        require(poolTokens > 0, "invalid amount");
         require(
             stkBNB.balanceOf(address(this)) >= poolTokens,
             "not such amount"
@@ -181,7 +183,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
     function _withdraw(address recipient, uint256 amount) internal returns (uint256) {
         require(amount > 0, "invalid amount");
 
-        uint256 ethBalance = address(this).balance;
+        uint256 ethBalance = address(this).balance - _bnbToDistribute;
         if (amount <= ethBalance) {
             (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: amount }("");
             require(sent, "!sent");
@@ -193,11 +195,6 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
         require(sent, "!sent");
         amount -= ethBalance;
 
-        // TODO(pSTAKE):
-        // 1. There should be a utility function in our StakePool that should tell how much stkBNB to withdraw if I want
-        //    `x` amount of BNB back, taking care of the withdrawal fee that is involved.
-        // 2. We should also have something that takes care of withdrawing to a recipient, and not to the msg.sender
-        // For now, the implementation here works, but can be improved in future with above two points.
         IStakePool stakePool = IStakePool(_addressStore.getStakePool());
         IStakedBNBToken stkBNB = IStakedBNBToken(_addressStore.getStkBNB());
 
@@ -227,7 +224,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
         withdrawReqs[_endIndex++] = WithdrawRequest(recipient, value);
 
         // keep track of _netDeposits in StakePool
-        _bnbDepositsInStakePool -= value;
+        _bnbDepositsInStakePool -= exchangeRate._calcWeiWithdrawAmount(poolTokens);
 
         return value + ethBalance;
     }

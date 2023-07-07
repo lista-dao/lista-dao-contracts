@@ -55,7 +55,6 @@ ReentrancyGuardUpgradeable
         _masterVault = IMasterVault(masterVault);
         _dao = IDao(daoAddress);
         // _pool = IMaticPool(pool);
-        IERC20(masterVault).approve(masterVault, type(uint256).max);
         IERC20(_ceToken).approve(daoAddress, type(uint256).max);
     }
     /**
@@ -132,6 +131,7 @@ ReentrancyGuardUpgradeable
     external
     override
     onlyProxy
+    whenNotPaused
     nonReentrant
     {
         require(recipient != address(0));

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 // import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "../ceros/interfaces/ICertToken.sol";
-import "../ceros/interfaces/IDao.sol";
 // import "../ceros/interfaces/IWETH.sol";
 import "../ceros/interfaces/IBinancePool.sol";
 import "./interfaces/IMasterVault.sol";
@@ -136,14 +135,14 @@ ReentrancyGuardUpgradeable
             (bool sent, ) = payable(account).call{value: ethBalance}("");
             require(sent, "transfer failed");
             uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
-            require(withdrawn == shares - ethBalance, "insufficient withdrawn amount");
+            require(withdrawn <= shares - ethBalance, "invalid withdrawn amount");
             shares = ethBalance + withdrawn;
         } else {
             (bool sent, ) = payable(account).call{value: shares}("");
             require(sent, "transfer failed");
         } 
         emit Withdraw(src, src, src, amount, shares);
-        return amount;
+        return shares;
     }
 
     /// @dev attemps withdrawal from the strategies
@@ -170,7 +169,7 @@ ReentrancyGuardUpgradeable
     function _depositToStrategy(address strategy, uint256 amount) private returns (bool success){
         require(amount > 0, "invalid deposit amount");
         require(totalAssetInVault() >= amount, "insufficient balance");
-        if (IBaseStrategy(strategy).canDeposit(amount)) {
+        if (strategyParams[strategy].active && IBaseStrategy(strategy).canDeposit(amount)) {
             uint256 value = IBaseStrategy(strategy).deposit{value: amount}();
             if(value > 0) {
                 totalDebt += value;
@@ -247,11 +246,10 @@ ReentrancyGuardUpgradeable
         ICertToken(vaultToken).burn(src, amount);
         if (withdrawalFee > 0) {
             uint256 shares = _assessFee(amount, withdrawalFee);
-            _withdrawInTokenFromStrategy(strategy, recipient, shares);
             _withdrawInTokenFromStrategy(strategy, feeReceiver, amount - shares);
-            return shares;
+            return _withdrawInTokenFromStrategy(strategy, recipient, shares);
         }
-        _withdrawInTokenFromStrategy(strategy, recipient, amount);
+        return _withdrawInTokenFromStrategy(strategy, recipient, amount);
     }
 
     /// @dev internal function to withdraw specific amount of assets from the given strategy,
@@ -434,13 +432,23 @@ ReentrancyGuardUpgradeable
 
     receive() external payable {}
 
+    /**
+     * PAUSABLE FUNCTIONALITY
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+    function unPause() external onlyOwner {
+        _unpause();
+    }
+
     /// @dev only owner can call this function to withdraw earned fees
     function withdrawFee() external nonReentrant onlyOwner{
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
+            feeEarned = 0;
             (bool sent, ) = payable(feeReceiver).call{value: feeEarned}("");
             require(sent, "transfer failed");
             emit FeeClaimed(feeReceiver, feeEarned);
-            feeEarned = 0;
         }
     }
 

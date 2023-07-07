@@ -243,6 +243,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         int256 dart;
         uint256 realAmount = hayAmount;
 
+        dropRewards(token, msg.sender);
+        drip(token);
         uint256 debt = rate * art;
         if (realAmount * RAY >= debt) { // Close CDP
             dart = int(art);
@@ -258,8 +260,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         require(dart >= 0, "Interaction/too-much-requested");
 
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
-        dropRewards(token, msg.sender);
-        drip(token);
 
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);

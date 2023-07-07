@@ -2,14 +2,12 @@
 pragma solidity ^0.8.6;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/ICertToken.sol";
 contract CeVaultV2 is
 IVault,
 OwnableUpgradeable,
-PausableUpgradeable,
 ReentrancyGuardUpgradeable
 {
     /**
@@ -36,7 +34,6 @@ ReentrancyGuardUpgradeable
         address aBNBcAddress
     ) external initializer {
         __Ownable_init();
-        __Pausable_init();
         __ReentrancyGuard_init();
         _name = name;
         _ceToken = ICertToken(ceTokenAddress);
