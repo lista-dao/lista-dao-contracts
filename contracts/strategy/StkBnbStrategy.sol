@@ -185,13 +185,13 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
 
         uint256 ethBalance = address(this).balance - _bnbToDistribute;
         if (amount <= ethBalance) {
-            (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: amount }("");
+            (bool sent, /*memory data*/) = recipient.call{value: amount }("");
             require(sent, "!sent");
             return amount;
         }
 
         // otherwise, need to send all the balance of this strategy and also need to withdraw from the StakePool
-        (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: ethBalance }("");
+        (bool sent, /*memory data*/) = recipient.call{value: ethBalance }("");
         require(sent, "!sent");
         amount -= ethBalance;
 
@@ -272,7 +272,7 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
             }
 
             // try sending the amount to recipient
-            (bool sent, /*memory data*/) = recipient.call{ gas: 5000, value: amount }("");
+            (bool sent, /*memory data*/) = recipient.call{value: amount }("");
             if (sent) {
                 if (isPartial) {
                     // reqs is getting partially fulfilled

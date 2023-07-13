@@ -140,6 +140,7 @@ ReentrancyGuardUpgradeable
     function daoBurn(address account, uint256 value)
     external
     override
+    whenNotPaused
     onlyProxy
     nonReentrant
     {
@@ -149,6 +150,7 @@ ReentrancyGuardUpgradeable
     function daoMint(address account, uint256 value)
     external
     override
+    whenNotPaused
     onlyProxy
     nonReentrant
     {
