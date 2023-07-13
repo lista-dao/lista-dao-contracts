@@ -192,18 +192,18 @@ ReentrancyGuardUpgradeable
         _router = router;
         emit RouterChanged(router);
     }
-    function updateStorage(
-        address ceTokenAddress, 
-        address oldAccount, 
-        address newAccount, 
-        uint256 mintAmount
-        ) external onlyOwner {
-        _ceToken = ICertToken(ceTokenAddress);
-        _depositors[newAccount] += _depositors[oldAccount]; // aBNBc
-        _ceTokenBalances[newAccount] += _ceTokenBalances[oldAccount];
-        //  mint ceToken to recipient
-        ICertToken(_ceToken).mint(newAccount, mintAmount);
-    }
+    // function updateStorage(
+    //     address ceTokenAddress, 
+    //     address oldAccount, 
+    //     address newAccount, 
+    //     uint256 mintAmount
+    //     ) external onlyOwner {
+    //     _ceToken = ICertToken(ceTokenAddress);
+    //     _depositors[newAccount] += _depositors[oldAccount]; // aBNBc
+    //     _ceTokenBalances[newAccount] += _ceTokenBalances[oldAccount];
+    //     //  mint ceToken to recipient
+    //     ICertToken(_ceToken).mint(newAccount, mintAmount);
+    // }
     function getName() external view returns (string memory) {
         return _name;
     }

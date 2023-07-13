@@ -111,6 +111,7 @@ ReentrancyGuardUpgradeable
         uint256 amount = msg.value;
         require(amount > 0, "invalid amount");
         shares = _assessFee(amount, depositFee);
+        feeEarned += amount - shares;
         // shares = _assessDepositFee(shares);
         ICertToken(vaultToken).mint(src, shares);
         emit Deposit(src, src, amount, shares);
@@ -131,6 +132,7 @@ ReentrancyGuardUpgradeable
         ICertToken(vaultToken).burn(src, amount);
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);
+        feeEarned += amount - shares;
         if(ethBalance < shares) {
             (bool sent, ) = payable(account).call{value: ethBalance}("");
             require(sent, "transfer failed");
@@ -180,10 +182,10 @@ ReentrancyGuardUpgradeable
         }
     }
 
-    function _updateCerosStrategyDebt(address strategy, uint256 amount) external onlyOwner {
-        totalDebt = amount;
-        strategyParams[strategy].debt = amount;
-    }
+    // function _updateCerosStrategyDebt(address strategy, uint256 amount) external onlyOwner {
+    //     totalDebt = amount;
+    //     strategyParams[strategy].debt = amount;
+    // }
 
     /// @dev deposits all the assets into the given strategy
     /// @param strategy address of the strategy
@@ -420,11 +422,10 @@ ReentrancyGuardUpgradeable
     /// @dev deducts the fee percentage from the given amount
     /// @param amount amount to deduct fee from
     /// @param fees fee percentage
-    function _assessFee(uint256 amount, uint256 fees) private returns(uint256 value) {
+    function _assessFee(uint256 amount, uint256 fees) private pure returns(uint256 value) {
         if(fees > 0) {
             uint256 fee = (amount * fees) / 1e6;
             value = amount - fee;
-            feeEarned += fee;
         } else {
             return amount;
         }
