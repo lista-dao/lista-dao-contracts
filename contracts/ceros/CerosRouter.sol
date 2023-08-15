@@ -73,6 +73,7 @@ ReentrancyGuardUpgradeable
     external
     payable
     override
+    onlyProvider
     nonReentrant
     returns (uint256 value)
     {
@@ -180,6 +181,7 @@ ReentrancyGuardUpgradeable
     function withdraw(address recipient, uint256 amount)
     external
     override
+    onlyProvider
     nonReentrant
     returns (uint256 realAmount)
     {

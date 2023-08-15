@@ -24,6 +24,7 @@ interface IVault {
      * Methods
      */
     event RatioUpdated(uint256 currentRatio);
+    event CeTokenChanged(address oldToken, address newToken);
     function deposit(uint256 amount) external returns (uint256);
     function depositFor(address recipient, uint256 amount)
     external
