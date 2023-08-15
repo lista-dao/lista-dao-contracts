@@ -1,0 +1,26 @@
+{
+    "BSC_MAINNET": "BSC_MAINNET_VARIABLES",
+  
+    "m_wBETH": "", 
+    "m_ethToken": "", 
+    "m_referral": "",
+    "m_minStake": "",
+  
+  
+    "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
+  
+    "t_wBETH": "0x34f8f72e3f14Ede08bbdA1A19a90B35a80f3E789", 
+    "t_ethToken": "0xE7bCB9e341D546b66a46298f4893f5650a56e99E",
+    "t_referral": "0x818E2767a261db7b15B523C2905250354176E42A",
+    "t_minStake": "100000000000000000",
+    "t_minWithdrawal": "100000000000000000",
+    "t_withdrawalFee": "1000000000000000",
+    "t_tokenRatio": "200000000000000000",
+  
+    "COMMON": "COMMON_NETWORK_VARIABLES",
+  
+    "ilkString": "cewBETH",
+    "multiSig": "",
+    "whiteListOperator": ""
+  }
+  
