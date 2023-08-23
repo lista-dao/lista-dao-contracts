@@ -75,9 +75,9 @@ ReentrancyGuardUpgradeable
         require(amount >= _minStake, "amount must be greater than minStake");
         IERC20(_certToken).safeTransferFrom(msg.sender, address(this), amount);
         // keep the ratio as 80%
-        // uint256 ceTokenPreBalance = _vault.getCeTokenBalanceOf(address(this));
+        uint256 ceTokenPreBalance = _vault.getCeTokenBalanceOf(address(this));
         uint256 certTokenAmountBalance = _certToken.balanceOf(address(_vault));
-        uint256 ceTokenPostBalance = certTokenAmountBalance + amount;
+        uint256 ceTokenPostBalance = ceTokenPreBalance + amount;
         uint256 certTokenAmount;
         if (ceTokenPostBalance * _certTokenRatio / 1e18 >= certTokenAmountBalance) {
             certTokenAmount = ceTokenPostBalance * _certTokenRatio / 1e18 - certTokenAmountBalance;
