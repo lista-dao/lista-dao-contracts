@@ -77,8 +77,8 @@ ReentrancyGuardUpgradeable
         _BETH.transferFrom(msg.sender, address(this), wBETHAmount);
         _certToken.transferFrom(msg.sender, address(this), certTokenAmount);
         uint256 toMint = (wBETHAmount * ratio) / 1e18 + certTokenAmount;
-        _depositors[account] += wBETHAmount; // wBETH
-        _ceTokenBalances[account] += toMint;
+        _depositors[msg.sender] += wBETHAmount; // wBETH
+        _ceTokenBalances[msg.sender] += toMint;
         //  mint ceToken to recipient
         ICertToken(_ceToken).mint(account, toMint);
         emit Deposited(msg.sender, account, toMint);
@@ -129,9 +129,9 @@ ReentrancyGuardUpgradeable
             _certToken.balanceOf(address(this)) >= amount,
             "not such amount in the vault"
         );
-        uint256 balance = _ceTokenBalances[owner];
+        uint256 balance = _ceTokenBalances[msg.sender];
         require(balance >= amount, "insufficient balance");
-        _ceTokenBalances[owner] -= amount; // BNB
+        _ceTokenBalances[msg.sender] -= amount; // BNB
         // burn ceToken from owner
         ICertToken(_ceToken).burn(owner, amount);
         uint256 feeCharged = amount * _withdrawalFee / 1e18;
@@ -159,13 +159,13 @@ ReentrancyGuardUpgradeable
             _BETH.balanceOf(address(this)) >= realAmount,
             "not such BETH amount in the vault"
         );
-        uint256 balance = _ceTokenBalances[owner];
+        uint256 balance = _ceTokenBalances[msg.sender];
         require(balance >= amount, "insufficient balance");
-        _ceTokenBalances[owner] -= amount; // ETH
+        _ceTokenBalances[msg.sender] -= amount; // ETH
         // burn ceToken from owner
         ICertToken(_ceToken).burn(owner, amount);
-        require(_depositors[owner] >= realAmount, "invalid withdraw amount");
-        _depositors[owner] -= realAmount; // wBETH
+        require(_depositors[msg.sender] >= realAmount, "invalid withdraw amount");
+        _depositors[msg.sender] -= realAmount; // wBETH
         _BETH.transfer(recipient, realAmount);
         emit Withdrawn(owner, recipient, amount);
         return realAmount;
@@ -178,8 +178,8 @@ ReentrancyGuardUpgradeable
         uint256 preBalance = _BETH.balanceOf(address(this));
         _BETH.deposit(amount, router.getReferral());
         uint256 postBalance = _BETH.balanceOf(address(this));
-        address provider = router.getProvider();
-        _depositors[provider] += postBalance - preBalance;
+        // address provider = router.getProvider();
+        _depositors[address(router)] += postBalance - preBalance;
 
         emit Rebalanced(amount);
         return amount;
