@@ -20,6 +20,7 @@ interface IVault {
         uint256 value
     );
     event RouterChanged(address router);
+    event CeTokenChanged(address oldToken, address newToken);
     /**
      * Methods
      */
@@ -44,4 +45,6 @@ interface IVault {
     function getYieldFor(address account) external view returns (uint256);
     function getTotalAmountInVault() external view returns (uint256);
     function getCeTokenBalanceOf(address account) external view returns (uint256);
+    function getDepositOf(address account) external view returns (uint256);
+    function getClaimedOf(address account) external view returns (uint256);
 }

@@ -263,4 +263,7 @@ ReentrancyGuardUpgradeable
     function getRouter() external view returns(address) {
         return address(_router);
     }
+    function getWithdrawalFee() external view returns(uint256) {
+        return _withdrawalFee;
+    }
 }
