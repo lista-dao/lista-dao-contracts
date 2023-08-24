@@ -4,6 +4,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IETHVault.sol";
 import "../interfaces/ICertToken.sol";
 import "../interfaces/IBETH.sol";
@@ -29,6 +30,7 @@ ReentrancyGuardUpgradeable
     mapping(address => uint256) private _ceTokenBalances; // in ETH
     address private _strategist;
     uint256 private _withdrawalFee;
+    using SafeERC20 for IERC20;
     /**
      * Modifiers
      */
@@ -57,6 +59,7 @@ ReentrancyGuardUpgradeable
         _BETH = IBETH(wBETHAddress);
         _withdrawalFee = withdrawalFee;
         _strategist = strategist;
+        IERC20(certToken).safeApprove(wBETHAddress, type(uint256).max);
     }
     // deposit
     function depositFor(address recipient, uint256 certTokenAmount, uint256 wBETHAmount)
@@ -174,7 +177,7 @@ ReentrancyGuardUpgradeable
     function rebalance() external onlyStrategist returns (uint256) {
         ICerosETHRouter router = ICerosETHRouter(_router);
         uint256 ratio = router.getCertTokenRatio();
-        uint256 amount = _certToken.balanceOf(address(this)) * (1e8 - ratio) / 1e8;
+        uint256 amount = _certToken.balanceOf(address(this)) * (1e18 - ratio) / 1e18;
         uint256 preBalance = _BETH.balanceOf(address(this));
         _BETH.deposit(amount, router.getReferral());
         uint256 postBalance = _BETH.balanceOf(address(this));
@@ -265,5 +268,8 @@ ReentrancyGuardUpgradeable
     }
     function getWithdrawalFee() external view returns(uint256) {
         return _withdrawalFee;
+    }
+    function getStrategist() external view returns(address) {
+        return _strategist;
     }
 }
