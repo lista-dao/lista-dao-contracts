@@ -82,11 +82,17 @@ ReentrancyGuardUpgradeable
         if (ceTokenPostBalance * _certTokenRatio / 1e18 >= certTokenAmountBalance) {
             certTokenAmount = ceTokenPostBalance * _certTokenRatio / 1e18 - certTokenAmountBalance;
         }
-        uint256 BETHAmount = (amount - certTokenAmount) * 1e18 / _BETH.exchangeRate();
-        // uint256 prevBalance = IERC20(_BETH).balanceOf(address(this));
-        _BETH.deposit(amount - certTokenAmount, _referral);
-        // uint256 afterBalance = IERC20(_BETH).balanceOf(address(this));
-        // uint256 BETHAmount = afterBalance - prevBalance;
+        uint256 BETHAmount;
+        if (amount >= certTokenAmount) {
+            BETHAmount = (amount - certTokenAmount) * 1e18 / _BETH.exchangeRate();
+            // uint256 prevBalance = IERC20(_BETH).balanceOf(address(this));
+            _BETH.deposit(amount - certTokenAmount, _referral);
+            // uint256 afterBalance = IERC20(_BETH).balanceOf(address(this));
+            // uint256 BETHAmount = afterBalance - prevBalance;
+        } else {
+            certTokenAmount = amount;
+        }
+        
         value = _vault.depositFor(msg.sender, certTokenAmount, BETHAmount);
 
         emit Deposit(msg.sender, certTokenAmount, BETHAmount);
