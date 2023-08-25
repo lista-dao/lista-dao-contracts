@@ -48,6 +48,15 @@ git clone https://github.com/helio-money/helio-smart-contracts.git
 cd helio-smart-contracts                         
 npm install
 
+Install Hardhat :
+npm install --save-dev hardhat
+
+InstalL Yarn:
+npm install --global yarn
+
+Install dotenv:
+npm install dotenv --save
+
 `cp .env.example .env`
 edit .env with your variables 
 
