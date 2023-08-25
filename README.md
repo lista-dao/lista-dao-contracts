@@ -44,8 +44,8 @@ The core MakerDAO contracts are already battletested and the mock folders are ex
 
 ## Installation
 To install Helio, clone the Helio repository and run the following commands:          
-git clone https://github.com/Helio-protocol/helio.git                 
-cd helio                          
+git clone https://github.com/helio-money/helio-smart-contracts.git                 
+cd helio-smart-contracts                         
 npm install
 
 `cp .env.example .env`
