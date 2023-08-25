@@ -186,11 +186,11 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         require(
-            amount >= _pool.getMinimumStake(),
+            amount >= _bnbStakingPool.getMinUnstake(),
             "value must be greater than min unstake amount"
         );
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
-        _pool.unstakeCertsFor(recipient, realAmount);
+        _bnbStakingPool.unstakeCertsFor(recipient, realAmount);
         emit Withdrawal(msg.sender, recipient, _wBnbAddress, amount);
         return realAmount;
     }
@@ -215,7 +215,7 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         realAmount = _vault.withdrawFor(msg.sender, address(this), amount);
-        _pool.unstakeCertsFor(recipient, realAmount); // realAmount -> BNB
+        _bnbStakingPool.unstakeCertsFor(recipient, realAmount); // realAmount -> BNB
         emit Withdrawal(msg.sender, recipient, _wBnbAddress, amount);
         return realAmount;
     }
@@ -250,7 +250,7 @@ ReentrancyGuardUpgradeable
     view
     returns (uint256)
     {
-        return _pool.pendingUnstakesOf(account);
+        return _bnbStakingPool.getPendingUnstakesOf(account);
     }
     function changeVault(address vault) external onlyOwner {
         // update allowances
@@ -301,6 +301,9 @@ ReentrancyGuardUpgradeable
     }
     function getPoolAddress() external view returns(address) {
         return address(_pool);
+    }
+    function getBNBStakingPoolAddress() external view returns(address) {
+        return address(_bnbStakingPool);
     }
     function getDexAddress() external view returns(address) {
         return address(_dex);
