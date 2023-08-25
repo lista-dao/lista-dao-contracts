@@ -43,13 +43,14 @@ End users can start auctions and participate in it via this contract
 The core MakerDAO contracts are already battletested and the mock folders are excluded from tests.
 
 ## Installation
-To install Helio, clone the Helio repository and run the following commands:          
+To install Helio, clone the Helio repository and run the following commands:
+```
 git clone https://github.com/helio-money/helio-smart-contracts.git
 
 cd helio-smart-contracts  
 
-```npm install```
-
+npm install
+```
 Install Hardhat :
 npm install --save-dev hardhat
 
