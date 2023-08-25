@@ -48,7 +48,7 @@ git clone https://github.com/helio-money/helio-smart-contracts.git
 
 cd helio-smart-contracts  
 
-npm install
+```npm install```
 
 Install Hardhat :
 npm install --save-dev hardhat
