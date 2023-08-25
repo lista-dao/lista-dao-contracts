@@ -52,13 +52,19 @@ cd helio-smart-contracts
 npm install
 ```
 Install Hardhat :
+```
 npm install --save-dev hardhat
+```
 
 Install Yarn:
+```
 npm install --global yarn
+```
 
 Install dotenv:
+```
 npm install dotenv --save
+```
 
 `cp .env.example .env`
 edit .env with your variables 
