@@ -9,7 +9,7 @@ import "../interfaces/IDex.sol";
 import "../interfaces/IDao.sol";
 import "../interfaces/ICerosRouter.sol";
 import "../interfaces/IHelioProviderV2.sol";
-import "../interfaces/IBinancePool.sol";
+import "../interfaces/IBNBStakingPool.sol";
 import "../interfaces/ICertToken.sol";
 import "../../masterVault/interfaces/IMasterVault.sol";
 contract HelioProviderV2 is
@@ -28,8 +28,9 @@ ReentrancyGuardUpgradeable
     ICertToken public _collateralToken; // (default hBNB)
     IMasterVault public _masterVault;
     IDao public _dao;
-    IBinancePool public _pool;
+    IBNBStakingPool public _pool;
     address public _proxy;
+    address public _liquidationStrategy;
     /**
      * Modifiers
      */
@@ -86,7 +87,7 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         require(recipient != address(0));
-        uint256 minumumUnstake = _pool.getMinimumStake();
+        uint256 minumumUnstake = _pool.getMinUnstake();
         require(
             amount >= minumumUnstake,
             "value must be greater than min unstake amount"
@@ -135,7 +136,9 @@ ReentrancyGuardUpgradeable
     nonReentrant
     {
         require(recipient != address(0));
-        _masterVault.withdrawETH(recipient, amount);
+        // _masterVault.withdrawETH(recipient, amount);
+        _masterVault.withdrawInTokenFromStrategy(_liquidationStrategy, recipient, amount);
+        emit WithdrawalInToken(msg.sender, recipient, amount);
     }
     function daoBurn(address account, uint256 value)
     external
@@ -200,5 +203,13 @@ ReentrancyGuardUpgradeable
     function changeMasterVault(address masterVault) external onlyOwner {
         _masterVault = IMasterVault(masterVault);
         emit ChangeMasterVault(masterVault);
+    }
+    function changeBNBStakingPool(address pool) external onlyOwner {
+        _pool = IBNBStakingPool(pool);
+        emit ChangeBNBStakingPool(pool);
+    }
+    function changeLiquidationStrategy(address strategy) external onlyOwner {
+        _liquidationStrategy = strategy;
+        emit ChangeLiquidationStrategy(strategy);
     }
 }
