@@ -83,10 +83,13 @@ ReentrancyGuardUpgradeable
             certTokenAmount = ceTokenPostBalance * _certTokenRatio / 1e18 - certTokenAmountBalance;
         }
         uint256 BETHAmount;
-        if (amount > certTokenAmount && BETHAmount > 0) {
+        if (amount > certTokenAmount) {
             BETHAmount = (amount - certTokenAmount) * 1e18 / _BETH.exchangeRate();
             if (BETHAmount > 0) {
                 _BETH.deposit(amount - certTokenAmount, _referral);
+            } else {
+                certTokenAmount = amount;
+                BETHAmount = 0;
             }
         } else {
             certTokenAmount = amount;
