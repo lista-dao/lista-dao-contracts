@@ -32,6 +32,9 @@ interface IHelioProviderV2 {
 
     event ChangeMasterVault(address masterVault);
 
+    event ChangeBNBStakingPool(address pool);
+
+    event ChangeLiquidationStrategy(address strategy);
     /**
      * Deposit
      */
