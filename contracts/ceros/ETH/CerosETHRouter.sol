@@ -156,7 +156,7 @@ ReentrancyGuardUpgradeable
             return;
         }
         uint256 diff = amount - totalETHAmount;
-        _vault.withdrawETHFor(msg.sender, recipient, amount);
+        _vault.withdrawETHFor(msg.sender, recipient, totalETHAmount);
         _vault.withdrawBETHFor(msg.sender, recipient, diff);
     }
     function changeVault(address vault) external onlyOwner {
