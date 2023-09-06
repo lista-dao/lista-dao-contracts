@@ -54,7 +54,7 @@ library AuctionProxy {
   ) public {
     ClipperLike _clip = ClipperLike(collateral.clip);
     uint256 hayBal = hay.balanceOf(address(this));
-    _clip.redo(auctionId, keeper);
+    _clip.redo(auctionId, address(this));
 
 
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
