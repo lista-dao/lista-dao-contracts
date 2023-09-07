@@ -226,10 +226,7 @@ ReentrancyGuardUpgradeable
             return 0;
         }
         uint256 totalYields = _depositors[account] - principal;
-        if (totalYields <= _claimed[account]) {
-            return 0;
-        }
-        return totalYields - _claimed[account];
+        return totalYields;
     }
     function getCeTokenBalanceOf(address account)
     external
