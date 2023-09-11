@@ -26,10 +26,11 @@ ReentrancyGuardUpgradeable
     ICertToken private _certToken; // ETH
     address private _router;
     mapping(address => uint256) private _claimed; // in wBETH
-    mapping(address => uint256) private _depositors; // track in wBETH
+    mapping(address => uint256) private _depositors; // track wBETH balance
     mapping(address => uint256) private _ceTokenBalances; // in ETH
     address private _strategist;
     uint256 private _withdrawalFee;
+    mapping(address => uint256) private _certTokenValues; // in ETH
     using SafeERC20 for IERC20;
     /**
      * Modifiers
@@ -77,11 +78,12 @@ ReentrancyGuardUpgradeable
     returns (uint256)
     {
         uint256 ratio = _BETH.exchangeRate();
-        _BETH.transferFrom(msg.sender, address(this), wBETHAmount);
-        _certToken.transferFrom(msg.sender, address(this), certTokenAmount);
+        IERC20(_BETH).safeTransferFrom(msg.sender, address(this), wBETHAmount);
+        IERC20(_certToken).safeTransferFrom(msg.sender, address(this), certTokenAmount);
         uint256 toMint = (wBETHAmount * ratio) / 1e18 + certTokenAmount;
         _depositors[msg.sender] += wBETHAmount; // wBETH
         _ceTokenBalances[msg.sender] += toMint;
+        _certTokenValues[msg.sender] += (wBETHAmount * ratio) / 1e18;
         //  mint ceToken to recipient
         ICertToken(_ceToken).mint(account, toMint);
         emit Deposited(msg.sender, account, toMint);
@@ -104,13 +106,14 @@ ReentrancyGuardUpgradeable
         require(availableYields > 0, "has not got yields to claim");
         // return back BETH to recipient
         _claimed[owner] += availableYields;
+        _depositors[owner] -= availableYields;
         uint256 balance = _BETH.balanceOf(address(this));
         if (balance >= availableYields) {
-            _BETH.transfer(recipient, availableYields);
+            IERC20(_BETH).safeTransfer(recipient, availableYields);
         } else {
             uint256 amountInETH = (availableYields - balance) * _BETH.exchangeRate() / 1e18;
-            _BETH.transfer(recipient, balance);
-            _certToken.transfer(recipient, amountInETH);
+            IERC20(_BETH).safeTransfer(recipient, balance);
+            IERC20(_certToken).safeTransfer(recipient, amountInETH);
         }
         emit Claimed(owner, recipient, availableYields);
         return availableYields;
@@ -134,13 +137,13 @@ ReentrancyGuardUpgradeable
         );
         uint256 balance = _ceTokenBalances[msg.sender];
         require(balance >= amount, "insufficient balance");
-        _ceTokenBalances[msg.sender] -= amount; // BNB
+        _ceTokenBalances[msg.sender] -= amount; // ETH
         // burn ceToken from owner
         ICertToken(_ceToken).burn(owner, amount);
         uint256 feeCharged = amount * _withdrawalFee / 1e18;
-        _certToken.transfer(recipient, amount - feeCharged);
+        IERC20(_certToken).safeTransfer(recipient, amount - feeCharged);
         address referral = ICerosETHRouter(_router).getReferral();
-        _certToken.transfer(referral, feeCharged);
+        IERC20(_certToken).safeTransfer(referral, feeCharged);
         emit Withdrawn(owner, recipient, amount - feeCharged);
         return amount - feeCharged;
     }
@@ -165,11 +168,12 @@ ReentrancyGuardUpgradeable
         uint256 balance = _ceTokenBalances[msg.sender];
         require(balance >= amount, "insufficient balance");
         _ceTokenBalances[msg.sender] -= amount; // ETH
+        _certTokenValues[msg.sender] -= amount;
         // burn ceToken from owner
         ICertToken(_ceToken).burn(owner, amount);
         require(_depositors[msg.sender] >= realAmount, "invalid withdraw amount");
         _depositors[msg.sender] -= realAmount; // wBETH
-        _BETH.transfer(recipient, realAmount);
+        IERC20(_BETH).safeTransfer(recipient, realAmount);
         emit Withdrawn(owner, recipient, amount);
         return realAmount;
     }
@@ -182,6 +186,7 @@ ReentrancyGuardUpgradeable
         _BETH.deposit(amount, router.getReferral());
         uint256 postBalance = _BETH.balanceOf(address(this));
         // address provider = router.getProvider();
+        _certTokenValues[address(router)] += amount;
         _depositors[address(router)] += postBalance - preBalance;
 
         emit Rebalanced(amount);
@@ -206,7 +211,7 @@ ReentrancyGuardUpgradeable
     returns (uint256)
     {
         uint256 ratio = _BETH.exchangeRate();
-        return (_ceTokenBalances[account] * 1e18) / ratio; // in aBNBc
+        return (_certTokenValues[account] * 1e18) / ratio; // in aBNBc
     }
     // yield = deposited*(1-current_ratio/init_ratio) = cetoken.balanceOf*init_ratio-cetoken.balanceOf*current_ratio
     // yield = cetoken.balanceOf*(init_ratio-current_ratio) = amount(in aBNBc) - amount(in aBNBc)
@@ -221,10 +226,7 @@ ReentrancyGuardUpgradeable
             return 0;
         }
         uint256 totalYields = _depositors[account] - principal;
-        if (totalYields <= _claimed[account]) {
-            return 0;
-        }
-        return totalYields - _claimed[account];
+        return totalYields;
     }
     function getCeTokenBalanceOf(address account)
     external
@@ -252,7 +254,9 @@ ReentrancyGuardUpgradeable
         emit SetStrategist(strategist);
     }
     function changeCertToken(address token) external onlyOwner {
+        IERC20(_certToken).safeApprove(address(_BETH), 0);
         _BETH = IBETH(token);
+        IERC20(_certToken).safeApprove(token, type(uint256).max);
     }
     function getName() external view returns (string memory) {
         return _name;

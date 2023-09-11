@@ -205,7 +205,9 @@ ReentrancyGuardUpgradeable
         emit ChangeOperator(operator);
     }
     function changeCertToken(address token) external onlyOwner {
+        IERC20(_certToken).safeApprove(address(_ceETHRouter), 0);
         _certToken = token;
+        IERC20(_certToken).safeApprove(address(_ceETHRouter), type(uint256).max);
         emit ChangeCertToken(token);
     }
     function changeMinWithdrwalAmount(uint256 amount) external onlyOwner {
