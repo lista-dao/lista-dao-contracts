@@ -85,10 +85,12 @@ ReentrancyGuardUpgradeable
         uint256 BETHAmount;
         if (amount > certTokenAmount) {
             BETHAmount = (amount - certTokenAmount) * 1e18 / _BETH.exchangeRate();
-            // uint256 prevBalance = IERC20(_BETH).balanceOf(address(this));
-            _BETH.deposit(amount - certTokenAmount, _referral);
-            // uint256 afterBalance = IERC20(_BETH).balanceOf(address(this));
-            // uint256 BETHAmount = afterBalance - prevBalance;
+            if (BETHAmount > 0) {
+                _BETH.deposit(amount - certTokenAmount, _referral);
+            } else {
+                certTokenAmount = amount;
+                BETHAmount = 0;
+            }
         } else {
             certTokenAmount = amount;
         }
@@ -106,9 +108,10 @@ ReentrancyGuardUpgradeable
     external
     override
     nonReentrant
+    onlyProvider
     returns (uint256 yields)
     {
-        yields = _vault.claimYieldsFor(msg.sender, recipient);
+        yields = _vault.claimYieldsFor(address(this), recipient);
         emit Claim(recipient, address(_certToken), yields);
         return yields;
     }
@@ -154,14 +157,16 @@ ReentrancyGuardUpgradeable
             return;
         }
         uint256 diff = amount - totalETHAmount;
-        _vault.withdrawETHFor(msg.sender, recipient, amount);
+        _vault.withdrawETHFor(msg.sender, recipient, totalETHAmount);
         _vault.withdrawBETHFor(msg.sender, recipient, diff);
     }
     function changeVault(address vault) external onlyOwner {
         // update allowances
-        _certToken.approve(address(_vault), 0);
+        IERC20(_certToken).safeApprove(address(_vault), 0);
+        IERC20(_BETH).safeApprove(vault, 0);
         _vault = IETHVault(vault);
-        _certToken.approve(address(_vault), type(uint256).max);
+        IERC20(_certToken).safeApprove(address(_vault), type(uint256).max);
+        IERC20(_BETH).safeApprove(vault, type(uint256).max);
         emit ChangeVault(vault);
     }
     function changeProvider(address provider) external onlyOwner {
