@@ -330,7 +330,7 @@ describe('===LisUSD Upgrade===', function () {
     const values = {
       holder: signer1.address,
       spender: signer2.address,
-      nonce: '0',
+      nonce: await lisUSD.nonces(signer1.address),
       expiry: (Math.floor(Date.now() / 1000) + 60 * 60 * 24).toString(),
       allowed: true
     }
