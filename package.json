@@ -17,7 +17,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/contracts-upgradeable": "^4.7.0",
-    "@openzeppelin/hardhat-upgrades": "^1.17.0",
+    "@openzeppelin/hardhat-upgrades": "^1.20.1",
     "@openzeppelin/test-helpers": "^0.5.15",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
