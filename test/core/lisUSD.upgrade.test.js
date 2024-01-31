@@ -33,7 +33,7 @@ describe('===LisUSD Upgrade===', function () {
     const lisUSD = await upgrades.upgradeProxy(hay.address, this.LisUSD)
     expect(await lisUSD.name()).to.equals('Lista USD')
     expect(await lisUSD.symbol()).to.equals('HAY')
-    await lisUSD.setSymbol('lisUSD')
+    await lisUSD.resetSymbol()
     expect(await lisUSD.symbol()).to.equals('lisUSD')
   })
 
@@ -283,7 +283,7 @@ describe('===LisUSD Upgrade===', function () {
     await hay.deployed()
     const lisUSD = await upgrades.upgradeProxy(hay.address, this.LisUSD)
     // update symbol
-    await lisUSD.connect(deployer).setSymbol('lisUSD')
+    await lisUSD.connect(deployer).resetSymbol()
 
     // update domain separator
     await lisUSD.connect(deployer).updateDomainSeparator(chainId)
