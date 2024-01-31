@@ -69,9 +69,9 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
         supplyCap = supplyCap_;
     }
 
-    function setSymbol(string memory symbol_) external auth {
-        require(keccak256(abi.encodePacked(symbol)) != keccak256(abi.encodePacked(symbol_)) && keccak256(abi.encodePacked(symbol_)) == keccak256(abi.encodePacked("lisUSD")), "LisUSD/symbol-already-set");
-        symbol = symbol_;
+    function resetSymbol() external auth {
+        require(keccak256(abi.encodePacked(symbol)) != keccak256(abi.encodePacked("lisUSD")), "LisUSD/symbol-already-reset");
+        symbol = "lisUSD";
     }
 
     // --- Token ---
