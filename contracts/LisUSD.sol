@@ -70,6 +70,7 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
     }
 
     function resetSymbol() external auth {
+        require(keccak256(abi.encodePacked(symbol)) != keccak256(abi.encodePacked("lisUSD")), "LisUSD/symbol-already-reset");
         symbol = "lisUSD";
     }
 
