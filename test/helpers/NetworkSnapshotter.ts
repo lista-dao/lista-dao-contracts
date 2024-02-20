@@ -1,8 +1,8 @@
-const { network } = require("hardhat");
+import { network } from "hardhat";
 
-class NetworkSnapshotter {
-  snapshotId;
-  snapshotIds;
+export class NetworkSnapshotter {
+  snapshotId : number | undefined;
+  snapshotIds : number[];
 
   constructor() {
     this.snapshotId = 0;
@@ -19,6 +19,7 @@ class NetworkSnapshotter {
   }
 
   async newSnapshot() {
+    if (this.snapshotId)
     this.snapshotIds.push(this.snapshotId);
     this.snapshotId = await network.provider.send("evm_snapshot", []);
   }
