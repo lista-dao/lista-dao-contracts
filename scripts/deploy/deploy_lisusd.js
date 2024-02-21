@@ -1,4 +1,3 @@
-const hre = require("hardhat");
 const {upgrades} = require("hardhat");
 
 async function main() {
@@ -10,8 +9,8 @@ async function main() {
   await upgrades.validateUpgrade(this.Hay, this.LisUSD);
   console.log("LisUSD is compatible with Hay, can be upgraded to.")
 
-  const lisUSD = await this.LisUSD.deploy();
-  console.log("Deployed: LisUSD        : " + lisUSD.address);
+  const lisUSD = await this.LisUSD.waitForDeployment();
+  console.log("Deployed: LisUSD        : " + lisUSD.target);
 }
 
 main()

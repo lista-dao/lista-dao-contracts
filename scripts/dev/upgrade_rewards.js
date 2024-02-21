@@ -1,5 +1,3 @@
-const hre = require("hardhat");
-
 const { VAT,
     SPOT,
     aBNBc,
@@ -26,26 +24,26 @@ async function main() {
     const interaction = this.Interaction.attach(INTERACTION);
 
     const rewards = await this.HelioRewards.deploy(VAT);
-    await rewards.deployed();
-    console.log("Rewards deployed to:", rewards.address);
+    await rewards.waitForDeployment();
+    console.log("Rewards deployed to:", rewards.target);
 
-    await helioToken.rely(rewards.address);
+    await helioToken.rely(rewards.target);
     await rewards.setHelioToken(HELIO_TOKEN);
     await rewards.rely(INTERACTION);
 
     console.log('Adding rewards pool');
-    let abnbcCollateral = ethers.utils.formatBytes32String("aBNBc");
-    let ceTokenCollateral = ethers.utils.formatBytes32String("ceToken");
+    let abnbcCollateral = ethers.encodeBytes32String("aBNBc");
+    let ceTokenCollateral = ethers.encodeBytes32String("ceToken");
 
     await rewards.initPool(aBNBc, abnbcCollateral, "1000000001847694957439350500"); //6%
     await rewards.initPool(ceBNBc, ceTokenCollateral, "1000000001847694957439350500"); //6%
 
-    interaction.setRewards(rewards.address);
+    interaction.setRewards(rewards.target);
 
     console.log('Validating code');
 
     await hre.run("verify:verify", {
-        address: rewards.address,
+        address: rewards.target,
         constructorArguments: [
             VAT
         ],
