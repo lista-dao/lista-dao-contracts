@@ -1,5 +1,3 @@
-const hre = require("hardhat");
-
 const { VAT,
     SPOT,
     aBNBc,
@@ -22,20 +20,20 @@ async function main() {
     this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
 
     const helioToken = await this.HelioToken.deploy();
-    await helioToken.deployed();
-    console.log("helioToken deployed to:", helioToken.address);
+    await helioToken.waitForDeployment();
+    console.log("helioToken deployed to:", helioToken.target);
 
     const rewards = await this.HelioRewards.deploy(VAT);
-    await rewards.deployed();
-    console.log("Rewards deployed to:", rewards.address);
+    await rewards.waitForDeployment();
+    console.log("Rewards deployed to:", rewards.target);
 
     console.log('Adding rewards pool');
-    let collateral = ethers.utils.formatBytes32String("aBNBc");
+    let collateral = ethers.encodeBytes32String("aBNBc");
 
-    await helioToken.rely(rewards.address);
-    await rewards.setHelioToken(helioToken.address);
+    await helioToken.rely(rewards.target);
+    await rewards.setHelioToken(helioToken.target);
     await rewards.initPool(aBNBc, collateral, "1000000001847694957439350500"); //6%
-    await rewards.connect(deployer).rely(interaction.address);
+    await rewards.connect(deployer).rely(interaction.target);
 
     console.log('Validating code');
 

@@ -1,5 +1,3 @@
-const hre = require("hardhat");
-
 const { VAT,
     SPOT,
     aBNBc,
@@ -16,8 +14,8 @@ const {ethers} = require("hardhat");
 async function main() {
     console.log('Running deploy script');
 
-    let collateral = ethers.utils.formatBytes32String("aBNBc");
-    let collateral2 = ethers.utils.formatBytes32String("REALaBNBc");
+    let collateral = ethers.encodeBytes32String("aBNBc");
+    let collateral2 = ethers.encodeBytes32String("REALaBNBc");
 
     this.Interaction = await hre.ethers.getContractFactory("Interaction");
     let interaction = this.Interaction.attach(INTERACTION);
