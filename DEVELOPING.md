@@ -84,7 +84,11 @@ https://ethereum.stackexchange.com/a/23110
 6. Your hBNB will be burned and you will receive any leftover in hay after liquidation happened
 
 # Deployment
-## Local deploy
+## Deploy all contracts on local hardhat
 ```shell
 npx hardhat run scripts/deploy/1_deploy_all.js --network hardhat
+```
+## Deploy flash contracts only
+```
+npx hardhat run scripts/deploy/deploy_flash.js --network bsc_testnet
 ```
