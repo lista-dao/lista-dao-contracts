@@ -1,4 +1,3 @@
-const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
 
@@ -80,6 +79,8 @@ async function main() {
   this.HelioOracle = await hre.ethers.getContractFactory("HelioOracle");
 
   this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
+  this.Flash = await hre.ethers.getContractFactory("Flash");
+  this.FlashBuy = await hre.ethers.getContractFactory("FlashBuy");
 
   const auctionProxy = await this.AuctionProxy.deploy();
   await auctionProxy.waitForDeployment();
@@ -210,6 +211,16 @@ async function main() {
   let rewardsImplementation = await upgrades.erc1967.getImplementationAddress(rewards.target);
   console.log("Deployed: rewards    : " + rewards.target);
   console.log("Imp                  : " + rewardsImplementation);
+
+  const flash = await upgrades.deployProxy(this.Flash, [vat.target, hay.target, hayJoin.target, vow.target]);
+  await flash.waitForDeployment();
+  let flashImplementation = await upgrades.erc1967.getImplementationAddress(flash.target);
+  console.log("Deployed: Flash    : " + flash.target);
+  console.log("Imp                  : " + flashImplementation);
+
+  const flashBuy = await ethers.deployContract("FlashBuy", [flash.target, auctionProxy.target, _dex]);
+  await flashBuy.waitForDeployment();
+  console.log("Deployed: FlashBuy    : " + flashBuy.target);
 
     // // No Helio Token & Oracle at the moment
     // const helioOracle = await upgrades.deployProxy(this.HelioOracle, ["100000000000000000" ], {initializer: "initialize"}); // 0.1
@@ -369,6 +380,9 @@ async function main() {
     AuctionLib: auctionProxy.target,
     helioProvider: helioProvider.target,
     helioProviderImplementation: helioProviderImplementation,
+    flash: flash.target,
+    flashImplementation: flashImplementation,
+    flashBuy: flashBuy.target,
     // helioOracle: helioOracle.target,
     // helioToken: helioToken.target,
     ilk: ilkCE
