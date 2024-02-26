@@ -1,5 +1,5 @@
 const {ethers, upgrades} = require("hardhat");
-const { upgradeProxy , deployImplementation , verifyImpContract} = require("../upgrades/utils/upgrade_utils");
+//const { upgradeProxy , deployImplementation , verifyImpContract} = require("../upgrades/utils/upgrade_utils");
 
 
 /*
@@ -48,7 +48,7 @@ async function main() {
 
     // Contracts Fetching
     const CeaBNBc = await hre.ethers.getContractFactory("CeToken");
-    const ceaBNBc = await CeaBNBc.attach(_ceaBNBc);
+    const ceaBNBc =  await ethers.getContractAt("CeToken", _ceaBNBc);
     const CeVault = await hre.ethers.getContractFactory("CeVaultV2");
     const ceVault = await CeVault.attach(_ceVault);
     const CerosRouter = await hre.ethers.getContractFactory("CerosRouter");
@@ -57,12 +57,13 @@ async function main() {
     const WaitingPool = await hre.ethers.getContractFactory("WaitingPool");
     const CerosYieldConverterStrategy = await hre.ethers.getContractFactory("CerosYieldConverterStrategy");
 
+    /*
     // claim yield
     this.HelioProvider = await hre.ethers.getContractFactory("HelioProvider");
     const oldHelioProvider = await this.HelioProvider.attach(_helioProvider);
     const yield = await ceVault.getYieldFor(oldHelioProvider.target);
-    if (yield.gt(0n)) {
-        await (await oldHelioProvider.claimInABNBc(deployer.address)).wait();
+    if (yield > 0n) {
+        await oldHelioProvider.claimInABNBc(deployer.address);
     }
 
     // deploy new cerosVault token
@@ -79,12 +80,12 @@ async function main() {
     console.log("masterVault    : " + masterVault.target);
     console.log("imp        : " + masterVaultImplementation);
 
-    // // deploy waiting pool
-    // waitingPool = await upgrades.deployProxy(WaitingPool, [masterVault.target, _waitingPoolCap]);
-    // await waitingPool.waitForDeployment();
-    // let waitingPoolImplementation = await upgrades.erc1967.getImplementationAddress(waitingPool.target);
-    // console.log("waitingPool    : " + waitingPool.target);
-    // console.log("imp        : " + waitingPoolImplementation);
+    // deploy waiting pool
+    waitingPool = await upgrades.deployProxy(WaitingPool, [masterVault.target, _waitingPoolCap]);
+    await waitingPool.waitForDeployment();
+    let waitingPoolImplementation = await upgrades.erc1967.getImplementationAddress(waitingPool.target);
+    console.log("waitingPool    : " + waitingPool.target);
+    console.log("imp        : " + waitingPoolImplementation);
 
     let _destination = cerosRouter.target,
         _rewards = deployer.address,
@@ -123,55 +124,56 @@ async function main() {
 
     // pause helioProvider
     console.log("Pausing HelioProvider...");
-    await (await oldHelioProvider.pause()).wait();
+    await oldHelioProvider.pause();
 
     // change ceaBNBc MinterRole to MasterVault
     console.log("Configuring MasterVaultToken...");
-    await (await ceaBNBc.changeVault(masterVault.target)).wait();
-
+    await ceaBNBc.changeVault(masterVault.target);
+*/
     console.log("Configuring MasterVault...");
-    // await (await masterVault.setWaitingPool(waitingPool.target)).wait();
-    await (await masterVault.changeProvider(_helioProvider)).wait();
-    await (await masterVault.setStrategy(cerosYieldConverterStrategy.target, cerosStr_allocation)).wait();     // 85%
-    await (await masterVault.setStrategy(bnbxYieldConverterStrategy.target, bnbxStr_allocation)).wait();       // 7%
-    await (await masterVault.setStrategy(stkBnbStrategy.target, pStakeStr_allocation)).wait();                 // 3%
-    await (await masterVault.setStrategy(snBnbStrategy.target, synclubStr_allocation)).wait();                 // 3%
+    //await masterVault.setWaitingPool(waitingPool.target);
+    await masterVault.changeProvider(_helioProvider);
+    await masterVault.setStrategy(cerosYieldConverterStrategy.target, cerosStr_allocation);     // 85%
+    await masterVault.setStrategy(bnbxYieldConverterStrategy.target, bnbxStr_allocation);       // 7%
+    await masterVault.setStrategy(stkBnbStrategy.target, pStakeStr_allocation);                 // 3%
+    await masterVault.setStrategy(snBnbStrategy.target, synclubStr_allocation);                 // 3%
 
     // deploy and upgrade helioProvider
     console.log("Upgrading HelioProviderV2...");
-    const hProviderImpAddress = await deployImplementation("HelioProviderV2");
-    await upgradeProxy(_helioProvider, hProviderImpAddress);
+    //const hProviderImpAddress = await deployImplementation("HelioProviderV2");
+    await upgrades.upgradeProxy(_helioProvider, this.HelioProviderV2);
 
     // deploy and upgrade ceVault
     console.log("Upgrading CeVaultV2...");
-    const ceVaultImpAddress = await deployImplementation("CeVaultV2");
-    await upgradeProxy(_ceVault, ceVaultImpAddress);
+    //const ceVaultImpAddress = await deployImplementation("CeVaultV2");
+    await upgrades.upgradeProxy(_ceVault, this.CeVaultV2);
 
     console.log("Updating ceVault and masterVault's storage...");
     const bnbJoinVaultTokenBalance = await ceaBNBc.balanceOf(_bnbJoin);
-    await (await cerosVaultToken.changeVault(ceVault.target)).wait();
+    await cerosVaultToken.changeVault(ceVault.target);
     // await (await ceVault.updateStorage(cerosVaultToken.target, _helioProvider, cerosYieldConverterStrategy.target, bnbJoinVaultTokenBalance)).wait();
     // await (await masterVault._updateCerosStrategyDebt(cerosYieldConverterStrategy.target, bnbJoinVaultTokenBalance)).wait();
 
     console.log("Configuring upgraded HelioProviderV2...");
-    this.HelioProviderV2 = await hre.ethers.getContractFactory("HelioProviderV2");
-    const newHelioProvider = await this.HelioProviderV2.attach(_helioProvider);
-    await (await newHelioProvider.changeMasterVault(masterVault.target)).wait();
+    this.HelioProviderV2 = await ethers.getContractFactory("HelioProviderV2");
+    const newHelioProvider = this.HelioProviderV2.attach(_helioProvider);
+    await newHelioProvider.changeMasterVault(masterVault.target);
 
     //unpause helioProvider
     console.log("Unpausing HelioProvider...");
-    await (await newHelioProvider.unPause()).wait();
+    await newHelioProvider.unPause();
 
     console.log("Deployment successful");
     // Verify implementations
     console.log("Verifying MasterVault contract...");
-    await verifyImpContract(masterVaultImplementation);
+    hre.run("verify:verify", {address: masterVault.target}, [_maxDepositFee, _maxWithdrawalFee, _maxStrategies, ceaBNBc.target]);
+//    await verifyImpContract(masterVaultImplementation);
 
-    console.log("Verifying HelioProviderV2 contract...");
-    await verifyImpContract(hProviderImpAddress);
+    //console.log("Verifying HelioProviderV2 contract...");
+    //hre.run("verify:verify", {address: hProviderImpAddress});
 
-    console.log("Verifying cerosVault contract...");
-    await verifyImpContract(ceVaultImpAddress);
+    //console.log("Verifying cerosVault contract...");
+    //hre.run("verify:verify", {address: ceVaultImpAddress});
 }
 
 main()
