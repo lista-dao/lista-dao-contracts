@@ -6,16 +6,18 @@
     "m_aBnbb": "0xBb1Aa6e59E5163D8722a122cd66EBA614b59df0d",
     "m_dex": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
     "m_pool": "0xa0c92efdceA55ca19396e4850B8D29Df6F907bcD",
+    "m_BnbStakingPool": "0x9e347Af362059bf2E55839002c699F7A5BaFE86E",
     "m_chainID": "56",
 
 
     "BSC_TESTNET": "BSC_TESTNET_VARIABLES",
 
-    "t_aBNBc": "0x3C1039C346bd5141BF2D5e855928E61655658fA7", // Ankr Staked BNB - ankrBNB - aBNBc
-    "t_wBnb": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd", // Wrapped BNB
-    "t_aBnbb": "0x93405327644eDF8aD908e41F9a2Ecbb6714769D1", // Ankr Reward Earning BNB - aBNBb
+    "t_aBNBc": "0x3C1039C346bd5141BF2D5e855928E61655658fA7",
+    "t_wBnb": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "t_aBnbb": "0x93405327644eDF8aD908e41F9a2Ecbb6714769D1",
     "t_dex": "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3",
     "t_pool": "0x3C9205b5d4B312cA7C4d28110C91Fe2c74718a94",
+    "t_BnbStakingPool": "0x0eCf14f54C5fF190e025Bc5e80c6351F91BFcB1c",
     "t_chainID": "97",
 
 

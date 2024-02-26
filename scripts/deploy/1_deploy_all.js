@@ -9,23 +9,25 @@ let wad = "000000000000000000", // 18 Decimals
 async function main() {
 
   // Declare and load network variables from networkVars.json
-  let _aBNBc, _wBnb, _aBnbb, _dex, _pool;
+  let _aBNBc, _wBnb, _aBnbb, _dex, _pool, _BnbStakingPool;
   let ilkCE;
   let _multiSig;
   let chainId;
   let whitelistOperatorAddress;
 
   if (hre.network.name == "bsc") {
-      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // mainnet
+      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_BnbStakingPool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // mainnet
       _aBNBc = m_aBNBc; _wBnb = m_wBnb; _aBnbb = m_aBnbb; _dex = m_dex; _pool = m_pool, _multiSig = multiSig;
+      _BnbStakingPool = m_BnbStakingPool;
       whitelistOperatorAddress = whiteListOperator;
       chainId = ethers.BigNumber.from(m_chainID);
       ilkCE = ethers.encodeBytes32String(ilkString);
   } else if (hre.network.name == "bsc_testnet") {
-      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // testnet
+      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_BnbStakingPool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // testnet
       _aBNBc = t_aBNBc; _wBnb = t_wBnb; _aBnbb = t_aBnbb; _dex = t_dex; _pool = t_pool, _multiSig = multiSig;
+      _BnbStakingPool = t_BnbStakingPool;
       whitelistOperatorAddress = whiteListOperator;
-      chainId = ethers.BigNumber.from(t_chainID);
+      chainId = t_chainID;
       ilkCE = ethers.encodeBytes32String(ilkString);
   } else if (hre.network.name == "hardhat") {
     chainId = hre.network.config.chainId;
@@ -138,14 +140,14 @@ async function main() {
   }
 
   let oracle, oracleImplementation;
-  if (hre.network.name == "hardhat") {
+  if (hre.network.name !== "bsc") {
     oracle = await ethers.deployContract("Oracle");
     await oracle.waitForDeployment();
     oracleImplementation = oracle.target;
     console.log("Deployed: oracle     : " + oracle.target);
     await oracle.setPrice(300e18.toString());
   } else {
-    await upgrades.deployProxy(this.Oracle, [aggregatorAddress]);
+    oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress]);
     await oracle.waitForDeployment();
     let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target);
     console.log("Deployed: oracle     : " + oracle.target);
@@ -262,6 +264,7 @@ async function main() {
   console.log("Ceros init...");
   await hBNB.changeMinter(helioProvider.target);
   await cerosRouter.changeProvider(helioProvider.target);
+  await cerosRouter.changeBNBStakingPool(_BnbStakingPool);
   await helioProvider.changeProxy(interaction.target);
 
   console.log("Core init...");
