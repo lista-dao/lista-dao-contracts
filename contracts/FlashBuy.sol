@@ -3,6 +3,8 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import { IAuctionProxy } from "./interfaces/IAuctionProxy.sol";
 import { IERC3156FlashBorrower } from "./interfaces/IERC3156FlashBorrower.sol";
 import { IERC3156FlashLender } from "./interfaces/IERC3156FlashLender.sol";
@@ -102,26 +104,23 @@ interface IDEX {
 }
 
 
-contract FlashBuy is IERC3156FlashBorrower {
+contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     enum Action {NORMAL, OTHER}
-    address private owner;
 
     IERC3156FlashLender public lender;
     IAuctionProxy public auction;
     IDEX dex;
 
-    modifier isOwner() {
-        require(msg.sender == owner, "Caller is not owner");
-        _;
-    }
+    // --- Init ---
+    function initialize(IERC3156FlashLender lender_, IAuctionProxy auction_, IDEX dex_) public initializer {
+        __Ownable_init();
 
-    constructor (IERC3156FlashLender lender_, IAuctionProxy auction_, IDEX dex_) {
         lender = lender_;
         auction = auction_;
         dex = dex_;
     }
 
-    function transferFrom(address token) isOwner external {
+    function transferFrom(address token) onlyOwner external {
         IERC20(token).transferFrom(address(this), msg.sender, IERC20(token).balanceOf(address(this)));
     }
 
@@ -142,12 +141,12 @@ contract FlashBuy is IERC3156FlashBorrower {
             "FlashBorrower: Untrusted loan initiator"
         );
 
-        (Action action, uint256 auctionId,address collateral, uint256 collateralAm,uint256 maxPrice) = abi.decode(
+        (Action action, uint256 auctionId, address collateral, uint256 collateralAm, uint256 maxPrice) = abi.decode(
             data, (Action, uint256, address, uint256, uint256)
         );
         require(action == Action.NORMAL, "such action is not implemented");
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-        require(tokenBalance>=amount, "borrow amount not received");
+        require(tokenBalance >= amount, "borrow amount not received");
 
         auction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this));
         uint256 minOut = amount + fee - IERC20(token).balanceOf(address(this));
@@ -173,8 +172,8 @@ contract FlashBuy is IERC3156FlashBorrower {
         uint256 _fee = lender.flashFee(token, borrowAm);
         uint256 _repayment = borrowAm + _fee;
         uint256 _allowance = IERC20(token).allowance(address(this), address(lender));
-        IERC20(token).approve(address(lender), 1000000000000000000000000000000000000);
-        IERC20(token).approve(address(auction), 1000000000000000000000000000000000000);
+        IERC20(token).approve(address(lender), _allowance + _repayment);
+        IERC20(token).approve(address(auction), _allowance + _repayment);
         IERC20(collateral).approve(address(dex), collateralAm);
 
         lender.flashLoan(this, token, borrowAm, data);
