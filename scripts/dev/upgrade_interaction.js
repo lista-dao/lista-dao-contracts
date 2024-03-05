@@ -1,4 +1,3 @@
-const hre = require("hardhat");
 const { ethers, upgrades } = require("hardhat");
 require("@nomiclabs/hardhat-etherscan");
 
@@ -39,11 +38,11 @@ async function main() {
         kind: "uups",
         unsafeAllowLinkedLibraries: true,
     });
-    console.log("interactionV2 upgraded with ", upgraded.address);
+    console.log("interactionV2 upgraded with ", upgraded.target);
 
     console.log('Validating code');
 
-    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(upgraded.address);
+    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(upgraded.target);
     console.log("Interaction implementation: ", interactionImplAddress);
 
     await hre.run("verify:verify", {
