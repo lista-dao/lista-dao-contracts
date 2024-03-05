@@ -70,8 +70,8 @@ npm install dotenv --save
 edit .env with your variables 
 
 ## Contributing
-Helio is an open source project and we welcome contributions from the community. If you would like to contribute to Helio, please see the Helio contribution guidelines.
+Helio is an open source project, and we welcome contributions from the community. If you would like to contribute to Helio, please see the Helio contribution guidelines.
 
 ## License
-Helio is licensed under the MIT license.
+Helio is licensed under the ISC license.
 
