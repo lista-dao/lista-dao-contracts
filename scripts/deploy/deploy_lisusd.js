@@ -1,5 +1,6 @@
-const hre = require("hardhat");
 const {upgrades} = require("hardhat");
+
+const proxyAddress = "";
 
 async function main() {
   // Contracts Fetching
@@ -10,8 +11,7 @@ async function main() {
   await upgrades.validateUpgrade(this.Hay, this.LisUSD);
   console.log("LisUSD is compatible with Hay, can be upgraded to.")
 
-  const lisUSD = await this.LisUSD.deploy();
-  console.log("Deployed: LisUSD        : " + lisUSD.address);
+  await upgrades.upgradeProxy(proxyAddress, this.LisUSD);
 }
 
 main()
