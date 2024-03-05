@@ -22,7 +22,7 @@ async function main() {
         ray = "000000000000000000000000000", // 27 Decimals
         rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
 
-    let collateral = ethers.encodeBytes32String(COLLATERAL_CE_ABNBC);
+    let collateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
     this.Spot = await hre.ethers.getContractFactory("Spotter");
@@ -36,8 +36,8 @@ async function main() {
 
     let spot = this.Spot.attach(SPOT);
 
-    await spot["file(bytes32,bytes32,address)"](collateral, ethers.encodeBytes32String("pip"), Oracle);
-    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.encodeBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), Oracle);
+    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
 
     await spot.poke(collateral);
 }

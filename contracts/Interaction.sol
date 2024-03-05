@@ -572,7 +572,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     }
 
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
-        return AuctionProxy.getAllActiveAuctionsForClip(collaterals[token].clip);
+        return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
     function resetAuction(address token, uint256 auctionId, address keeper) external {

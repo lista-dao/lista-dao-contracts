@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const { VAT,
     SPOT,
     aBNBc,
@@ -12,6 +14,7 @@ const { VAT,
     INTERACTION, REWARDS, DOG, COLLATERAL_FAKE_ABNBC, FAKE_ABNBC_ILK,
     CLIP, COLLATERAL_CE_ABNBC, ceBNBc, ceBNBcJoin, AUCTION_PROXY
 } = require('../addresses.json');
+const {ether} = require("@openzeppelin/test-helpers");
 const {ethers, upgrades} = require("hardhat");
 
 
@@ -22,7 +25,8 @@ let wad = "000000000000000000", // 18 Decimals
     rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
 
 async function main() {
-    let newCollateral = ethers.encodeBytes32String(COLLATERAL_FAKE_ABNBC);
+
+    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_FAKE_ABNBC);
     console.log("CeToken ilk: " + newCollateral);
 
     this.VAT = await hre.ethers.getContractFactory("Vat");
@@ -49,12 +53,12 @@ async function main() {
     let interaction = this.Interaction.attach(INTERACTION);
 
 
-    // await abnbc.connect(signer).approve(interaction.address, 1000n);
-    // await interaction.connect(signer).deposit(ME, aBNBc, 1n);
-    await interaction.connect(signer).borrow(aBNBc, 1n);
+    // await abnbc.connect(signer).approve(interaction.address, ether("1000").toString());
+    // await interaction.connect(signer).deposit(ME, aBNBc, ether("1").toString());
+    await interaction.connect(signer).borrow(aBNBc, ether("1").toString());
 
-    await hay.connect(signer).approve(interaction.address, 1000n);
-    await interaction.connect(signer).payback(aBNBc, 1n);
+    await hay.connect(signer).approve(interaction.address, ether("1000").toString());
+    await interaction.connect(signer).payback(aBNBc, ether("1").toString());
     // await spot.connect(signer).poke(FAKE_ABNBC_ILK);
 
     await hre.network.provider.request({

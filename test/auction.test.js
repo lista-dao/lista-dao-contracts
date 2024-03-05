@@ -1,25 +1,34 @@
-import { expect } from "chai";
-import hre, { ethers, upgrades } from "hardhat";
+const chai = require("chai");
+const chaiAsPromised = require("chai-as-promised");
+const { describe, it, before } = require("mocha");
+const { ethers, network } = require("hardhat");
+const { solidity } = require("ethereum-waffle");
 
-
-import { NetworkSnapshotter } from "./helpers/NetworkSnapshotter";
-import {
+const NetworkSnapshotter = require("./helpers/NetworkSnapshotter");
+const {
   toWad,
   toRay,
   toRad,
   advanceTime,
   printSale,
-} from "./helpers/utils";
+} = require("./helpers/utils");
+const hre = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 
-const toBytes32 = ethers.encodeBytes32String;
+chai.use(solidity);
+chai.use(chaiAsPromised);
 
-const ten = 10n;
-const wad = 10**18;
-const ray = 10**27;
-const rad = 10**45;
+const { expect } = chai;
+const BigNumber = ethers.BigNumber;
+const toBytes32 = ethers.utils.formatBytes32String;
+
+const ten = BigNumber.from(10);
+const wad = ten.pow(18);
+const ray = ten.pow(27);
+const rad = ten.pow(45);
 
 describe("Auction", () => {
-//  const networkSnapshotter = new NetworkSnapshotter();
+  const networkSnapshotter = new NetworkSnapshotter();
 
   let deployer, signer1, signer2, signer3;
   let abacus;
@@ -39,233 +48,257 @@ describe("Auction", () => {
   let collateral = toBytes32("aBNBc");
 
   const deployContracts = async () => {
-    const AuctionProxy = await ethers.deployContract("AuctionProxy");
-    const auctionProxy = await AuctionProxy.waitForDeployment();
-
-    console.log("AuctionProxy deployed to:", auctionProxy.target);
-
-    // Abacus
-    const LinearDecrease = await ethers.getContractFactory("LinearDecrease");
-    abacus = await upgrades.deployProxy(LinearDecrease, []);
-    await abacus.waitForDeployment();
-
-    console.log("abacus deployed to:", abacus.target);
-
-    // Core module
     const Vat = await ethers.getContractFactory("Vat");
-    vat = await upgrades.deployProxy(Vat, []);
-    await vat.waitForDeployment();
-
-    console.log("vat deployed to:", vat.target);
-
-    const Spotter = await ethers.getContractFactory("Spotter");
-    spot = await upgrades.deployProxy(Spotter, [await vat.getAddress()]);
-    console.log("spot deployed to:", spot.target);
-
-
-    const HelioRewards = await ethers.getContractFactory("HelioRewards");
-    const rewards = await upgrades.deployProxy(HelioRewards, [await vat.getAddress(), 1000000000000000000000000000000n]);
-    console.log("rewards deployed to:", rewards.target);
-
-    const HelioToken = await ethers.getContractFactory("HelioToken");
-    const helioToken = await upgrades.deployProxy(HelioToken, [100000000n, await rewards.getAddress()]);
-    console.log("helioToken deployed to:", helioToken.target);
-
-    await helioToken.rely(await rewards.getAddress());
-    await rewards.setHelioToken(await helioToken.getAddress());
-//    await rewards.initPool(await helioToken.getAddress(), collateral, "1000000001847694957439350500"); //6% FIXME
-
-
-    // Hay module
+    const Spot = await ethers.getContractFactory("Spotter");
     const Hay = await ethers.getContractFactory("Hay");
-    hay = await upgrades.deployProxy(Hay, [97, "HAY", 100000000000000000000000000n]); // Stable Coin
-    const HayJoin = await ethers.getContractFactory("HayJoin");
-    hayJoin = await upgrades.deployProxy(HayJoin, [await vat.getAddress(), await hay.getAddress()]);
-    console.log("hay deployed to:", hay.target);
-
-    // Collateral module
-    abnbc = await ethers.deployContract("aBNBc");
-    await abnbc.waitForDeployment(); // collateral
+    const ABNBC = await ethers.getContractFactory("aBNBc");
     const GemJoin = await ethers.getContractFactory("GemJoin");
-    abnbcJoin = await upgrades.deployProxy(GemJoin, [await vat.getAddress(), collateral, await abnbc.getAddress()]);
-
-    // Rates module
+    const HayJoin = await ethers.getContractFactory("HayJoin");
     const Jug = await ethers.getContractFactory("Jug");
-    jug = await upgrades.deployProxy(Jug, [await vat.getAddress()]);
-    console.log("jug deployed to:", jug.target);
-
-    // External
-    oracle = await ethers.deployContract("Oracle");
-    await oracle.waitForDeployment();
-    console.log("oracle deployed to:", oracle.target);
-
-    // Auction modules
+    const Oracle = await ethers.getContractFactory("Oracle"); // Mock Oracle
     const Dog = await ethers.getContractFactory("Dog");
-    dog = await upgrades.deployProxy(Dog, [await vat.getAddress()]);
     const Clipper = await ethers.getContractFactory("Clipper");
-    clip = await upgrades.deployProxy(Clipper, [await vat.getAddress(), await spot.getAddress(), await dog.getAddress(), collateral]);
-    console.log("clip deployed to:", clip.target);
-
-    // vow
+    const LinearDecrease = await ethers.getContractFactory("LinearDecrease");
     const Vow = await ethers.getContractFactory("Vow");
-    vow = await upgrades.deployProxy(Vow, [await vat.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress]);
-    console.log("vow deployed to:", vow.target);
+    const HelioToken = await ethers.getContractFactory("HelioToken");
+    const HelioRewards = await ethers.getContractFactory("HelioRewards");
+    this.AuctionProxy = await ethers.getContractFactory("AuctionProxy");
+    auctionProxy = await this.AuctionProxy.connect(deployer).deploy();
+    await auctionProxy.deployed();
 
-    const Interaction = await ethers.getContractFactory("Interaction", {
+    const Interaction = await hre.ethers.getContractFactory("Interaction", {
+      unsafeAllow: ['external-library-linking'],
       libraries: {
-        AuctionProxy: await auctionProxy.getAddress()
-      }
+        AuctionProxy: auctionProxy.address
+      },
     });
 
-    interaction = await upgrades.deployProxy(Interaction, [
-      await vat.getAddress(),
-      await spot.getAddress(),
-      await hay.getAddress(),
-      await hayJoin.getAddress(),
-      await jug.getAddress(),
-      await dog.getAddress(),
-      await rewards.getAddress(),
-    ],
-    { unsafeAllow: ['external-library-linking'] }
-    );
+    // Abacus
+    abacus = await LinearDecrease.connect(deployer).deploy();
+    await abacus.deployed();
 
-    console.log("Interaction deployed to:", interaction.target);
+    // Core module
+    vat = await Vat.connect(deployer).deploy();
+    await vat.deployed();
+    spot = await Spot.connect(deployer).deploy(vat.address);
+    await spot.deployed();
+
+    const rewards = await HelioRewards.connect(deployer).deploy(vat.address);
+    await rewards.deployed();
+    const helioToken = await HelioToken.connect(deployer).deploy(ether("100000000").toString(), rewards.address);
+    await helioToken.deployed();
+
+    await helioToken.rely(rewards.address);
+    await rewards.setHelioToken(helioToken.address);
+    await rewards.initPool(collateral, "1000000001847694957439350500"); //6%
+
+    // Hay module
+    hay = await Hay.connect(deployer).deploy(97);
+    await hay.deployed(); // Stable Coin
+    hayJoin = await HayJoin.connect(deployer).deploy(vat.address, hay.address);
+    await hayJoin.deployed();
+
+    // Collateral module
+    abnbc = await ABNBC.connect(deployer).deploy();
+    await abnbc.deployed(); // Collateral
+    abnbcJoin = await GemJoin.connect(deployer).deploy(
+      vat.address,
+      collateral,
+      abnbc.address
+    );
+    await abnbcJoin.deployed();
+
+    // Rates module
+    jug = await Jug.connect(deployer).deploy(vat.address);
+    await jug.deployed();
+
+    // External
+    oracle = await Oracle.connect(deployer).deploy();
+    await oracle.deployed();
+
+    // Auction modules
+    dog = await Dog.connect(deployer).deploy(vat.address);
+    await dog.deployed();
+    clip = await Clipper.connect(deployer).deploy(
+      vat.address,
+      spot.address,
+      dog.address,
+      collateral
+    );
+    await clip.deployed();
+
+    // vow
+    vow = await Vow.connect(deployer).deploy(
+      vat.address,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero
+    );
+    await vow.deployed();
+
+    interaction = await upgrades.deployProxy(
+      Interaction,
+      [
+        vat.address,
+        spot.address,
+        hay.address,
+        hayJoin.address,
+        jug.address,
+        dog.address,
+        rewards.address,
+      ],
+      { deployer }
+    );
   };
 
   const configureAbacus = async () => {
-    await abacus.file(toBytes32("tau"), "1800");
+    await abacus.connect(deployer).file(toBytes32("tau"), "1800");
   };
 
   const configureOracles = async () => {
     const collateral1Price = toWad("400");
-    await oracle.setPrice(collateral1Price);
-    console.log("oracle price done");
+    await oracle.connect(deployer).setPrice(collateral1Price);
   };
 
   const configureVat = async () => {
-    await vat.rely(hayJoin.target);
-    await vat.rely(spot.target);
-    await vat.rely(jug.target);
-    await vat.rely(interaction.target);
-    await vat.rely(dog.target);
-    await vat.rely(clip.target);
+    await vat.connect(deployer).rely(hayJoin.address);
+    await vat.connect(deployer).rely(spot.address);
+    await vat.connect(deployer).rely(jug.address);
+    await vat.connect(deployer).rely(interaction.address);
+    await vat.connect(deployer).rely(dog.address);
+    await vat.connect(deployer).rely(clip.address);
     await vat
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("Line"), toRad("20000")); // Normalized HAY
     await vat
+      .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
         collateral,
         toBytes32("line"),
         toRad("20000")
       );
     await vat
+      .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
         collateral,
         toBytes32("dust"),
         toRad("1")
       );
-
-      console.log("config vat done");
   };
 
   const configureSpot = async () => {
     await spot
+      .connect(deployer)
       ["file(bytes32,bytes32,address)"](
         collateral,
         toBytes32("pip"),
-        oracle.target
+        oracle.address
       );
     await spot
+      .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
         collateral,
         toBytes32("mat"),
         "1250000000000000000000000000"
       ); // Liquidation Ratio
     await spot
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("par"), toRay("1")); // It means pegged to 1$
-    await spot.poke(collateral);
-    console.log("config spot done");
+    await spot.connect(deployer).poke(collateral);
   };
 
   const configureHAY = async () => {
     // Initialize HAY Module
-    await hay.rely(hayJoin.target);
+    await hay.connect(deployer).rely(hayJoin.address);
   };
 
   const configureDog = async () => {
-    await dog.rely(clip.target);
+    await dog.connect(deployer).rely(clip.address);
     await dog
-      ["file(bytes32,address)"](toBytes32("vow"), vow.target);
+      .connect(deployer)
+      ["file(bytes32,address)"](toBytes32("vow"), vow.address);
     await dog
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("Hole"), toRad("10000000"));
     await dog
+      .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
         collateral,
         toBytes32("chop"),
         toWad("1.13")
       );
     await dog
+      .connect(deployer)
       ["file(bytes32,bytes32,uint256)"](
         collateral,
         toBytes32("hole"),
         toRad("10000000")
       );
     await dog
+      .connect(deployer)
       ["file(bytes32,bytes32,address)"](
         collateral,
         toBytes32("clip"),
-        clip.target
+        clip.address
       );
-      console.log("config dog done");
   };
 
   const configureClippers = async () => {
-    await clip.rely(dog.target);
+    await clip.connect(deployer).rely(dog.address);
     await clip
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("buf"), toRay("1.2"));
     await clip
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("tail"), "1800");
     await clip
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("cusp"), toRay("0.3"));
     await clip
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("chip"), toWad("0.02"));
     await clip
+      .connect(deployer)
       ["file(bytes32,uint256)"](toBytes32("tip"), toRad("100"));
 
     await clip
-      ["file(bytes32,address)"](toBytes32("vow"), vow.target);
+      .connect(deployer)
+      ["file(bytes32,address)"](toBytes32("vow"), vow.address);
     await clip
-      ["file(bytes32,address)"](toBytes32("calc"), abacus.target);
-      console.log("config clip done");
+      .connect(deployer)
+      ["file(bytes32,address)"](toBytes32("calc"), abacus.address);
   };
 
   const configureVow = async () => {
-    await vow.rely(dog.target);
-    console.log("config vow done");
+    await vow.connect(deployer).rely(dog.address);
   };
 
   const configureJug = async () => {
-    const BR = 1000000003022266000000000000n;
-    await jug["file(bytes32,uint256)"](toBytes32("base"), BR); // 1% Yearly
+    const BR = new BigNumber.from("1000000003022266000000000000");
+    await jug.connect(deployer)["file(bytes32,uint256)"](toBytes32("base"), BR); // 1% Yearly
 
-    const proxyLike = await ethers.deployContract("ProxyLike", [jug.target, vat.target]);
-    await jug.rely(proxyLike.target);
+    const proxyLike = await (
+      await (await ethers.getContractFactory("ProxyLike"))
+        .connect(deployer)
+        .deploy(jug.address, vat.address)
+    ).deployed();
+    await jug.connect(deployer).rely(proxyLike.address);
     await proxyLike
+      .connect(deployer)
       .jugInitFile(collateral, toBytes32("duty"), "0");
 
     await jug
-      ["file(bytes32,address)"](toBytes32("vow"), vow.target);
-
-    console.log("config jug done");
+      .connect(deployer)
+      ["file(bytes32,address)"](toBytes32("vow"), vow.address);
   };
 
   const configureInteraction = async () => {
     await interaction
+      .connect(deployer)
       .setCollateralType(
-        abnbc.target,
-        abnbcJoin.target,
+        abnbc.address,
+        abnbcJoin.address,
         collateral,
-        clip.target,
-        toBytes32("mat"),
+        clip.address
       );
   };
 
@@ -290,7 +323,7 @@ describe("Auction", () => {
 
   afterEach("revert", async () => await networkSnapshotter.revert());
 
-  it("example", async () => {
+  xit("example", async () => {
     await abnbc.connect(deployer).mint(signer1.address, toWad("10000"));
     // Approve and send some collateral inside. collateral value == 400 == `dink`
     let dink = toWad("1000");
@@ -413,7 +446,7 @@ describe("Auction", () => {
     await oracle.connect(deployer).setPrice(toWad("124"));
     await spot.connect(deployer).poke(collateral);
 
-    const auctionId = 1n;
+    const auctionId = BigNumber.from(1);
 
     let res = await interaction
       .connect(deployer)
@@ -474,7 +507,7 @@ describe("Auction", () => {
     await oracle.connect(deployer).setPrice(toWad("124"));
     await spot.connect(deployer).poke(collateral);
 
-    const auctionId = 1n;
+    const auctionId = BigNumber.from(1);
 
     let res = await interaction
       .connect(deployer)

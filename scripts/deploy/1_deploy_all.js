@@ -1,5 +1,7 @@
+const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 
 // Global Variables
 let wad = "000000000000000000", // 18 Decimals
@@ -9,49 +11,24 @@ let wad = "000000000000000000", // 18 Decimals
 async function main() {
 
   // Declare and load network variables from networkVars.json
-  let _aBNBc, _wBnb, _aBnbb, _dex, _pool, _BnbStakingPool;
+  let _aBNBc, _wBnb, _aBnbb, _dex, _pool;
   let ilkCE;
   let _multiSig;
   let chainId;
   let whitelistOperatorAddress;
 
   if (hre.network.name == "bsc") {
-      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_BnbStakingPool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // mainnet
+      const {m_aBNBc, m_wBnb, m_aBnbb, m_dex, m_pool, m_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // mainnet
       _aBNBc = m_aBNBc; _wBnb = m_wBnb; _aBnbb = m_aBnbb; _dex = m_dex; _pool = m_pool, _multiSig = multiSig;
-      _BnbStakingPool = m_BnbStakingPool;
       whitelistOperatorAddress = whiteListOperator;
       chainId = ethers.BigNumber.from(m_chainID);
-      ilkCE = ethers.encodeBytes32String(ilkString);
+      ilkCE = ethers.utils.formatBytes32String(ilkString);
   } else if (hre.network.name == "bsc_testnet") {
-      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_BnbStakingPool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // testnet
+      const {t_aBNBc, t_wBnb, t_aBnbb, t_dex, t_pool, t_chainID, ilkString, multiSig, whiteListOperator} = require('./1_deploy_all.json'); // testnet
       _aBNBc = t_aBNBc; _wBnb = t_wBnb; _aBnbb = t_aBnbb; _dex = t_dex; _pool = t_pool, _multiSig = multiSig;
-      _BnbStakingPool = t_BnbStakingPool;
       whitelistOperatorAddress = whiteListOperator;
-      chainId = t_chainID;
-      ilkCE = ethers.encodeBytes32String(ilkString);
-  } else if (hre.network.name == "hardhat") {
-    chainId = hre.network.config.chainId;
-    ilkCE =ethers.encodeBytes32String('ceABNBc');
-    _multiSig = (await ethers.getSigners())[0].address;
-    whitelistOperatorAddress = (await ethers.getSigners())[0].address;
-    const deployer = (await ethers.getSigners())[0];
-    const BinancePool = await ethers.getContractFactory("BinancePool");
-    const binancePool = await upgrades.deployProxy(BinancePool, [deployer.address, deployer.address, 10000]);
-    _pool = binancePool.target;
-    const ABNBb = await ethers.getContractFactory("aBNBb");
-    const bondToken = await upgrades.deployProxy(ABNBb, [deployer.address]);
-    _aBnbb = bondToken.target;
-    const aBNBc = await ethers.deployContract("aBNBc", [_pool, _aBnbb]);
-    await aBNBc.waitForDeployment();
-    _aBNBc = aBNBc.target;
-    const Wbnb = await ethers.getContractFactory("wBNB");
-    const wbnb = await upgrades.deployProxy(Wbnb, []);
-    _wBnb = wbnb.target;
-    const factory = await ethers.deployContract("PancakeFactory", [deployer.address]);
-    await factory.waitForDeployment();
-    const dex = await ethers.deployContract("PancakeRouter", [factory.target, _wBnb]);
-    await dex.waitForDeployment();
-    _dex = dex.target;
+      chainId = ethers.BigNumber.from(t_chainID);
+      ilkCE = ethers.utils.formatBytes32String(ilkString);
   }
 
   // Script variables
@@ -81,55 +58,53 @@ async function main() {
   this.HelioOracle = await hre.ethers.getContractFactory("HelioOracle");
 
   this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
-  this.Flash = await hre.ethers.getContractFactory("Flash");
-  this.FlashBuy = await hre.ethers.getContractFactory("FlashBuy");
 
   const auctionProxy = await this.AuctionProxy.deploy();
-  await auctionProxy.waitForDeployment();
+  await auctionProxy.deployed();
   this.Interaction = await hre.ethers.getContractFactory("Interaction", {
     unsafeAllow: ["external-library-linking"],
     libraries: {
-      AuctionProxy: auctionProxy.target,
+      AuctionProxy: auctionProxy.address,
     },
   });
 
   // Ceros Deployment
-  console.log("Ceros...")
+  console.log("Ceros...") 
 
-  ceaBNBc = await upgrades.deployProxy(this.CeaBNBc, ["CEROS aBNBc Vault Token", "ceaBNBc"]);
-  await ceaBNBc.waitForDeployment();
-  let ceaBNBcImplementation = await upgrades.erc1967.getImplementationAddress(ceaBNBc.target);
-  console.log("Deployed: ceaBNBc    : " + ceaBNBc.target);
+  ceaBNBc = await upgrades.deployProxy(this.CeaBNBc, ["CEROS aBNBc Vault Token", "ceaBNBc"], {initializer: "initialize"});
+  await ceaBNBc.deployed();
+  let ceaBNBcImplementation = await upgrades.erc1967.getImplementationAddress(ceaBNBc.address);
+  console.log("Deployed: ceaBNBc    : " + ceaBNBc.address);
   console.log("Imp                  : " + ceaBNBcImplementation);
 
-  ceVault = await upgrades.deployProxy(this.CeVault, ["CEROS aBNBc Vault", ceaBNBc.target, _aBNBc]);
-  await ceVault.waitForDeployment();
-  let ceVaultImplementation = await upgrades.erc1967.getImplementationAddress(ceVault.target);
-  console.log("Deployed: ceVault    : " + ceVault.target);
+  ceVault = await upgrades.deployProxy(this.CeVault, ["CEROS aBNBc Vault", ceaBNBc.address, _aBNBc], {initializer: "initialize"});
+  await ceVault.deployed();
+  let ceVaultImplementation = await upgrades.erc1967.getImplementationAddress(ceVault.address);
+  console.log("Deployed: ceVault    : " + ceVault.address);
   console.log("Imp                  : " + ceVaultImplementation);
 
-  hBNB = await upgrades.deployProxy(this.HBnb, []);
-  await hBNB.waitForDeployment();
-  let hBnbImplementation = await upgrades.erc1967.getImplementationAddress(hBNB.target);
-  console.log("Deployed: hBNB       : " + hBNB.target);
+  hBNB = await upgrades.deployProxy(this.HBnb, [], {initializer: "initialize"});
+  await hBNB.deployed();
+  let hBnbImplementation = await upgrades.erc1967.getImplementationAddress(hBNB.address);
+  console.log("Deployed: hBNB       : " + hBNB.address);
   console.log("Imp                  : " + hBnbImplementation);
 
-  cerosRouter = await upgrades.deployProxy(this.CerosRouter, [_aBNBc, _wBnb, ceaBNBc.target, _aBnbb, ceVault.target, _dex, _pool], {gasLimit: 2000000});
-  await cerosRouter.waitForDeployment();
-  let cerosRouterImplementation = await upgrades.erc1967.getImplementationAddress(cerosRouter.target);
-  console.log("Deployed: cerosRouter: " + cerosRouter.target);
+  cerosRouter = await upgrades.deployProxy(this.CerosRouter, [_aBNBc, _wBnb, ceaBNBc.address, _aBnbb, ceVault.address, _dex, _pool], {initializer: "initialize"}, {gasLimit: 2000000});
+  await cerosRouter.deployed();
+  let cerosRouterImplementation = await upgrades.erc1967.getImplementationAddress(cerosRouter.address);
+  console.log("Deployed: cerosRouter: " + cerosRouter.address);
   console.log("Imp                  : " + cerosRouterImplementation);
 
-  await ceaBNBc.changeVault(ceVault.target);
-  await ceVault.changeRouter(cerosRouter.target);
+  await ceaBNBc.changeVault(ceVault.address);
+  await ceVault.changeRouter(cerosRouter.address);   
 
   // Contracts Deployment
   console.log("Core...");
 
-  const abaci = await upgrades.deployProxy(this.Abaci, []);
-  await abaci.waitForDeployment();
-  let abaciImplementation = await upgrades.erc1967.getImplementationAddress(abaci.target);
-  console.log("Deployed: abaci      : " + abaci.target);
+  const abaci = await upgrades.deployProxy(this.Abaci, [], {initializer: "initialize"});
+  await abaci.deployed();
+  let abaciImplementation = await upgrades.erc1967.getImplementationAddress(abaci.address);
+  console.log("Deployed: abaci      : " + abaci.address);
   console.log("Imp                  : " + abaciImplementation);
 
   let aggregatorAddress;
@@ -139,255 +114,233 @@ async function main() {
     aggregatorAddress = "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526";
   }
 
-  let oracle, oracleImplementation;
-  if (hre.network.name !== "bsc") {
-    oracle = await ethers.deployContract("Oracle");
-    await oracle.waitForDeployment();
-    oracleImplementation = oracle.target;
-    console.log("Deployed: oracle     : " + oracle.target);
-    await oracle.setPrice(300e18.toString());
-  } else {
-    oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress]);
-    await oracle.waitForDeployment();
-    let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target);
-    console.log("Deployed: oracle     : " + oracle.target);
-    console.log("Imp                  : " + oracleImplementation);
-  }
+  const oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress], {initializer: "initialize"});
+  await oracle.deployed();
+  let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.address);
+  console.log("Deployed: oracle     : " + oracle.address);
+  console.log("Imp                  : " + oracleImplementation);
 
-  const vat = await upgrades.deployProxy(this.Vat, []);
-  await vat.waitForDeployment();
-  let vatImplementation = await upgrades.erc1967.getImplementationAddress(vat.target);
-  console.log("Deployed: vat        : " + vat.target);
+  const vat = await upgrades.deployProxy(this.Vat, [], {initializer: "initialize"});
+  await vat.deployed();
+  let vatImplementation = await upgrades.erc1967.getImplementationAddress(vat.address);
+  console.log("Deployed: vat        : " + vat.address);
   console.log("Imp                  : " + vatImplementation);
 
-  const spot = await upgrades.deployProxy(this.Spot, [vat.target]);
-  await spot.waitForDeployment();
-  let spotImplementation = await upgrades.erc1967.getImplementationAddress(spot.target);
-  console.log("Deployed: spot       : " + spot.target);
+  const spot = await upgrades.deployProxy(this.Spot, [vat.address], {initializer: "initialize"});
+  await spot.deployed();
+  let spotImplementation = await upgrades.erc1967.getImplementationAddress(spot.address);
+  console.log("Deployed: spot       : " + spot.address);
   console.log("Imp                  : " + spotImplementation);
 
-  const hay = await upgrades.deployProxy(this.Hay, [chainId, "HAY", "100000000" + wad]);
-  await hay.waitForDeployment();
-  let hayImplementation = await upgrades.erc1967.getImplementationAddress(hay.target);
-  console.log("Deployed: hay        : " + hay.target);
+
+  const hay = await upgrades.deployProxy(this.Hay, [chainId, "HAY", "100000000" + wad], {initializer: "initialize"});
+  await hay.deployed();
+  let hayImplementation = await upgrades.erc1967.getImplementationAddress(hay.address);
+  console.log("Deployed: hay        : " + hay.address);
   console.log("Imp                  : " + hayImplementation);
 
-  const hayJoin = await upgrades.deployProxy(this.HayJoin, [vat.target, hay.target]);
-  await hayJoin.waitForDeployment();
-  let hayJoinImplementation = await upgrades.erc1967.getImplementationAddress(hayJoin.target);
-  console.log("Deployed: hayJoin    : " + hayJoin.target);
+  const hayJoin = await upgrades.deployProxy(this.HayJoin, [vat.address, hay.address], {initializer: "initialize"});
+  await hayJoin.deployed();
+  let hayJoinImplementation = await upgrades.erc1967.getImplementationAddress(hayJoin.address);
+  console.log("Deployed: hayJoin    : " + hayJoin.address);
   console.log("Imp                  : " + hayJoinImplementation);
 
-  const bnbJoin = await upgrades.deployProxy(this.GemJoin, [vat.target, ilkCE, ceaBNBc.target]);
-  await bnbJoin.waitForDeployment();
-  let bnbJoinImplementation = await upgrades.erc1967.getImplementationAddress(bnbJoin.target);
-  console.log("Deployed: bnbJoin    : " + bnbJoin.target);
+  const bnbJoin = await upgrades.deployProxy(this.GemJoin, [vat.address, ilkCE, ceaBNBc.address], {initializer: "initialize"});
+  await bnbJoin.deployed();
+  let bnbJoinImplementation = await upgrades.erc1967.getImplementationAddress(bnbJoin.address);
+  console.log("Deployed: bnbJoin    : " + bnbJoin.address);
   console.log("Imp                  : " + bnbJoinImplementation);
 
-  const jug = await upgrades.deployProxy(this.Jug, [vat.target]);
-  await jug.waitForDeployment();
-  let jugImplementation = await upgrades.erc1967.getImplementationAddress(jug.target);
-  console.log("Deployed: jug        : " + jug.target);
+  const jug = await upgrades.deployProxy(this.Jug, [vat.address], {initializer: "initialize"});
+  await jug.deployed();
+  let jugImplementation = await upgrades.erc1967.getImplementationAddress(jug.address);
+  console.log("Deployed: jug        : " + jug.address);
   console.log("Imp                  : " + jugImplementation);
 
-  const vow = await upgrades.deployProxy(this.Vow, [vat.target, hayJoin.target, _multiSig]);
-  await vow.waitForDeployment();
-  let vowImplementation = await upgrades.erc1967.getImplementationAddress(vow.target);
-  console.log("Deployed: vow        : " + vow.target);
+  const vow = await upgrades.deployProxy(this.Vow, [vat.address, hayJoin.address, _multiSig], {initializer: "initialize"});
+  await vow.deployed();
+  let vowImplementation = await upgrades.erc1967.getImplementationAddress(vow.address);
+  console.log("Deployed: vow        : " + vow.address);
   console.log("Imp                  : " + vowImplementation);
 
-  const dog = await upgrades.deployProxy(this.Dog, [vat.target], {initializer: "initialize"});
-  await dog.waitForDeployment();
-  let dogImplementation = await upgrades.erc1967.getImplementationAddress(dog.target);
-  console.log("Deployed: dog        : " + dog.target);
+  const dog = await upgrades.deployProxy(this.Dog, [vat.address], {initializer: "initialize"});
+  await dog.deployed();
+  let dogImplementation = await upgrades.erc1967.getImplementationAddress(dog.address);
+  console.log("Deployed: dog        : " + dog.address);
   console.log("Imp                  : " + dogImplementation);
 
-  const clipCE = await upgrades.deployProxy(this.Clip, [vat.target, spot.target, dog.target, ilkCE], {initializer: "initialize"});
-  await clipCE.waitForDeployment();
-  let clipCEImplementation = await upgrades.erc1967.getImplementationAddress(clipCE.target);
-  console.log("Deployed: clipCE     : " + clipCE.target);
+  const clipCE = await upgrades.deployProxy(this.Clip, [vat.address, spot.address, dog.address, ilkCE], {initializer: "initialize"});
+  await clipCE.deployed();
+  let clipCEImplementation = await upgrades.erc1967.getImplementationAddress(clipCE.address);
+  console.log("Deployed: clipCE     : " + clipCE.address);
   console.log("Imp                  : " + clipCEImplementation);
 
-  const rewards = await upgrades.deployProxy(this.HelioRewards, [vat.target, 100000000n], {initializer: "initialize"}); // pool limit
-  await rewards.waitForDeployment();
-  let rewardsImplementation = await upgrades.erc1967.getImplementationAddress(rewards.target);
-  console.log("Deployed: rewards    : " + rewards.target);
+  const rewards = await upgrades.deployProxy(this.HelioRewards, [vat.address, ether("100000000").toString()], {initializer: "initialize"}); // pool limit
+  await rewards.deployed();
+  let rewardsImplementation = await upgrades.erc1967.getImplementationAddress(rewards.address);
+  console.log("Deployed: rewards    : " + rewards.address);
   console.log("Imp                  : " + rewardsImplementation);
-
-  const flash = await upgrades.deployProxy(this.Flash, [vat.target, hay.target, hayJoin.target, vow.target]);
-  await flash.waitForDeployment();
-  let flashImplementation = await upgrades.erc1967.getImplementationAddress(flash.target);
-  console.log("Deployed: Flash    : " + flash.target);
-  console.log("Imp                  : " + flashImplementation);
-
-  const flashBuy = await ethers.deployContract("FlashBuy", [flash.target, auctionProxy.target, _dex]);
-  await flashBuy.waitForDeployment();
-  console.log("Deployed: FlashBuy    : " + flashBuy.target);
 
     // // No Helio Token & Oracle at the moment
     // const helioOracle = await upgrades.deployProxy(this.HelioOracle, ["100000000000000000" ], {initializer: "initialize"}); // 0.1
-    // await helioOracle.waitForDeployment();
-    // let helioOracleImplementation = await upgrades.erc1967.getImplementationAddress(helioOracle.target);
-    // console.log("Deployed: helioOracle: " + helioOracle.target);
+    // await helioOracle.deployed();
+    // let helioOracleImplementation = await upgrades.erc1967.getImplementationAddress(helioOracle.address);
+    // console.log("Deployed: helioOracle: " + helioOracle.address);
     // console.log("Imp                  : " + helioOracleImplementation);
 
     // // initial helio token supply for rewards spending
-    // const helioToken = await upgrades.deployProxy(this.HelioToken, [ether("100000000").toString(), rewards.target], {initializer: "initialize"});
-    // await helioToken.waitForDeployment();
-    // let helioTokenImplementation = await upgrades.erc1967.getImplementationAddress(helioToken.target);
-    // console.log("Deployed: helioToken : " + helioToken.target);
+    // const helioToken = await upgrades.deployProxy(this.HelioToken, [ether("100000000").toString(), rewards.address], {initializer: "initialize"});
+    // await helioToken.deployed();
+    // let helioTokenImplementation = await upgrades.erc1967.getImplementationAddress(helioToken.address);
+    // console.log("Deployed: helioToken : " + helioToken.address);
     // console.log("Imp                  : " + helioTokenImplementation);
 
-    // await rewards.setHelioToken(helioToken.target);
-    // await rewards.setOracle(helioOracle.target);
+    // await rewards.setHelioToken(helioToken.address);
+    // await rewards.setOracle(helioOracle.address);
     // await rewards.initPool(ceBNBc, ilkCE, "1000000001847694957439350500"); //6%
 
-  const interaction = await upgrades.deployProxy(this.Interaction, [vat.target, spot.target, hay.target, hayJoin.target, jug.target, dog.target, rewards.target],
+  const interaction = await upgrades.deployProxy(this.Interaction, [vat.address, spot.address, hay.address, hayJoin.address, jug.address, dog.address, rewards.address],
     {
       initializer: "initialize",
       unsafeAllowLinkedLibraries: true,
     }
   );
-  await interaction.waitForDeployment();
-  let interactionImplementation = await upgrades.erc1967.getImplementationAddress(interaction.target);
-  console.log("Deployed: Interaction: " + interaction.target);
+  await interaction.deployed();
+  let interactionImplementation = await upgrades.erc1967.getImplementationAddress(interaction.address);
+  console.log("Deployed: Interaction: " + interaction.address);
   console.log("Imp                  : " + interactionImplementation);
-  console.log("Deployed: AuctionLib : " + auctionProxy.target);
+  console.log("Deployed: AuctionLib : " + auctionProxy.address);
 
-  let helioProvider = await upgrades.deployProxy(this.HelioProvider, [hBNB.target, _aBNBc, ceaBNBc.target, cerosRouter.target, interaction.target, _pool], {initializer: "initialize"});
-  await helioProvider.waitForDeployment();
-  let helioProviderImplementation = await upgrades.erc1967.getImplementationAddress(helioProvider.target);
-  console.log("Deployed: Provider   : " + helioProvider.target);
+  let helioProvider = await upgrades.deployProxy(this.HelioProvider, [hBNB.address, _aBNBc, ceaBNBc.address, cerosRouter.address, interaction.address, _pool], {initializer: "initialize"});
+  await helioProvider.deployed();
+  let helioProviderImplementation = await upgrades.erc1967.getImplementationAddress(helioProvider.address);
+  console.log("Deployed: Provider   : " + helioProvider.address);
   console.log("Imp                  : " + helioProviderImplementation);
 
   // Initialization
   console.log("Ceros init...");
-  await hBNB.changeMinter(helioProvider.target);
-  await cerosRouter.changeProvider(helioProvider.target);
-  await cerosRouter.changeBNBStakingPool(_BnbStakingPool);
-  await helioProvider.changeProxy(interaction.target);
+  await hBNB.changeMinter(helioProvider.address);
+  await cerosRouter.changeProvider(helioProvider.address);
+  await helioProvider.changeProxy(interaction.address);
 
   console.log("Core init...");
-  await vat.rely(bnbJoin.target);
-  await vat.rely(spot.target);
-  await vat.rely(hayJoin.target);
-  await vat.rely(jug.target);
-  await vat.rely(dog.target);
-  await vat.rely(clipCE.target);
-  await vat.rely(interaction.target);
-  await vat["file(bytes32,uint256)"](ethers.encodeBytes32String("Line"), "5000000" + rad);
-  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.encodeBytes32String("line"), "5000000" + rad);
-  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.encodeBytes32String("dust"), "100" + ray);
+  await vat.rely(bnbJoin.address);
+  await vat.rely(spot.address);
+  await vat.rely(hayJoin.address);
+  await vat.rely(jug.address);
+  await vat.rely(dog.address);
+  await vat.rely(clipCE.address);
+  await vat.rely(interaction.address);
+  await vat["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Line"), "5000000" + rad);
+  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("line"), "5000000" + rad);
+  await vat["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("dust"), "100" + ray);
 
   console.log("Hay init...");
-  await hay.rely(hayJoin.target);
+  await hay.rely(hayJoin.address);
 
   console.log("Spot init...");
-  await spot.rely(interaction.target);
-  await spot["file(bytes32,bytes32,address)"](ilkCE, ethers.encodeBytes32String("pip"), oracle.target);
-  await spot["file(bytes32,uint256)"](ethers.encodeBytes32String("par"), "1" + ray); // Pegged to 1$
+  await spot.rely(interaction.address);
+  await spot["file(bytes32,bytes32,address)"](ilkCE, ethers.utils.formatBytes32String("pip"), oracle.address);
+  await spot["file(bytes32,uint256)"](ethers.utils.formatBytes32String("par"), "1" + ray); // Pegged to 1$
 
   console.log("Rewards init...");
-  await rewards.rely(interaction.target);
+  await rewards.rely(interaction.address);
 
   console.log("Joins init...");
-  await bnbJoin.rely(interaction.target);
-  await hayJoin.rely(interaction.target);
-  await hayJoin.rely(vow.target);
+  await bnbJoin.rely(interaction.address);
+  await hayJoin.rely(interaction.address);
+  await hayJoin.rely(vow.address);
 
   console.log("Dog init...");
-  await dog.rely(interaction.target);
-  await dog.rely(clipCE.target);
-  await dog["file(bytes32,address)"](ethers.encodeBytes32String("vow"), vow.target);
-  await dog["file(bytes32,uint256)"](ethers.encodeBytes32String("Hole"), "50000000" + rad);
-  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.encodeBytes32String("hole"), "50000000" + rad);
-  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.encodeBytes32String("chop"), "1100000000000000000"); // 10%
-  await dog["file(bytes32,bytes32,address)"](ilkCE, ethers.encodeBytes32String("clip"), clipCE.target);
+  await dog.rely(interaction.address);
+  await dog.rely(clipCE.address);
+  await dog["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
+  await dog["file(bytes32,uint256)"](ethers.utils.formatBytes32String("Hole"), "50000000" + rad);
+  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("hole"), "50000000" + rad);
+  await dog["file(bytes32,bytes32,uint256)"](ilkCE, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
+  await dog["file(bytes32,bytes32,address)"](ilkCE, ethers.utils.formatBytes32String("clip"), clipCE.address);
 
   console.log("Clip init...");
-  await clipCE.rely(interaction.target);
-  await clipCE.rely(dog.target);
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "10800"); // 3h reset time
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-  await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-  await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), spot.target);
-  await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("dog"), dog.target);
-  await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("vow"), vow.target);
-  await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("calc"), abaci.target);
+  await clipCE.rely(interaction.address);
+  await clipCE.rely(dog.address);
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "10800"); // 3h reset time
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+  await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+  await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), spot.address);
+  await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), dog.address);
+  await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
+  await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), abaci.address);
 
   console.log("Jug init...");
-  await jug.rely(interaction.target);
+  await jug.rely(interaction.address);
   // 1000000000315522921573372069 1% Borrow Rate
   // 1000000000627937192491029810 2% Borrow Rate
   // 1000000000937303470807876290 3% Borrow Rate
   // 1000000003022266000000000000 10% Borrow Rate
   // ***We don't set base rate. We set only duty rate via interaction***
-  // await jug["file(bytes32,uint256)"](ethers.encodeBytes32String("base"), "1000000000627937192491029810");
-  await jug["file(bytes32,address)"](ethers.encodeBytes32String("vow"), vow.target);
+  // await jug["file(bytes32,uint256)"](ethers.utils.formatBytes32String("base"), "1000000000627937192491029810");
+  await jug["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), vow.address);
 
   console.log("Vow init...");
-  await vow.rely(dog.target);
-  await vow["file(bytes32,address)"](ethers.encodeBytes32String("hay"), hay.target);
+  await vow.rely(dog.address);
+  await vow["file(bytes32,address)"](ethers.utils.formatBytes32String("hay"), hay.address);
 
   console.log("Interaction init...");
-  await interaction.setHelioProvider(ceaBNBc.target, helioProvider.target);
-  await interaction.setCollateralType(ceaBNBc.target, bnbJoin.target, ilkCE, clipCE.target, "1333333333333333333333333333", {gasLimit: 700000}); // 1.333.... <- 75% borrow ratio
-  await interaction.poke(ceaBNBc.target, {gasLimit: 200000});
-  await interaction.drip(ceaBNBc.target, {gasLimit: 200000});
+  await interaction.setHelioProvider(ceaBNBc.address, helioProvider.address); 
+  await interaction.setCollateralType(ceaBNBc.address, bnbJoin.address, ilkCE, clipCE.address, "1333333333333333333333333333", {gasLimit: 700000}); // 1.333.... <- 75% borrow ratio
+  await interaction.poke(ceaBNBc.address, {gasLimit: 200000});
+  await interaction.drip(ceaBNBc.address, {gasLimit: 200000});
   await interaction.enableWhitelist(); // Deposits are limited to whitelist
   await interaction.setWhitelistOperator(whitelistOperatorAddress); // Whitelist manager
-  await interaction.setCollateralDuty(ceaBNBc.target, "1000000000627937192491029810");
+  await interaction.setCollateralDuty(ceaBNBc.address, "1000000000627937192491029810");
 
   console.log("Abaci init...");
-  await abaci.file(ethers.encodeBytes32String("tau"), "36000");
+  await abaci.file(ethers.utils.formatBytes32String("tau"), "36000");
 
   // Store deployed addresses
   const addresses = {
-    ceaBNBc: ceaBNBc.target,
+    ceaBNBc: ceaBNBc.address,
     ceaBNBcImplementation: ceaBNBcImplementation,
-    ceVault: ceVault.target,
+    ceVault: ceVault.address,
     ceVaultImplementation: ceVaultImplementation,
-    hBNB: hBNB.target,
+    hBNB: hBNB.address,
     hBnbImplementation: hBnbImplementation,
-    cerosRouter: cerosRouter.target,
+    cerosRouter: cerosRouter.address,
     cerosRouterImplementation: cerosRouterImplementation,
-    abaci: abaci.target,
+    abaci: abaci.address,
     abaciImplementation: abaciImplementation,
-    oracle: oracle.target,
+    oracle: oracle.address,
     oracleImplementation: oracleImplementation,
-    vat: vat.target,
+    vat: vat.address,
     vatImplementation: vatImplementation,
-    spot: spot.target,
+    spot: spot.address,
     spotImplementation: spotImplementation,
-    hay: hay.target,
+    hay: hay.address,
     hayImplementation: hayImplementation,
-    hayJoin: hayJoin.target,
+    hayJoin: hayJoin.address,
     hayJoinImplementation: hayJoinImplementation,
-    bnbJoin: bnbJoin.target,
+    bnbJoin: bnbJoin.address,
     bnbJoinImplementation: bnbJoinImplementation,
-    jug: jug.target,
+    jug: jug.address,
     jugImplementation: jugImplementation,
-    vow: vow.target,
+    vow: vow.address,
     vowImplementation: vowImplementation,
-    dog: dog.target,
+    dog: dog.address,
     dogImplementation: dogImplementation,
-    clipCE: clipCE.target,
+    clipCE: clipCE.address,
     clipCEImplementation: clipCEImplementation,
-    rewards: rewards.target,
+    rewards: rewards.address,
     rewardsImplementation: rewardsImplementation,
-    interaction: interaction.target,
+    interaction: interaction.address,
     interactionImplementation: interactionImplementation,
-    AuctionLib: auctionProxy.target,
-    helioProvider: helioProvider.target,
+    AuctionLib: auctionProxy.address,
+    helioProvider: helioProvider.address,
     helioProviderImplementation: helioProviderImplementation,
-    flash: flash.target,
-    flashImplementation: flashImplementation,
-    flashBuy: flashBuy.target,
-    // helioOracle: helioOracle.target,
-    // helioToken: helioToken.target,
+    // helioOracle: helioOracle.address,
+    // helioToken: helioToken.address,
     ilk: ilkCE
   }
 
