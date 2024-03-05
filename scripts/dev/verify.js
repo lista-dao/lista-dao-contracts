@@ -1,4 +1,6 @@
+const hre = require("hardhat");
 const {ethers, upgrades} = require("hardhat");
+require("@nomiclabs/hardhat-etherscan");
 
 const {
     VAT,
@@ -69,8 +71,8 @@ async function main() {
         address: VOW,
         constructorArguments: [
             VAT,
-            ethers.ZeroAddress,
-            ethers.ZeroAddress,
+            ethers.constants.AddressZero,
+            ethers.constants.AddressZero,
             DEPLOYER
         ],
     });

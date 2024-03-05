@@ -24,7 +24,7 @@ async function main() {
 
     let token = ceBNBc;
 
-    let newCollateral = ethers.encodeBytes32String(COLLATERAL_CE_ABNBC);
+    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
     console.log("CeToken ilk: " + newCollateral);
 
     this.Vat = await hre.ethers.getContractFactory("Vat");
@@ -43,13 +43,13 @@ async function main() {
 
     const clip = await this.Clip.deploy(VAT, SPOT, DOG, newCollateral);
     // const clip = await this.Clip.attach(CLIP1);
-    await clip.waitForDeployment();
-    console.log("Clip deployed to:", clip.target);
+    await clip.deployed();
+    console.log("Clip deployed to:", clip.address);
 
     const tokenJoin = await this.GemJoin.deploy(VAT, newCollateral, token);
     // const tokenJoin = await this.GemJoin.attach(aBNBcJoin);
-    await tokenJoin.waitForDeployment();
-    console.log("tokenJoin deployed to:", tokenJoin.target);
+    await tokenJoin.deployed();
+    console.log("tokenJoin deployed to:", tokenJoin.address);
     await tokenJoin.rely(INTERACTION);
 
     let interaction = this.Interaction.attach(INTERACTION);
@@ -58,37 +58,37 @@ async function main() {
     let spot = this.Spot.attach(SPOT);
     await spot.rely(INTERACTION);
 
-    await interaction.setCollateralType(token, tokenJoin.target, newCollateral, clip.target, "1333333333333333333333333333");
+    await interaction.setCollateralType(token, tokenJoin.address, newCollateral, clip.address, "1333333333333333333333333333");
 
     let vat = this.Vat.attach(VAT);
 
-    await vat.rely(tokenJoin.target);
-    await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("line"), "50000000" + rad);
-    await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("dust"), "100000000000000000" + ray);
+    await vat.rely(tokenJoin.address);
+    await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("line"), "50000000" + rad);
+    await vat["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("dust"), "100000000000000000" + ray);
 
-    await spot["file(bytes32,bytes32,address)"](newCollateral, ethers.encodeBytes32String("pip"), Oracle);
-    // await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("pip"), Oracle);
+    // await spot["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("mat"), "1333333333333333333333333333"); // Liquidation Ratio
     // await spot.poke(newCollateral);
 
     console.log("Dog...");
     let dog = this.Dog.attach(DOG);
-    await dog.rely(clip.target);
-    await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("hole"), "250" + rad);
-    await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("chop"), "1100000000000000000"); // 10%
-    await dog["file(bytes32,bytes32,address)"](newCollateral, ethers.encodeBytes32String("clip"), clip.target);
+    await dog.rely(clip.address);
+    await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("hole"), "250" + rad);
+    await dog["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
+    await dog["file(bytes32,bytes32,address)"](newCollateral, ethers.utils.formatBytes32String("clip"), clip.address);
 
     console.log("clip");
     await clip.rely(DOG);
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "1800"); // 30mins reset time
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-    await clip["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-    await clip["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), SPOT);
-    await clip["file(bytes32,address)"](ethers.encodeBytes32String("dog"), DOG);
-    await clip["file(bytes32,address)"](ethers.encodeBytes32String("vow"), VOW);
-    await clip["file(bytes32,address)"](ethers.encodeBytes32String("calc"), ABACI);
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+    await clip["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clip["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
     await spot.poke(newCollateral);
     await interaction.drip(token);

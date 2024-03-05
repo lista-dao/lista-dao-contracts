@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const { VAT,
     SPOT,
     aBNBc,
@@ -12,6 +14,7 @@ const { VAT,
     INTERACTION, REWARDS, DOG, DEPLOYER,
     CLIP, COLLATERAL_CE_ABNBC, ceBNBc, ceBNBcJoin, AUCTION_PROXY
 } = require('../addresses.json');
+const {ether} = require("@openzeppelin/test-helpers");
 const {ethers, upgrades} = require("hardhat");
 
 
@@ -24,7 +27,7 @@ let wad = "000000000000000000", // 18 Decimals
 
 async function main() {
 
-    let newCollateral = ethers.encodeBytes32String(COLLATERAL_CE_ABNBC);
+    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
     console.log("CeToken ilk: " + newCollateral);
 
     this.VAT = await hre.ethers.getContractFactory("Vat");
@@ -43,7 +46,9 @@ async function main() {
     //     JUG,
     //     DOG,
     //     REWARDS,
-    // ]);
+    // ], {
+    //     initializer: "initialize"
+    // });
     //
     let vat = this.VAT.attach(VAT);
     this.HayFactory = await ethers.getContractFactory("Hay");

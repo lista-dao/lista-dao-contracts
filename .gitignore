@@ -11,5 +11,3 @@ artifacts
 
 .idea
 .DS_Store
-
-typechain-types
