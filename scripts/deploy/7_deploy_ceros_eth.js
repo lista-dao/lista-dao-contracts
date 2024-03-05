@@ -1,4 +1,5 @@
 
+const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
 
@@ -11,7 +12,7 @@ async function main() {
 
   [deployer] = await ethers.getSigners();
   // Ceros Deployment
-  console.log("ETH Ceros...")
+  console.log("ETH Ceros...") 
 
   this.CewBETH = await hre.ethers.getContractFactory("CeToken");
   this.CeVault = await hre.ethers.getContractFactory("CeETHVault");
@@ -38,45 +39,45 @@ async function main() {
     _withdrawalFee = ethers.BigNumber.from(t_withdrawalFee);
     _minStake = ethers.BigNumber.from(t_minStake);
     _minWithdrawal = ethers.BigNumber.from(t_minWithdrawal);
-    // ilkCE = ethers.encodeBytes32String(ilkString);
+    // ilkCE = ethers.utils.formatBytes32String(ilkString);
   }
-  cewBETH = await upgrades.deployProxy(this.CewBETH, ["CEROS wBETH Vault Token", "cewBETH"]);
-  await cewBETH.waitForDeployment();
-  let cewBETHImplementation = await upgrades.erc1967.getImplementationAddress(cewBETH.target);
-  console.log("Deployed: cewBETH    : " + cewBETH.target);
+  cewBETH = await upgrades.deployProxy(this.CewBETH, ["CEROS wBETH Vault Token", "cewBETH"], {initializer: "initialize"});
+  await cewBETH.deployed();
+  let cewBETHImplementation = await upgrades.erc1967.getImplementationAddress(cewBETH.address);
+  console.log("Deployed: cewBETH    : " + cewBETH.address);
   console.log("Imp                  : " + cewBETHImplementation);
 
-  ceVault = await upgrades.deployProxy(this.CeVault, ["CEROS wBETH Vault", _ethToken, cewBETH.target, _wBETH, _withdrawalFee, deployer.address]);
-  await ceVault.waitForDeployment();
-  let ceVaultImplementation = await upgrades.erc1967.getImplementationAddress(ceVault.target);
-  console.log("Deployed: ceVault    : " + ceVault.target);
+  ceVault = await upgrades.deployProxy(this.CeVault, ["CEROS wBETH Vault", _ethToken, cewBETH.address, _wBETH, _withdrawalFee, deployer.address], {initializer: "initialize"});
+  await ceVault.deployed();
+  let ceVaultImplementation = await upgrades.erc1967.getImplementationAddress(ceVault.address);
+  console.log("Deployed: ceVault    : " + ceVault.address);
   console.log("Imp                  : " + ceVaultImplementation);
 
-  hETH = await upgrades.deployProxy(this.HEth, []);
-  await hETH.waitForDeployment();
-  let hEthImplementation = await upgrades.erc1967.getImplementationAddress(hETH.target);
-  console.log("Deployed: hETH       : " + hETH.target);
+  hETH = await upgrades.deployProxy(this.HEth, [], {initializer: "initialize"});
+  await hETH.deployed();
+  let hEthImplementation = await upgrades.erc1967.getImplementationAddress(hETH.address);
+  console.log("Deployed: hETH       : " + hETH.address);
   console.log("Imp                  : " + hEthImplementation);
 
-  cerosRouter = await upgrades.deployProxy(this.CerosRouter, [_ethToken, cewBETH.target, _wBETH, ceVault.target, _minStake, _referral, _tokenRatio], {unsafeAllow: ['delegatecall']}, {gasLimit: 2000000});
-  await cerosRouter.waitForDeployment();
-  let cerosRouterImplementation = await upgrades.erc1967.getImplementationAddress(cerosRouter.target);
-  console.log("Deployed: cerosRouter: " + cerosRouter.target);
+  cerosRouter = await upgrades.deployProxy(this.CerosRouter, [_ethToken, cewBETH.address, _wBETH, ceVault.address, _minStake, _referral, _tokenRatio], {initializer: "initialize", unsafeAllow: ['delegatecall']}, {gasLimit: 2000000});
+  await cerosRouter.deployed();
+  let cerosRouterImplementation = await upgrades.erc1967.getImplementationAddress(cerosRouter.address);
+  console.log("Deployed: cerosRouter: " + cerosRouter.address);
   console.log("Imp                  : " + cerosRouterImplementation);
 
-  await cewBETH.changeVault(ceVault.target);
-  await ceVault.changeRouter(cerosRouter.target);
+  await cewBETH.changeVault(ceVault.address);
+  await ceVault.changeRouter(cerosRouter.address);
 
   let INTERACTION = "0x2cf64bCB720b91373Df1315ED15188FF5D8C06Ab";
 
-  let helioProvider = await upgrades.deployProxy(this.HelioProvider, [hETH.target, _ethToken, cewBETH.target, cerosRouter.target, INTERACTION, _minWithdrawal], {unsafeAllow: ['delegatecall']});
-  await helioProvider.waitForDeployment();
-  let helioProviderImplementation = await upgrades.erc1967.getImplementationAddress(helioProvider.target);
-  console.log("Deployed: Provider   : " + helioProvider.target);
+  let helioProvider = await upgrades.deployProxy(this.HelioProvider, [hETH.address, _ethToken, cewBETH.address, cerosRouter.address, INTERACTION, _minWithdrawal], {initializer: "initialize", unsafeAllow: ['delegatecall']});
+  await helioProvider.deployed();
+  let helioProviderImplementation = await upgrades.erc1967.getImplementationAddress(helioProvider.address);
+  console.log("Deployed: Provider   : " + helioProvider.address);
   console.log("Imp                  : " + helioProviderImplementation);
-
+  
   // Set addresses
-  let ILK = ethers.encodeBytes32String("cewBETH");
+  let ILK = await ethers.utils.formatBytes32String("cewBETH");
   // let BUSD = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
   let VAT = "0xaAe55ecf3D89a129F2039628b3D2A575cD8D9863";
   let DOG = "0xEF46C1B018F448d128a287E136DF7c2e07114439";
@@ -88,8 +89,8 @@ async function main() {
 
   // Initialization
   console.log("Ceros init...");
-  await hETH.changeMinter(helioProvider.target);
-  await cerosRouter.changeProvider(helioProvider.target);
+  await hETH.changeMinter(helioProvider.address);
+  await cerosRouter.changeProvider(helioProvider.address);
   await helioProvider.changeProxy(INTERACTION);
 
   console.log("1ST CHECKPOINT SUCCESS!");
@@ -99,16 +100,16 @@ async function main() {
   this.Oracle = await hre.ethers.getContractFactory("EthOracle");
 
   // Deploy contracts
-  const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, cewBETH.target]);
-  await gemJoin.waitForDeployment();
-  let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.target);
-  console.log("Deployed: gemJoin    : " + gemJoin.target);
+  const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, cewBETH.address], {initializer: "initialize"});
+  await gemJoin.deployed();
+  let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.address);
+  console.log("Deployed: gemJoin    : " + gemJoin.address);
   console.log("Imp                  : " + gemJoinImplementation);
 
-  const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK]);
-  await clipper.waitForDeployment();
-  let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target);
-  console.log("Deployed: clipCE     : " + clipper.target);
+  const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK], {initializer: "initialize"});
+  await clipper.deployed();
+  let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.address);
+  console.log("Deployed: clipCE     : " + clipper.address);
   console.log("Imp                  : " + clipperImplementation);
 
   let aggregatorAddress;
@@ -118,47 +119,47 @@ async function main() {
     aggregatorAddress = "0x143db3CEEfbdfe5631aDD3E50f7614B6ba708BA7";
   }
 
-  const oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress]);
-  await oracle.waitForDeployment();
-  let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target);
-  console.log("Deployed: oracle     : " + oracle.target);
+  const oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress], {initializer: "initialize"});
+  await oracle.deployed();
+  let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.address);
+  console.log("Deployed: oracle     : " + oracle.address);
   console.log("Imp                  : " + oracleImplementation);
 
   // Initialize
   this.vatContract = await hre.ethers.getContractFactory("Vat");
   let vat = this.vatContract.attach(VAT);
-  await vat.rely(gemJoin.target);
-  await vat.rely(clipper.target);
+  await vat.rely(gemJoin.address);
+  await vat.rely(clipper.address);
 
-  await vat["file(bytes32,bytes32,uint256)"](ILK, ethers.encodeBytes32String("line"), "5000000" + rad);
-  await vat["file(bytes32,bytes32,uint256)"](ILK, ethers.encodeBytes32String("dust"), "100" + ray);
+  await vat["file(bytes32,bytes32,uint256)"](ILK, ethers.utils.formatBytes32String("line"), "5000000" + rad);
+  await vat["file(bytes32,bytes32,uint256)"](ILK, ethers.utils.formatBytes32String("dust"), "100" + ray);
 
   this.spotContract = await hre.ethers.getContractFactory("Spotter");
   let spot = this.spotContract.attach(SPOT);
-  await spot["file(bytes32,bytes32,address)"](ILK, ethers.encodeBytes32String("pip"), oracle.target);
-
+  await spot["file(bytes32,bytes32,address)"](ILK, ethers.utils.formatBytes32String("pip"), oracle.address);
+  
   this.dogContract = await hre.ethers.getContractFactory("Dog");
   let dog = this.dogContract.attach(DOG);
-  await dog.rely(clipper.target);
+  await dog.rely(clipper.address);
 
-  await dog["file(bytes32,bytes32,uint256)"](ILK, ethers.encodeBytes32String("hole"), "50000000" + rad);
-  await dog["file(bytes32,bytes32,uint256)"](ILK, ethers.encodeBytes32String("chop"), "1100000000000000000"); // 10%
-  await dog["file(bytes32,bytes32,address)"](ILK, ethers.encodeBytes32String("clip"), clipper.target);
+  await dog["file(bytes32,bytes32,uint256)"](ILK, ethers.utils.formatBytes32String("hole"), "50000000" + rad);
+  await dog["file(bytes32,bytes32,uint256)"](ILK, ethers.utils.formatBytes32String("chop"), "1100000000000000000"); // 10%
+  await dog["file(bytes32,bytes32,address)"](ILK, ethers.utils.formatBytes32String("clip"), clipper.address);
 
   await gemJoin.rely(INTERACTION);
 
   await clipper.rely(DOG);
   await clipper.rely(INTERACTION);
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "10800"); // 3h reset time
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), SPOT);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("dog"), DOG);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("vow"), VOW);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("calc"), ABACI);
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "10800"); // 3h reset time
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
   console.log("Interaction init...");
 
@@ -168,17 +169,17 @@ async function main() {
     }
   });
   let interaction = this.Interaction.attach(INTERACTION);
-  await interaction.setHelioProvider(cewBETH.target, helioProvider.target);
-  await interaction.setCollateralType(cewBETH.target, gemJoin.target, ILK, clipper.target, "1333333333333333333333333333", {gasLimit: 700000}); // 1.333.... <- 75% borrow ratio
-  await interaction.poke(cewBETH.target, {gasLimit: 200000});
-  await interaction.drip(cewBETH.target, {gasLimit: 200000});
-  await interaction.setCollateralDuty(cewBETH.target, "1000000000627937192491029810");
+  await interaction.setHelioProvider(cewBETH.address, helioProvider.address); 
+  await interaction.setCollateralType(cewBETH.address, gemJoin.address, ILK, clipper.address, "1333333333333333333333333333", {gasLimit: 700000}); // 1.333.... <- 75% borrow ratio
+  await interaction.poke(cewBETH.address, {gasLimit: 200000});
+  await interaction.drip(cewBETH.address, {gasLimit: 200000});
+  await interaction.setCollateralDuty(cewBETH.address, "1000000000627937192491029810");
 
   // TODO on mainnet, this can be ignored.
   ///////////////////////////////////////////////////////////////////////////////////////////////
   this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
   let rewards = this.HelioRewards.attach(REWARDS);
-  await rewards.initPool(cewBETH.target, ILK, "1000000001847694957439350500"); //6%
+  await rewards.initPool(cewBETH.address, ILK, "1000000001847694957439350500"); //6%
   //////////////////////////////////////////////////////////////////////////////////////////////
 
   // Transfer Ownerships
@@ -188,23 +189,23 @@ async function main() {
   // await clipper.rely(NEW_OWNER);
   // await clipper.deny(deployer.address);
 
-  console.log("cewBETH: " + cewBETH.target);
+  console.log("cewBETH: " + cewBETH.address);
   console.log(ILK);
 
   console.log("2ND CHECKPOINT SUCCESS!");
 
   // Store deployed addresses
   const addresses = {
-    cewBETH: cewBETH.target,
-    ceETHVault: ceVault.target,
-    hETH: hETH.target,
-    cerosRouter: cerosRouter.target,
-    helioProvider: helioProvider.target,
-    gemJoin: gemJoin.target,
+    cewBETH: cewBETH.address,
+    ceETHVault: ceVault.address,
+    hETH: hETH.address,
+    cerosRouter: cerosRouter.address,
+    helioProvider: helioProvider.address,
+    gemJoin: gemJoin.address,
     gemJoinImplementation: gemJoinImplementation,
-    clipper: clipper.target,
+    clipper: clipper.address,
     clipperImplementation: clipperImplementation,
-    oracle: oracle.target,
+    oracle: oracle.address,
     oracleImplementation: oracleImplementation,
     ilk: ILK
   }

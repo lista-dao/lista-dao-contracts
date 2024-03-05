@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const { VAT,
     SPOT,
     aBNBc,
@@ -12,6 +14,7 @@ const { VAT,
     INTERACTION, REWARDS, DOG, DEPLOYER,
     CLIP, COLLATERAL_CE_ABNBC, ceBNBc, ceBNBcJoin, AUCTION_PROXY
 } = require('../addresses.json');
+const {ether} = require("@openzeppelin/test-helpers");
 const {ethers, upgrades} = require("hardhat");
 
 
@@ -24,7 +27,7 @@ let wad = "000000000000000000", // 18 Decimals
 
 async function main() {
 
-    let newCollateral = ethers.encodeBytes32String(COLLATERAL_CE_ABNBC);
+    let newCollateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
     console.log("CeToken ilk: " + newCollateral);
 
     this.VAT = await hre.ethers.getContractFactory("Vat");
@@ -43,7 +46,9 @@ async function main() {
     //     JUG,
     //     DOG,
     //     REWARDS,
-    // ]);
+    // ], {
+    //     initializer: "initialize"
+    // });
     //
     let vat = this.VAT.attach(VAT);
     this.HayFactory = await ethers.getContractFactory("Hay");
@@ -57,9 +62,9 @@ async function main() {
     // });
     // const signerDeployer = await ethers.getSigner("0x73CF7cC1778a60d43Ca2833F419B77a76177156A")
     //
-    // await vat.connect(signerDeployer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("dust"), "1" + ray);
-    // // await vat.connect(signerDeployer).rely(interactionNew.target);
-    // // await vat.connect(signerDeployer).behalf("0x37a7d129df800a4c75d13b2d94e1afc024a54fed", interactionNew.target);
+    // await vat.connect(signerDeployer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("dust"), "1" + ray);
+    // // await vat.connect(signerDeployer).rely(interactionNew.address);
+    // // await vat.connect(signerDeployer).behalf("0x37a7d129df800a4c75d13b2d94e1afc024a54fed", interactionNew.address);
     // //
     // await hre.network.provider.request({
     //     method: "hardhat_stopImpersonatingAccount",
@@ -85,7 +90,7 @@ async function main() {
     //     "0x24308Ca3B62129D51ecfA99410d6B59e0E6c7bfD",
     //     "5000000000000000000")
     let liq = "0x73CF7cC1778a60d43Ca2833F419B77a76177156A";
-    // await dog.connect(signer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.encodeBytes32String("hole"), "500" + rad);
+    // await dog.connect(signer)["file(bytes32,bytes32,uint256)"](newCollateral, ethers.utils.formatBytes32String("hole"), "500" + rad);
     await interaction.connect(signer).startAuction(ceBNBc, liq, TESTER);
 
     await hre.network.provider.request({

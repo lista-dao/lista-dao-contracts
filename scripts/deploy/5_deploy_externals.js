@@ -1,5 +1,7 @@
+const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 
 async function main() {
 
@@ -17,12 +19,12 @@ async function main() {
   this.Jar = await hre.ethers.getContractFactory("Jar");
 
   // Jar Deployment
-  console.log("Jar...")
+  console.log("Jar...") 
 
-  jar = await upgrades.deployProxy(this.Jar, ["HelioHay", "hHAY", hay, spread, exitDelay, flashLoanDelay]);
-  await jar.waitForDeployment();
-  let jarImplementation = await upgrades.erc1967.getImplementationAddress(jar.target);
-  console.log("Deployed: jar        : " + jar.target);
+  jar = await upgrades.deployProxy(this.Jar, ["HelioHay", "hHAY", hay, spread, exitDelay, flashLoanDelay], {initializer: "initialize"});
+  await jar.deployed();
+  let jarImplementation = await upgrades.erc1967.getImplementationAddress(jar.address);
+  console.log("Deployed: jar        : " + jar.address);
   console.log("Imp                  : " + jarImplementation);
 
   // Jar Init
