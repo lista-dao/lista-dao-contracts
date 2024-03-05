@@ -1,5 +1,6 @@
+const hre = require("hardhat");
 const {ethers, upgrades} = require("hardhat");
-//require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-etherscan");
 
 const {
     VAT,
@@ -32,7 +33,9 @@ async function main() {
         JUG,
         DOG,
         REWARDS,
-    ]);
+    ], {
+        initializer: "initialize"
+    });
 
     // // const interaction = await this.Interaction.deploy(
     // //     VAT,
@@ -41,18 +44,18 @@ async function main() {
     // //     UsbJoin,
     // //     JUG
     // // );
-    // await interaction.waitForDeployment();
-    console.log("interaction deployed to:", interaction.target);
+    // await interaction.deployed();
+    console.log("interaction deployed to:", interaction.address);
     //
     this.Vat = await hre.ethers.getContractFactory("Vat");
     console.log("Vat...");
     //
     let vat = this.Vat.attach(VAT);
-    await vat.rely(interaction.target);
+    await vat.rely(interaction.address);
 
     console.log('Adding collateral types');
-    let collateral = ethers.encodeBytes32String("aBNBc");
-    let collateral2 = ethers.encodeBytes32String("aBNBc2");
+    let collateral = ethers.utils.formatBytes32String("aBNBc");
+    let collateral2 = ethers.utils.formatBytes32String("aBNBc2");
 
     // await interaction.setCollateralType(aBNBc, aBNBcJoin, collateral, CLIP1);
     // await interaction.setCollateralType(REAL_ABNBC, REALaBNBcJoin, collateral2, CLIP2);
@@ -62,7 +65,7 @@ async function main() {
     // await interaction.drip(REAL_ABNBC);
 
     console.log('Validating code');
-    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(interaction.target);
+    let interactionImplAddress = await upgrades.erc1967.getImplementationAddress(interaction.address);
     console.log("Interaction implementation: ", interactionImplAddress);
 
     await hre.run("verify:verify", {
@@ -70,7 +73,7 @@ async function main() {
     });
 
     // await hre.run("verify:verify", {
-    //     address: interaction.target,
+    //     address: interaction.address,
     //     constructorArguments: [
     //         VAT,
     //         SPOT,
