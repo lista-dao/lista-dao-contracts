@@ -1,5 +1,3 @@
-const hre = require("hardhat");
-
 const {
     REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT, COLLATERAL_CE_ABNBC
 } = require('../../addresses.json');
@@ -14,9 +12,9 @@ async function main() {
         rad = "000000000000000000000000000000000000000000000", // 45 Decimals
         ONE = 10 ** 27;
 
-    let collateral = ethers.utils.formatBytes32String(COLLATERAL_CE_ABNBC);
-    let collateral2 = ethers.utils.formatBytes32String("REALaBNBc");
-    let collateral3 = ethers.utils.formatBytes32String("ceABNBc");
+    let collateral = ethers.encodeBytes32String(COLLATERAL_CE_ABNBC);
+    let collateral2 = ethers.encodeBytes32String("REALaBNBc");
+    let collateral3 = ethers.encodeBytes32String("ceABNBc");
 
     console.log(collateral);
 
@@ -34,8 +32,8 @@ async function main() {
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
     // const oracle = await this.Oracle.deploy();
-    // await oracle.deployed();
-    // console.log("oracle deployed to:", oracle.address);
+    // await oracle.waitForDeployment();
+    // console.log("oracle deployed to:", oracle.target);
     //
     // await oracle.setPrice("400" + wad); // 400$, mat = 80%, 400$ * 80% = 320$ With Safety Margin
 
@@ -45,7 +43,7 @@ async function main() {
 
     // console.log('Validating code');
     // await hre.run("verify:verify", {
-    //     address: oracle.address
+    //     address: oracle.target
     // });
 
     console.log('Finished');
