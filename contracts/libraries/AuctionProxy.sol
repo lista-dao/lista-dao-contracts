@@ -29,7 +29,7 @@ library AuctionProxy {
     IHelioProvider helioProvider,
     CollateralType calldata collateral
   ) public returns (uint256 id) {
-    ClipperLike _clip = ClipperLike(collateral.clip);
+    ClipperLike _clip = ClipperLike(address(collateral.clip));
     _clip.upchost();
     uint256 hayBal = hay.balanceOf(address(this));
     id = dog.bark(collateral.ilk, user, address(this));
@@ -115,11 +115,12 @@ library AuctionProxy {
     }
   }
 
-  function getAllActiveAuctionsForClip(ClipperLike clip)
+  function getAllActiveAuctionsForClip(address clip_)
     external
     view
     returns (Sale[] memory sales)
   {
+    ClipperLike clip = ClipperLike(clip_);
     uint256[] memory auctionIds = clip.list();
     uint256 auctionsCount = auctionIds.length;
     sales = new Sale[](auctionsCount);

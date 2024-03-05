@@ -4,7 +4,7 @@
 
 Assume user has some aBNBc tokens.
 
-aBNBc is ERC20 complaint contract. 
+aBNBc is ERC20 complaint contract.
 
 1. Approve aBNBc(token) with deposit amount against interaction contract
 2. Call `interaction.deposit(<participant>, <token>, <amount>)`
@@ -47,7 +47,7 @@ Unlock and transfer funds to the user
 * `borrowed(<token>, <user_address>)` - Amount of HAY borrowed by user
 * `collateralPrice(<token>)` - price of the collateral asset(aBNBc) from Oracle
 * `hayPrice(<token>)` - HAY price
-* `collateralRate(<token>)` - how much HAY user can borrow for one token of collateral<br> 
+* `collateralRate(<token>)` - how much HAY user can borrow for one token of collateral<br>
                      i.e. 1 aBNBc worth `collateralRate` HAY
 * `depositTVL(<token>)` - Total aBNBc deposited nominated in $
 * `collateralTVL(<token>)` - Total HAY borrowed by all users
@@ -74,11 +74,21 @@ https://ethereum.stackexchange.com/a/23110
 ### View distribution APY
 `distributionApy()` - rate in percent (like borrowApr)
 
-## Liquidation (DEV env) 
+## Liquidation (DEV env)
 
 1. Provide collateral
 2. Borrow some hay, note the estimated liquidation price
-3. Set oracle price below your liquidation price 
+3. Set oracle price below your liquidation price
 4. Visit liquidation page on the frontend
 5. Note your address in the list and press `liquidate` button
 6. Your hBNB will be burned and you will receive any leftover in hay after liquidation happened
+
+# Deployment
+## Deploy all contracts on local hardhat
+```shell
+npx hardhat run scripts/deploy/1_deploy_all.js --network hardhat
+```
+## Deploy flash contracts only
+```
+npx hardhat run scripts/deploy/deploy_flash.js --network bsc_testnet
+```

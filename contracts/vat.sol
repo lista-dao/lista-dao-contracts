@@ -52,7 +52,7 @@ contract Vat is VatLike, OwnableUpgradeable {
         uint256 rate;  // Accumulated Rates         [ray]
         uint256 spot;  // Price with Safety Margin  [ray]
         uint256 line;  // Debt Ceiling              [rad]
-        uint256 dust;  // Urn Debt Floor            [rad]
+        uint256 dust;  // Urn Debt Floor            [ray]
     }
     struct Urn {
         uint256 ink;   // Locked Collateral  [wad]
