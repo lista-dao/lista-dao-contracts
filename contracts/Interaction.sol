@@ -237,14 +237,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
+        dropRewards(token, msg.sender);
+        drip(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
 
         int256 dart;
         uint256 realAmount = hayAmount;
 
-        dropRewards(token, msg.sender);
-        drip(token);
         uint256 debt = rate * art;
         if (realAmount * RAY >= debt) { // Close CDP
             dart = int(art);
@@ -256,7 +256,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
 
         IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), realAmount);
         hayJoin.join(msg.sender, realAmount);
-        
+
         require(dart >= 0, "Interaction/too-much-requested");
 
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
@@ -413,7 +413,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         uint256 collateral = ink * spot;
         uint256 debt = rate * art;
         amount = (int256(collateral) - int256(debt)) / 1e27;
-        
+
         if(amount < 0) return 0;
     }
 
