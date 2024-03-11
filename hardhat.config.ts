@@ -1,4 +1,5 @@
-import { task, subtask, types } from "hardhat/config";
+import  "dotenv/config";
+import {  HardhatUserConfig, task, subtask, types } from "hardhat/config";
 import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
@@ -14,7 +15,7 @@ import '@typechain/hardhat'
 import '@nomicfoundation/hardhat-ethers'
 import '@nomicfoundation/hardhat-chai-matchers'
 
-module.exports = {
+const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
@@ -71,6 +72,8 @@ module.exports = {
     currency: 'USD',
   },
 };
+
+export default config;
 
 
 function getSortedFiles(dependenciesGraph) {
