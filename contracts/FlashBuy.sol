@@ -115,13 +115,15 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     function initialize(IERC3156FlashLender lender_, IAuctionProxy auction_, IDEX dex_) public initializer {
         __Ownable_init();
 
+        require(address(lender_) != address(0) && address(auction_) != address(0) && address(dex_) != address(0), "Invalid address provided");
         lender = lender_;
         auction = auction_;
         dex = dex_;
     }
 
-    function transferFrom(address token) onlyOwner external {
-        IERC20(token).transferFrom(address(this), msg.sender, IERC20(token).balanceOf(address(this)));
+    function transfer(address token) onlyOwner external {
+        bool success = IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
+        require(success, "Failed to transfer");
     }
 
     /// @dev ERC-3156 Flash loan callback
@@ -149,12 +151,12 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         require(tokenBalance >= amount, "borrow amount not received");
 
         auction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this));
-        uint256 minOut = amount + fee - IERC20(token).balanceOf(address(this));
+        uint256 minOut = amount + fee;
 
         address[] memory path = new address[](2);
         path[0] = collateral;
         path[1] = token;
-        dex.swapExactTokensForTokens(IERC20(collateral).balanceOf(address(this)), minOut, path, address(this), block.timestamp + 300);
+        dex.swapExactTokensForTokens(collateralAm, minOut, path, address(this), block.timestamp + 300);
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
