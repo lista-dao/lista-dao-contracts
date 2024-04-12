@@ -14,7 +14,7 @@ contract PriceFeedMock is PriceFeedInterfaceMock, OracleInterfaceMock {
   function latestRoundData()
     external
     view
-    returns (uint80, int256, uint256, uint256, uint80)
+    returns (uint80, uint256, uint256, uint256, uint80)
   {
     if (block.timestamp % uint256(failRate) == 0) {
       return (18446744073709551616, 0, block.timestamp, block.timestamp, 18446744073709551616);

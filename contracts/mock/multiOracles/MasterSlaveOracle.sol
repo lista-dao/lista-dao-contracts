@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 import "./interfaces/OracleInterface.sol";
 
-contract MasterSlaveOracle {
+contract MasterSlaveOracle is OracleInterfaceMock {
   PriceFeedInterfaceMock private masterOracle;
   PriceFeedInterfaceMock private slaveOracle;
 
@@ -12,11 +12,11 @@ contract MasterSlaveOracle {
     slaveOracle = PriceFeedInterfaceMock(_slaveOracle);
   }
 
-  function getPrice() external view returns (int256) {
+  function getPrice(address asset) external view returns (uint256) {
     // get price from main masterOracle
     (
     /*uint80 roundID*/,
-      int mainPrice,
+      uint256 mainPrice,
     /*uint startedAt*/,
     /*uint timeStamp*/,
     /*uint80 answeredInRound*/
@@ -27,7 +27,7 @@ contract MasterSlaveOracle {
     // get price from main slaveOracle
     (
     /*uint80 roundID*/,
-      int slavePrice,
+      uint256 slavePrice,
     /*uint startedAt*/,
     /*uint timeStamp*/,
     /*uint80 answeredInRound*/
