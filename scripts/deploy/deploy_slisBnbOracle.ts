@@ -24,7 +24,7 @@ async function main() {
   console.log("Deployed: SlisBnbOracle: " + slisBnbOracle.address);
 
   // verify contract
-  await hre.run("verify:verify", {
+  await hre.run("verify:verify",  {
       address: slisBnbOracle.address,
       constructorArguments: [],
   });
