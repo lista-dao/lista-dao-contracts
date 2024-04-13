@@ -16,7 +16,7 @@ contract PriceFeedMock is PriceFeedInterfaceMock, OracleInterfaceMock {
     view
     returns (uint80, uint256, uint256, uint256, uint80)
   {
-    if (block.timestamp % uint256(failRate) == 0) {
+    if (failRate > 0 && block.timestamp % uint256(failRate) == 0) {
       return (18446744073709551616, 0, block.timestamp, block.timestamp, 18446744073709551616);
     }
     return (18446744073709551616, 60735088942, block.timestamp, block.timestamp, 18446744073709551616);

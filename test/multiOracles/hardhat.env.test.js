@@ -10,24 +10,24 @@ describe("MultiOracles", function () {
 
   const BNB = '0x1A26d803C2e796601794f8C5609549643832702C';
 
-  before(async () => {
+  async function deployPriceFeeds(failureInterval) {
     // deploy all price feeds
     const PriceFeed = await ethers.getContractFactory("PriceFeedMock");
-    priceFeedA = await PriceFeed.deploy(10);
+    priceFeedA = await PriceFeed.deploy(failureInterval);
     await priceFeedA.waitForDeployment();
     priceFeedAddressA = await priceFeedA.getAddress();
     console.log("PriceFeed A deployed to:", priceFeedAddressA);
 
-    priceFeedB = await PriceFeed.deploy(10);
+    priceFeedB = await PriceFeed.deploy(failureInterval);
     await priceFeedB.waitForDeployment();
     priceFeedAddressB = await priceFeedB.getAddress();
     console.log("PriceFeed B deployed to:", priceFeedAddressB);
 
-    priceFeedC = await PriceFeed.deploy(10);
+    priceFeedC = await PriceFeed.deploy(failureInterval);
     await priceFeedC.waitForDeployment();
     priceFeedAddressC = await priceFeedC.getAddress();
     console.log("PriceFeed C deployed to:", priceFeedAddressC);
-  });
+  }
 
   /** @NOTE:
    * priceFeed A: Main,
@@ -36,8 +36,13 @@ describe("MultiOracles", function () {
    * */
   it("venus approach", async () => {
 
+    // deploy price feeds
+    await deployPriceFeeds(0);
+
     // deploy bound validator
     const BoundValidator = await ethers.getContractFactory("BoundValidator");
+    // boundValidator is a contract that checks if the price is within a certain range
+    // invalidate every 10 blocks
     const boundValidator = await BoundValidator.deploy(10);
     await boundValidator.waitForDeployment();
     const boundValidatorAddress = await boundValidator.getAddress();
@@ -75,6 +80,9 @@ describe("MultiOracles", function () {
   });
 
   it("master-slave approach", async () => {
+
+    // deploy price feeds and always return price successfully
+    await deployPriceFeeds(0);
 
     // deploy master-slave oracle
     const MasterSlaveOracle = await ethers.getContractFactory("MasterSlaveOracle");
