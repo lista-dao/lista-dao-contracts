@@ -70,8 +70,8 @@ contract ResilientOracleMock {
   /// @notice Constructor for the implementation contract. Sets immutable variables.
   /// @param _boundValidator Address of the bound validator contract
   /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor(BoundValidatorInterfaceMock _boundValidator) notNullAddress(address(_boundValidator)) {
-    boundValidator = _boundValidator;
+  constructor(address _boundValidator) notNullAddress(address(_boundValidator)) {
+    boundValidator = BoundValidatorInterfaceMock(_boundValidator);
   }
 
   /**
