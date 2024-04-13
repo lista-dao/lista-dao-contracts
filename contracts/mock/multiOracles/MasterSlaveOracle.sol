@@ -7,9 +7,10 @@ contract MasterSlaveOracle is OracleInterfaceMock {
   PriceFeedInterfaceMock private masterOracle;
   PriceFeedInterfaceMock private slaveOracle;
 
-  constructor(address _masterOracle, address _slaveOracle) {
-    masterOracle = PriceFeedInterfaceMock(_masterOracle);
-    slaveOracle = PriceFeedInterfaceMock(_slaveOracle);
+  mapping(address => address[2]) public assetToOracle;
+
+  function setOracle(address _asset, address _masterOracle, address _slaveOracle) external {
+    assetToOracle[_asset] = [_masterOracle, _slaveOracle];
   }
 
   function getPrice(address asset) external view returns (uint256) {
@@ -20,7 +21,7 @@ contract MasterSlaveOracle is OracleInterfaceMock {
     /*uint startedAt*/,
     /*uint timeStamp*/,
     /*uint80 answeredInRound*/
-    ) = masterOracle.latestRoundData();
+    ) = PriceFeedInterfaceMock(assetToOracle[asset][0]).latestRoundData();
     if (mainPrice > 0) {
       return mainPrice;
     }
@@ -31,7 +32,7 @@ contract MasterSlaveOracle is OracleInterfaceMock {
     /*uint startedAt*/,
     /*uint timeStamp*/,
     /*uint80 answeredInRound*/
-    ) = slaveOracle.latestRoundData();
+    ) = PriceFeedInterfaceMock(assetToOracle[asset][1]).latestRoundData();
     if (slavePrice > 0) {
       return slavePrice;
     }
