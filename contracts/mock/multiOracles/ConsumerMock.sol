@@ -13,7 +13,7 @@ contract ConsumerMock {
     oracle = OracleInterfaceMock(_oracle);
   }
 
-  function getPrice(address asset) external {
+  function storePrice(address asset) external {
     price = oracle.getPrice(asset);
   }
 
