@@ -10,20 +10,21 @@ describe("MultiOracles", function () {
 
   const BNB = '0x1A26d803C2e796601794f8C5609549643832702C';
 
-  async function deployPriceFeeds(failureInterval) {
+  // fl : failure interval, returns fail when block number % fl == 0
+  async function deployPriceFeeds(flA = 0, flB = 0, flC = 0) {
     // deploy all price feeds
     const PriceFeed = await ethers.getContractFactory("PriceFeedMock");
-    priceFeedA = await PriceFeed.deploy(failureInterval);
+    priceFeedA = await PriceFeed.deploy(flA);
     await priceFeedA.waitForDeployment();
     priceFeedAddressA = await priceFeedA.getAddress();
     console.log("PriceFeed A deployed to:", priceFeedAddressA);
 
-    priceFeedB = await PriceFeed.deploy(failureInterval);
+    priceFeedB = await PriceFeed.deploy(flB);
     await priceFeedB.waitForDeployment();
     priceFeedAddressB = await priceFeedB.getAddress();
     console.log("PriceFeed B deployed to:", priceFeedAddressB);
 
-    priceFeedC = await PriceFeed.deploy(failureInterval);
+    priceFeedC = await PriceFeed.deploy(flC);
     await priceFeedC.waitForDeployment();
     priceFeedAddressC = await priceFeedC.getAddress();
     console.log("PriceFeed C deployed to:", priceFeedAddressC);
@@ -37,23 +38,20 @@ describe("MultiOracles", function () {
   it("venus approach", async () => {
 
     // deploy price feeds
-    await deployPriceFeeds(0);
+    // deployPriceFeeds(10, 0, 0) means Main oracle fails every 10 blocks, pivot oracle and fallback oracle never fails
+    await deployPriceFeeds(0, 10 , 0);
 
     // deploy bound validator
     const BoundValidator = await ethers.getContractFactory("BoundValidator");
-    // boundValidator is a contract that checks if the price is within a certain range
-    // invalidate every 10 blocks
-    const boundValidator = await BoundValidator.deploy(10);
+    const boundValidator = await BoundValidator.deploy();
     await boundValidator.waitForDeployment();
     const boundValidatorAddress = await boundValidator.getAddress();
-    // console.log("BoundValidator deployed to:", boundValidatorAddress);
 
     // deploy resilient oracle (that's how Venus called it)
     const ResilientOracle = await ethers.getContractFactory("ResilientOracleMock");
     const resilientOracle = await ResilientOracle.deploy(boundValidatorAddress);
     await resilientOracle.waitForDeployment();
     const resilientOracleAddress = await resilientOracle.getAddress();
-    // console.log("ResilientOracle deployed to:", resilientOracleAddress);
 
     // set oracles
     await resilientOracle.setTokenConfig([
@@ -81,8 +79,8 @@ describe("MultiOracles", function () {
 
   it("master-slave approach", async () => {
 
-    // deploy price feeds and always return price successfully
-    await deployPriceFeeds(0);
+    // deployPriceFeeds(10, 0) means Main oracle fails every 10 blocks, fallback oracle never fails
+    await deployPriceFeeds(10, 0);
 
     // deploy master-slave oracle
     const MasterSlaveOracle = await ethers.getContractFactory("MasterSlaveOracle");
@@ -90,7 +88,11 @@ describe("MultiOracles", function () {
     await masterSlaveOracle.waitForDeployment();
     const masterSlaveOracleAddress = await masterSlaveOracle.getAddress();
 
-    await masterSlaveOracle.setOracle(BNB, priceFeedAddressA, priceFeedAddressB);
+    await masterSlaveOracle.setTokenConfig([
+      BNB,
+      [priceFeedAddressA, priceFeedAddressB],
+      [true, true]
+    ]);
 
     // deploy consumer contract
     const ConsumerMock = await ethers.getContractFactory("ConsumerMock");
