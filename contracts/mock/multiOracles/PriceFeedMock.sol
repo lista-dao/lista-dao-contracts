@@ -23,6 +23,9 @@ contract PriceFeedMock is PriceFeedInterfaceMock, OracleInterfaceMock {
   }
 
   function getPrice(address asset) external view returns (uint256) {
+    if (failRate > 0 && block.timestamp % uint256(failRate) == 0) {
+      return 0;
+    }
     return 60735088942;
   }
 
