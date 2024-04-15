@@ -5,30 +5,10 @@ const { ethers  } = hre;
 describe("MultiOracles", function () {
   this.timeout(0); // never timeout
 
-  let priceFeedA, priceFeedB, priceFeedC;
-  let priceFeedAddressA, priceFeedAddressB, priceFeedAddressC;
-
+  // BNB Price Feed
+  const CHAINLINK_ORACLE_ADDRESS = '0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526';
+  const BINANCE_ORACLE_ADDRESS = '0x1A26d803C2e796601794f8C5609549643832702C';
   const BNB = '0x1A26d803C2e796601794f8C5609549643832702C';
-
-  // fl : failure interval, returns fail when block number % fl == 0
-  async function deployPriceFeeds(flA = 0, flB = 0, flC = 0) {
-    // deploy all price feeds
-    const PriceFeed = await ethers.getContractFactory("PriceFeedMock");
-    priceFeedA = await PriceFeed.deploy(flA);
-    await priceFeedA.waitForDeployment();
-    priceFeedAddressA = await priceFeedA.getAddress();
-    console.log("PriceFeed A deployed to:", priceFeedAddressA);
-
-    priceFeedB = await PriceFeed.deploy(flB);
-    await priceFeedB.waitForDeployment();
-    priceFeedAddressB = await priceFeedB.getAddress();
-    console.log("PriceFeed B deployed to:", priceFeedAddressB);
-
-    priceFeedC = await PriceFeed.deploy(flC);
-    await priceFeedC.waitForDeployment();
-    priceFeedAddressC = await priceFeedC.getAddress();
-    console.log("PriceFeed C deployed to:", priceFeedAddressC);
-  }
 
   /** @NOTE:
    * priceFeed A: Main,
@@ -37,77 +17,57 @@ describe("MultiOracles", function () {
    * */
   it("venus approach", async () => {
 
-    // deploy price feeds
-    // deployPriceFeeds(10, 0, 0) means Main oracle fails every 10 blocks, pivot oracle and fallback oracle never fails
-    await deployPriceFeeds(0, 10 , 0);
-
     // deploy bound validator
-    const BoundValidator = await ethers.getContractFactory("BoundValidator");
+    const BoundValidator = await ethers.getContractFactory("BoundValidatorTestnet");
     const boundValidator = await BoundValidator.deploy();
     await boundValidator.waitForDeployment();
     const boundValidatorAddress = await boundValidator.getAddress();
 
     // deploy resilient oracle (that's how Venus called it)
-    const ResilientOracle = await ethers.getContractFactory("ResilientOracleMock");
+    const ResilientOracle = await ethers.getContractFactory("ResilientOracleTestnet");
     const resilientOracle = await ResilientOracle.deploy(boundValidatorAddress);
     await resilientOracle.waitForDeployment();
     const resilientOracleAddress = await resilientOracle.getAddress();
+    console.log('Venus resilientOracleAddress:', resilientOracleAddress);
 
     // set oracles
     await resilientOracle.setTokenConfig([
       BNB,
-      [priceFeedAddressA, priceFeedAddressB, priceFeedAddressC],
+      [CHAINLINK_ORACLE_ADDRESS, BINANCE_ORACLE_ADDRESS, BINANCE_ORACLE_ADDRESS],
       [true, true, true]
     ]);
 
     // deploy consumer contract
-    const ConsumerMock = await ethers.getContractFactory("ConsumerMock");
+    const ConsumerMock = await ethers.getContractFactory("ConsumerTestnetMock");
     const consumerMock = await ConsumerMock.deploy(resilientOracleAddress);
+    await consumerMock.waitForDeployment();await consumerMock.waitForDeployment();
+    const consumerMockAddress = await consumerMock.getAddress();
 
-    let succeededTimes = 0, failureTimes = 0;
-
-    for (let i = 0; i < 100; i++) {
-      try {
-        await consumerMock.storePrice(BNB);
-        succeededTimes++;
-      }
-      catch (e) { failureTimes++; }
-    }
-    console.log('Price written with successful rate:', (succeededTimes / (succeededTimes + failureTimes))*100, '%');
-
+    console.log('Venus consumerMockAddress:', consumerMockAddress);
   });
 
   it("master-slave approach", async () => {
 
-    // deployPriceFeeds(10, 0) means Main oracle fails every 10 blocks, fallback oracle never fails
-    await deployPriceFeeds(10, 0);
-
     // deploy master-slave oracle
-    const MasterSlaveOracle = await ethers.getContractFactory("MasterSlaveOracle");
+    const MasterSlaveOracle = await ethers.getContractFactory("MasterSlaveOracleTestnet");
     const masterSlaveOracle = await MasterSlaveOracle.deploy();
     await masterSlaveOracle.waitForDeployment();
     const masterSlaveOracleAddress = await masterSlaveOracle.getAddress();
+    console.log('master-slave oracle address:', masterSlaveOracleAddress);
 
     await masterSlaveOracle.setTokenConfig([
       BNB,
-      [priceFeedAddressA, priceFeedAddressB],
+      [BINANCE_ORACLE_ADDRESS, CHAINLINK_ORACLE_ADDRESS],
       [true, true]
     ]);
 
     // deploy consumer contract
-    const ConsumerMock = await ethers.getContractFactory("ConsumerMock");
+    const ConsumerMock = await ethers.getContractFactory("ConsumerTestnetMock");
     const consumerMock = await ConsumerMock.deploy(masterSlaveOracleAddress);
+    await consumerMock.waitForDeployment();
+    const consumerMockAddress = await consumerMock.getAddress();
 
-    let succeededTimes = 0, failureTimes = 0;
-    for (let i = 0; i < 100; i++) {
-      try {
-        await consumerMock.storePrice(BNB);
-        succeededTimes++;
-      }
-      catch (e) { failureTimes++; }
-    }
-    console.log('Price written with successful rate:', (succeededTimes / (succeededTimes + failureTimes))*100, '%');
-
+    console.log('master-slave consumerMockAddress:', consumerMockAddress);
   });
 
 
