@@ -12,8 +12,8 @@ import "../ExchangeRate.sol";
 //    uint256 poolTokenSupply; // total amount of stkBNB managed by the pool
 //}
 
-// External protocols (eg: Wombat Exchange) that integrate with us, rely on this interface.
-// We must always ensure that StakePool conforms to this interface.
+// External protocols (eg: Wombat Exchange) that integrate with us, rely on this interfaces.
+// We must always ensure that StakePool conforms to this interfaces.
 interface IStakePool {
     struct Config {
         // @dev The address of the staking wallet on the BBC chain. It will be used for transferOut transactions.
