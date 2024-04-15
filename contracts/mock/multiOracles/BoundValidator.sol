@@ -12,12 +12,6 @@ import "./interfaces/OracleInterface.sol";
  */
 contract BoundValidator is BoundValidatorInterfaceMock {
 
-  uint8 private failRate;
-
-  constructor(uint8 _failRate) {
-    failRate = _failRate;
-  }
-
   /**
    * @notice Test reported asset price against anchor price
      * @param asset asset address
@@ -30,8 +24,7 @@ contract BoundValidator is BoundValidatorInterfaceMock {
     uint256 reportedPrice,
     uint256 anchorPrice
   ) public view virtual override returns (bool) {
-    // fails every 10 times
-    return block.timestamp % uint256(failRate) != 0;
+    return reportedPrice > 0 && anchorPrice > 0;
   }
 
 }
