@@ -193,7 +193,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
      * @custom:error Paused error is thrown when resilent oracle is paused
      * @custom:error Invalid resilient oracle price error is thrown if fetched prices from oracle is invalid
      */
-  function getPrice(address asset) external view override returns (uint256) {
+  function peek(address asset) external view override returns (uint256) {
     return _getPrice(asset);
   }
 
@@ -230,13 +230,39 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
     enabled = tokenConfigs[asset].enableFlagsForOracles[uint256(role)];
   }
 
+  /**
+    * @notice Gets price from the oracle, which transform price's data type from int256 to uint256
+      * @param oracle Oracle address
+      * @return price USD price in scaled decimal places
+      * @custom:error Invalid price error is thrown if the price fetched from the oracle is invalid
+      */
+  function getPriceFromOracle(address oracle) external view returns (uint256) {
+    try AggregatorV3Interface(oracle).latestRoundData() returns (
+      uint80,
+      int256 answer,
+      uint256,
+      uint256,
+      uint80
+    ) {
+      return uint256(answer);
+    } catch {
+      return INVALID_PRICE;
+    }
+  }
+
+  /**
+    * @notice Gets price for the provided asset
+      * @param asset asset address
+      * @return price USD price in scaled decimal places
+      * @custom:error Invalid price error is thrown if the price fetched from the oracle is invalid
+      */
   function _getPrice(address asset) internal view returns (uint256) {
     uint256 pivotPrice = INVALID_PRICE;
 
     // Get pivot oracle price, Invalid price if not available or error
     (address pivotOracle, bool pivotOracleEnabled) = getOracle(asset, OracleRole.PIVOT);
     if (pivotOracleEnabled && pivotOracle != address(0)) {
-      try OracleInterface(pivotOracle).getPrice(asset) returns (uint256 pricePivot) {
+      try this.getPriceFromOracle(pivotOracle) returns (uint256 pricePivot) {
         pivotPrice = pricePivot;
       } catch {}
     }
@@ -290,7 +316,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   ) internal view returns (uint256, bool) {
     (address mainOracle, bool mainOracleEnabled) = getOracle(asset, OracleRole.MAIN);
     if (mainOracleEnabled && mainOracle != address(0)) {
-      try OracleInterface(mainOracle).getPrice(asset) returns (uint256 mainOraclePrice) {
+      try this.getPriceFromOracle(mainOracle) returns (uint256 mainOraclePrice) {
         if (!pivotEnabled) {
           return (mainOraclePrice, true);
         }
@@ -322,7 +348,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   function _getFallbackOraclePrice(address asset, uint256 pivotPrice) private view returns (uint256, bool) {
     (address fallbackOracle, bool fallbackEnabled) = getOracle(asset, OracleRole.FALLBACK);
     if (fallbackEnabled && fallbackOracle != address(0)) {
-      try OracleInterface(fallbackOracle).getPrice(asset) returns (uint256 fallbackOraclePrice) {
+      try this.getPriceFromOracle(fallbackOracle) returns (uint256 fallbackOraclePrice) {
         if (pivotPrice == INVALID_PRICE) {
           return (fallbackOraclePrice, false);
         }
