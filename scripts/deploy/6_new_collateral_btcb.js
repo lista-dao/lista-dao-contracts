@@ -16,7 +16,7 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
   this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
 
-  const symbol = 'BTCB100'
+  const symbol = 'BTCB200'
   let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
   // Binance Oracle BTCB Aggregator Address
   let priceFeed = '0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f'
@@ -32,6 +32,7 @@ async function main() {
     console.log('Deployed: clipCE     : ' + tokenMock.target)
     console.log('Imp                  : ' + tokenMockImplementation)
     tokenAddress = await tokenMock.target
+    await hre.run('verify:verify', {address: tokenMock.target})
     await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
