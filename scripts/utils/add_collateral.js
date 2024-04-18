@@ -115,6 +115,10 @@ module.exports.addCollateral = async function (opts) {
   console.log('Addresses Recorded to: ' + dir)
 
   // Verify
+  await hre.run('verify:verify', {address: gemJoin.target})
+  await hre.run('verify:verify', {address: clipper.target})
+  await hre.run('verify:verify', {address: oracle.target})
+
   await hre.run('verify:verify', {address: gemJoinImplementation})
   await hre.run('verify:verify', {address: clipperImplementation})
   await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
