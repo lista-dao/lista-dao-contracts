@@ -69,7 +69,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
 
   /// @notice Bound validator contract address
   /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-  BoundValidatorInterface public immutable boundValidator;
+  BoundValidatorInterface public boundValidator;
 
   mapping(address => TokenConfig) private tokenConfigs;
 
@@ -105,18 +105,9 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   }
 
   /// @notice Initializes the contract
-  function initialize() public initializer {
+  function initialize(BoundValidatorInterface _boundValidator) public initializer {
     __Ownable_init();
-  }
-
-  /// @notice Constructor for the implementation contract. Sets immutable variables.
-  /// @param _boundValidator Address of the bound validator contract
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor(
-    BoundValidatorInterface _boundValidator
-  ) notNullAddress(address(_boundValidator)) {
     boundValidator = _boundValidator;
-    _disableInitializers();
   }
 
   /**
