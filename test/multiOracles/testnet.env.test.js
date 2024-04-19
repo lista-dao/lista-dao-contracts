@@ -1,6 +1,7 @@
 const { describe, it, before } = require("mocha");
 const hre = require("hardhat");
-const { ethers  } = hre;
+const {expect} = require("chai");
+const { ethers, upgrades  } = hre;
 
 describe("MultiOracles", function () {
   this.timeout(0); // never timeout
@@ -8,67 +9,121 @@ describe("MultiOracles", function () {
   // BNB Price Feed
   const CHAINLINK_ORACLE_ADDRESS = '0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526';
   const BINANCE_ORACLE_ADDRESS = '0x1A26d803C2e796601794f8C5609549643832702C';
-  const BNB = '0x1A26d803C2e796601794f8C5609549643832702C';
+  const TOKEN = '0x1A26d803C2e796601794f8C5609549643832702C';
+
+  let boundValidator, resilientOracle, mainOracle, pivotOracle, fallbackOracle,
+  mainOracleAddress = BINANCE_ORACLE_ADDRESS,
+    pivotOracleAddress = CHAINLINK_ORACLE_ADDRESS,
+    fallbackOracleAddress = BINANCE_ORACLE_ADDRESS;
 
   /** @NOTE:
    * priceFeed A: Main,
    * priceFeed B: Pivot,
    * priceFeed C: Fallback
    * */
-  it("venus approach", async () => {
-
-    // deploy bound validator
-    const BoundValidator = await ethers.getContractFactory("BoundValidatorTestnet");
-    const boundValidator = await BoundValidator.deploy();
+  beforeEach(async () => {
+    // Deploy BoundValidator
+    const BoundValidator = await ethers.getContractFactory("BoundValidator");
+    boundValidator = await upgrades.deployProxy(BoundValidator);
     await boundValidator.waitForDeployment();
-    const boundValidatorAddress = await boundValidator.getAddress();
 
-    // deploy resilient oracle (that's how Venus called it)
-    const ResilientOracle = await ethers.getContractFactory("ResilientOracleTestnet");
-    const resilientOracle = await ResilientOracle.deploy(boundValidatorAddress);
+    let boundValidatorImplementation = await upgrades.erc1967.getImplementationAddress(boundValidator.target, [], { initializer: "initialize" });
+    console.log("Deployed: BoundValidator    : " + boundValidator.target);
+    console.log("Imp                         : " + boundValidatorImplementation);
+
+    // Deploy resilientOracle
+    const ResilientOracle = await ethers.getContractFactory("ResilientOracle");
+    resilientOracle = await upgrades.deployProxy(ResilientOracle, [boundValidator.target], { initializer: "initialize" });
     await resilientOracle.waitForDeployment();
-    const resilientOracleAddress = await resilientOracle.getAddress();
-    console.log('Venus resilientOracleAddress:', resilientOracleAddress);
 
-    // set oracles
+    let resilientOracleImplementation = await upgrades.erc1967.getImplementationAddress(resilientOracle.target);
+    console.log("Deployed: ResilientOracle    : " + resilientOracle.target);
+    console.log("Imp                          : " + resilientOracleImplementation);
+
+    if (hre.network.name === 'hardhat') {
+      // deploy main oracle
+      const MockSourceOracle = await ethers.getContractFactory('MockSourceOracle');
+      mainOracle = await MockSourceOracle.deploy();
+      await mainOracle.waitForDeployment();
+      mainOracleAddress = await mainOracle.getAddress();
+      console.log("Deployed: MainOracle         : " + mainOracleAddress);
+
+      pivotOracle = await MockSourceOracle.deploy();
+      await pivotOracle.waitForDeployment();
+      pivotOracleAddress = await pivotOracle.getAddress();
+      console.log("Deployed: pivotOracle        : " + pivotOracleAddress);
+
+      fallbackOracle = await MockSourceOracle.deploy();
+      await fallbackOracle.waitForDeployment();
+      fallbackOracleAddress = await fallbackOracle.getAddress();
+      console.log("Deployed: fallbackOracle     : " + fallbackOracleAddress);
+    }
+    // set token config
     await resilientOracle.setTokenConfig([
-      BNB,
-      [CHAINLINK_ORACLE_ADDRESS, BINANCE_ORACLE_ADDRESS, BINANCE_ORACLE_ADDRESS],
+      TOKEN,
+      [mainOracleAddress, pivotOracleAddress, fallbackOracleAddress],
       [true, true, true]
     ]);
+    console.log('Token config set.');
 
-    // deploy consumer contract
-    const ConsumerMock = await ethers.getContractFactory("ConsumerTestnetMock");
-    const consumerMock = await ConsumerMock.deploy(resilientOracleAddress);
-    await consumerMock.waitForDeployment();await consumerMock.waitForDeployment();
-    const consumerMockAddress = await consumerMock.getAddress();
-
-    console.log('Venus consumerMockAddress:', consumerMockAddress);
-  });
-
-  it("master-slave approach", async () => {
-
-    // deploy master-slave oracle
-    const MasterSlaveOracle = await ethers.getContractFactory("MasterSlaveOracleTestnet");
-    const masterSlaveOracle = await MasterSlaveOracle.deploy();
-    await masterSlaveOracle.waitForDeployment();
-    const masterSlaveOracleAddress = await masterSlaveOracle.getAddress();
-    console.log('master-slave oracle address:', masterSlaveOracleAddress);
-
-    await masterSlaveOracle.setTokenConfig([
-      BNB,
-      [BINANCE_ORACLE_ADDRESS, CHAINLINK_ORACLE_ADDRESS],
-      [true, true]
+    // set bound validator config
+    await boundValidator.setValidateConfig([
+      TOKEN,
+      '1010000000000000000',
+      '990000000000000000'
     ]);
+    console.log('Validation config set.');
 
-    // deploy consumer contract
-    const ConsumerMock = await ethers.getContractFactory("ConsumerTestnetMock");
-    const consumerMock = await ConsumerMock.deploy(masterSlaveOracleAddress);
-    await consumerMock.waitForDeployment();
-    const consumerMockAddress = await consumerMock.getAddress();
+    const tokenConfig = await resilientOracle.getTokenConfig(TOKEN);
+    console.log('Token config: ' + tokenConfig.toString());
+  })
 
-    console.log('master-slave consumerMockAddress:', consumerMockAddress);
+  it("get main price", async () => {
+    await mainOracle.setPrice(1000000000006789);
+    await pivotOracle.setPrice(1000000000000010);
+    await fallbackOracle.setPrice(1000000000000000);
+
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+    expect(price.toString()).to.be.equal('1000000000006789');
   });
 
+  it("get fallback price", async () => {
+    await mainOracle.setPrice(2000000000000010);
+    await pivotOracle.setPrice(1000000000000010);
+    await fallbackOracle.setPrice(1000000000001234);
 
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+    expect(price.toString()).to.be.equal('1000000000001234');
+  });
+
+  it("main failed", async () => {
+    await mainOracle.setPrice(0);
+    await pivotOracle.setPrice(1000000000000010);
+    await fallbackOracle.setPrice(1000000000001122);
+
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+    expect(price.toString()).to.be.equal('1000000000001122');
+  });
+
+  it("pivot failed", async () => {
+    await mainOracle.setPrice(1000000000003344);
+    await pivotOracle.setPrice(0);
+    await fallbackOracle.setPrice(1000000000000000);
+
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+    expect(price.toString()).to.be.equal('1000000000003344');
+  });
+
+  it("toasted", async () => {
+    await mainOracle.setPrice(2000000000003344);
+    await pivotOracle.setPrice(0);
+    await fallbackOracle.setPrice(1000000000000000);
+
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+  });
 })
