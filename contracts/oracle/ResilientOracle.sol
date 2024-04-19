@@ -228,13 +228,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
       * @custom:error Invalid price error is thrown if the price fetched from the oracle is invalid
       */
   function getPriceFromOracle(address oracle) external view returns (uint256) {
-    try AggregatorV3Interface(oracle).latestRoundData() returns (
-      uint80,
-      int256 answer,
-      uint256,
-      uint256,
-      uint80
-    ) {
+    try AggregatorV3Interface(oracle).latestAnswer() returns (int256 answer) {
       return uint256(answer);
     } catch {
       return INVALID_PRICE;
