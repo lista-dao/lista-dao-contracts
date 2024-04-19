@@ -1,5 +1,9 @@
 pragma solidity 0.8.10;
 
+interface IMockSourceOracle {
+  function latestAnswer() external view returns (int256);
+}
+
 interface AggregatorV3Interface {
 
   function decimals() external view returns (uint8);
