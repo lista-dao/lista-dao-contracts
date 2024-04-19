@@ -21,7 +21,11 @@ async function main() {
   console.log("Deployed: ResilientOracle    : " + resilientOracle.target);
   console.log("Imp                         : " + resilientOracleImplementation);
 
+  // verify contracts
+  console.log('---------- verifying BoundValidator ----------')
   await hre.run("verify:verify", { address: boundValidator.target });
+  console.log('\n\n---------- verifying ResilientOracle ----------')
+  await hre.run("verify:verify", { address: resilientOracle.target });
 }
 
 main()
