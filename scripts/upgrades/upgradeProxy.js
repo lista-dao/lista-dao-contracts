@@ -1,6 +1,6 @@
 const { upgradeProxy , deployImplementation , verifyImpContract} = require("./utils/upgrade_utils")
-const proxyAddress = "0x8e70A9cb4E33207003CDdd142f93576503BE09f7";
-const contractName = "MasterVault";
+const proxyAddress = "0x61364C8BaCc5CF2e21897D66396C5Ff1c23e32f0";
+const contractName = "SnBnbYieldConverterStrategy";
 
 const main = async () => {
 

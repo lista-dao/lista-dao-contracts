@@ -222,24 +222,31 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
             reqCount = 0;
             reqCount < maxNumRequests &&
                 _firstDistributeIdx < _nextWithdrawIdx &&
-                _withdrawRequests[_firstDistributeIdx].amount <=
-                bnbToDistribute;
+                bnbToDistribute > 0;
             reqCount++
         ) {
             address recipient = _withdrawRequests[_firstDistributeIdx]
                 .recipient;
             uint256 amount = _withdrawRequests[_firstDistributeIdx].amount;
 
-            delete _withdrawRequests[_firstDistributeIdx];
-            _firstDistributeIdx++;
-            bnbToDistribute -= amount;
+            bool isPartial = false;
+            if (amount > bnbToDistribute) {
+                amount = bnbToDistribute;
+                isPartial = true;
+            }
 
             (
                 bool sent, /*memory data*/
-
             ) = payable(recipient).call{value: amount}("");
 
-            if (!sent) {
+            if (sent) {
+                if (isPartial) {
+                    _withdrawRequests[_firstDistributeIdx].amount -= amount;
+                } else {
+                    delete _withdrawRequests[_firstDistributeIdx++];
+                }
+                bnbToDistribute -= amount;
+            } else {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later
                 manualWithdrawAmount[recipient] += amount;
@@ -312,4 +319,26 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         _snBnbToken.safeApprove(address(_stakeManager), type(uint256).max);
         emit SnBnbStakeManagerChanged(stakeManager);
     }
+
+    function getWithdrawRequests(address account) external view returns (UserWithdrawRequest[] memory) {
+        uint256 count = 0;
+        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
+            if (_withdrawRequests[i].recipient == account) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            return new UserWithdrawRequest[](0);
+        }
+        UserWithdrawRequest[] memory requests = new UserWithdrawRequest[](count);
+        uint256 idx;
+        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
+            if (_withdrawRequests[i].recipient == account) {
+                requests[idx++] = _withdrawRequests[i];
+            }
+        }
+
+        return requests;
+    }
+
 }
