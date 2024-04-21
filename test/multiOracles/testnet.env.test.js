@@ -75,7 +75,6 @@ describe("MultiOracles", function () {
     console.log('Validation config set.');
 
     const tokenConfig = await resilientOracle.getTokenConfig(TOKEN);
-    console.log('Token config: ' + tokenConfig.toString());
   })
 
   it("get main price", async () => {
@@ -98,7 +97,7 @@ describe("MultiOracles", function () {
     expect(price.toString()).to.be.equal('1000000000001234');
   });
 
-  it("main failed", async () => {
+  it("main zero", async () => {
     await mainOracle.setPrice(0);
     await pivotOracle.setPrice(1000000000000010);
     await fallbackOracle.setPrice(1000000000001122);
@@ -108,12 +107,21 @@ describe("MultiOracles", function () {
     expect(price.toString()).to.be.equal('1000000000001122');
   });
 
+  it("main negative", async () => {
+    await mainOracle.setPrice(-10000000000000);
+    await pivotOracle.setPrice(1000000000000010);
+    await fallbackOracle.setPrice(1000000000001122);
+
+    const price = await resilientOracle.peek(TOKEN);
+    console.log("Price: " + price.toString());
+    expect(price.toString()).to.be.equal('1000000000001122');
+  })
+
   it("pivot failed", async () => {
     await mainOracle.setPrice(1000000000003344);
     await pivotOracle.setPrice(0);
     await fallbackOracle.setPrice(1000000000000000);
-
-    const price = await resilientOracle.peek(TOKEN);
+    const price =  await resilientOracle.peek(TOKEN);
     console.log("Price: " + price.toString());
     expect(price.toString()).to.be.equal('1000000000003344');
   });
@@ -122,8 +130,12 @@ describe("MultiOracles", function () {
     await mainOracle.setPrice(2000000000003344);
     await pivotOracle.setPrice(0);
     await fallbackOracle.setPrice(1000000000000000);
-
-    const price = await resilientOracle.peek(TOKEN);
-    console.log("Price: " + price.toString());
+    try {
+      const price = await resilientOracle.peek(TOKEN);
+      console.log("Price: " + price.toString());
+    } catch(e) {
+      // e.message: VM Exception while processing transaction: reverted with reason string 'invalid resilient oracle price'
+      expect(/invalid resilient oracle price/.test(e.message)).to.be.true;
+    }
   });
 })
