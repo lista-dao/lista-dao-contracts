@@ -9,13 +9,8 @@ import "./interfaces/OracleInterface.sol";
  * @author Lista
  * @notice The Resilient Oracle is the main contract that the protocol uses to fetch prices of assets.
  *
- * DeFi protocols are vulnerable to price oracle failures including oracle manipulation and incorrectly
- * reported prices. If only one oracle is used, this creates a single point of failure and opens a vector
- * for attacking the protocol.
- *
  * The Resilient Oracle uses multiple sources and fallback mechanisms to provide accurate prices and protect
- * the protocol from oracle attacks. Currently it includes integrations with Chainlink, Pyth, Binance Oracle
- * and TWAP (Time-Weighted Average Price) oracles. TWAP uses PancakeSwap as the on-chain price source.
+ * the protocol from oracle attacks.
  *
  * For every market (vToken) we configure the main, pivot and fallback oracles. The oracles are configured per
  * vToken's underlying asset address. The main oracle oracle is the most trustworthy price source, the pivot
@@ -33,9 +28,6 @@ anchorRatio = anchorPrice/reporterPrice
 isValid = anchorRatio <= upperBoundAnchorRatio && anchorRatio >= lowerBoundAnchorRatio
 ```
 
- * In most cases, Chainlink is used as the main oracle, TWAP or Pyth oracles are used as the pivot oracle depending
- * on which supports the given market and Binance oracle is used as the fallback oracle. For some markets we may
- * use Pyth or TWAP as the main oracle if the token price is not supported by Chainlink or Binance oracles.
  *
  * For a fetched price to be valid it must be positive and not stagnant. If the price is invalid then we consider the
  * oracle to be stagnant and treat it like it's disabled.
@@ -68,7 +60,6 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   uint256 public constant INVALID_PRICE = 0;
 
   /// @notice Bound validator contract address
-  /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
   BoundValidatorInterface public boundValidator;
 
   mapping(address => TokenConfig) private tokenConfigs;
