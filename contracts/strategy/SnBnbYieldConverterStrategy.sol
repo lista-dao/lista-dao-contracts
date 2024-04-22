@@ -249,8 +249,8 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
             } else {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later
-                manualWithdrawAmount[recipient] += amount;
-                bnbToDistribute += amount;
+                manualWithdrawAmount[recipient] += _withdrawRequests[+_firstDistributeIdx].amount;
+                delete _withdrawRequests[_firstDistributeIdx++];
             }
         }
     }
