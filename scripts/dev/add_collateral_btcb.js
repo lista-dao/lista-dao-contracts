@@ -86,8 +86,8 @@ async function main() {
   await dog['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('chop'), chop) // 10%
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
-  await interaction.poke(tokenAddress)
-  await interaction.drip(tokenAddress)
+  await interaction.poke(tokenAddress, { gasLimit: 1000000 })
+  await interaction.drip(tokenAddress, { gasLimit: 1000000 })
 
   console.log('Finished')
 }

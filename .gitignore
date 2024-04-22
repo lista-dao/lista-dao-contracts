@@ -13,3 +13,6 @@ artifacts
 .DS_Store
 
 typechain-types
+
+# Ignore the temporary files
+*temp.js

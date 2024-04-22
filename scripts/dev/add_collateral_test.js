@@ -14,10 +14,13 @@ async function main() {
     // token address
     let TOKEN = "0xf2d6189723Ef25c4CECE486cfd5d852c0C3176eB";
     let INTERACTION = "0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4";
-    let AUCTION_PROXY = '0x272d6589cecc19165cfcd0466f73a648cb1ea700'
+    let AUCTION_PROXY = '0x272d6589cecc19165cfcd0466f73a648cb1ea700';
+    let LISUSD = '0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5';
 
     if (hre.network.name === "bsc_testnet") {
+        LISUSD = '0x89b56C1997cefC6415A140e41A00Ad03dCac3ed0';
         INTERACTION = "0xb7A5999AEaE17C37d07ac4b34e56757c96387c84";
+        AUCTION_PROXY = '';
         if (!AUCTION_PROXY) {
             // deploy AuctionProxy
             const AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
@@ -36,6 +39,12 @@ async function main() {
     });
 
     const interaction = this.Interaction.attach(INTERACTION);
+    // approve lisusd
+    console.log("Approving LisUSD...");
+    this.LisUsd = await ethers.getContractFactory("LisUSD");
+    const lisusd = this.LisUsd.attach(LISUSD);
+    await lisusd.approve(INTERACTION, ethers.MaxUint256.toString());
+    console.log("LisUSD approved");
     // approve collateral
     this.Token = await ethers.getContractFactory("ERC20UpgradeableMock");
     const token = this.Token.attach(TOKEN);
@@ -55,26 +64,26 @@ async function main() {
     console.log("Collateral approved:", depositAmount.toString());
     // deposit collateral
     console.log("Depositing collateral...");
-    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount);
+    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount), { gasLimit: 1000000 };
     await tx.wait();
     console.log("Collateral deposited:", depositAmount.toString());
     // borrow collateral
     console.log("Borrowing collateral...");
-    tx = await interaction.borrow(TOKEN, borrowAmount);
+    tx = await interaction.borrow(TOKEN, borrowAmount, { gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral borrowed:", borrowAmount.toString());
     // get borrowed
     const totalBorrowed = await interaction.borrowed(TOKEN, deployer.address);
     // payback collateral
     console.log("Payback collateral...");
-    tx = await interaction.payback(TOKEN, totalBorrowed);
+    tx = await interaction.payback(TOKEN, totalBorrowed, { gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral payback success:", totalBorrowed.toString());
     // withdraw collateral
     // get available collateral
     const available = await interaction.free(TOKEN, deployer.address);
     console.log("Withdraw collateral...")
-    await interaction.withdraw(deployer.address, TOKEN, available);
+    await interaction.withdraw(deployer.address, TOKEN, available, { gasLimit: 1000000 });
     console.log("Collateral withdrawn:", available.toString());
     console.log('Finished');
 }

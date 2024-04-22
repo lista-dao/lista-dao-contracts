@@ -16,7 +16,7 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
   this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
 
-  const symbol = 'BTCB200'
+  const symbol = 'BTCB'
   let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
   // Binance Oracle BTCB Aggregator Address
   let priceFeed = '0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f'
