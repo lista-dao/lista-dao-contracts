@@ -81,7 +81,7 @@ async function main() {
     console.log("Collateral payback success:", totalBorrowed.toString());
     // withdraw collateral
     // get available collateral
-    const available = await interaction.free(TOKEN, deployer.address);
+    const available = await interaction.locked(TOKEN, deployer.address);
     console.log("Withdraw collateral...")
     await interaction.withdraw(deployer.address, TOKEN, available, { gasLimit: 1000000 });
     console.log("Collateral withdrawn:", available.toString());
