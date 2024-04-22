@@ -73,8 +73,6 @@ describe("MultiOracles", function () {
       '990000000000000000'
     ]);
     console.log('Validation config set.');
-
-    const tokenConfig = await resilientOracle.getTokenConfig(TOKEN);
   })
 
   it("get main price", async () => {
