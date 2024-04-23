@@ -312,4 +312,29 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         _snBnbToken.safeApprove(address(_stakeManager), type(uint256).max);
         emit SnBnbStakeManagerChanged(stakeManager);
     }
+
+    /// @dev get the withdraw requests of the user
+    /// @param account - address of the user
+    /// @return requests - the withdraw requests of the user
+    function getWithdrawRequests(address account) external view returns (UserWithdrawRequest[] memory requests) {
+        uint256 count = 0;
+        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
+            if (_withdrawRequests[i].recipient == account) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            return requests;
+        }
+        requests = new UserWithdrawRequest[](count);
+        uint256 idx;
+        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
+            if (_withdrawRequests[i].recipient == account) {
+                requests[idx++] = _withdrawRequests[i];
+            }
+        }
+
+        return requests;
+    }
+
 }
