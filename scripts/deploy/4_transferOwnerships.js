@@ -1,4 +1,6 @@
+const hre = require("hardhat");
 const {ethers, upgrades} = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 const { withDefaults } = require("@openzeppelin/hardhat-upgrades/dist/utils");
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -31,21 +33,21 @@ async function main() {
   this.HelioToken = await hre.ethers.getContractFactory("HelioToken");
   this.HelioRewards = await hre.ethers.getContractFactory("HelioRewards");
   this.HelioOracle = await hre.ethers.getContractFactory("HelioOracle");
-//  this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
-  let auctionProxy = await ethers.deployContract("AuctionProxy", []);
-  await auctionProxy.waitForDeployment();
+  this.AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
+  let auctionProxy = await this.AuctionProxy.deploy();
+  await auctionProxy.deployed();
   this.Interaction = await hre.ethers.getContractFactory("Interaction", {
     unsafeAllow: ["external-library-linking"],
     libraries: {
-      AuctionProxy: auctionProxy.target,
+      AuctionProxy: auctionProxy.address,
     },
   });
 
   let _multisig1, _multisig2, _multisig3, _multisig4;
 
-  let _ceabnbc,
-    _cevault,
-    _hbnb,
+  let _ceabnbc, 
+    _cevault, 
+    _hbnb, 
     _cerosrouter,
     _helioprovider,
     _vat,
@@ -64,20 +66,20 @@ async function main() {
     // _heliooracle,
    _auctionproxy,
    _interaction;
-
+  
   // Load addresses
   if (hre.network.name == "bsc") {
     const {m_ceaBNBc, m_ceVault, m_hBNB, m_cerosRouter, m_abaci, m_oracle, m_vat, m_spot, m_hay
     , m_hayJoin, m_bnbJoin, m_jug, m_vow, m_dog, m_clipCE, m_rewards, m_interaction, m_AuctionLib, m_helioProvider,
     multisig1, multisig2, multisig3, multisig4} = require('./4_transferOwnerships.json'); // mainnet
-    _ceabnbc = m_ceaBNBc, _cevault = m_ceVault, _hbnb = m_hBNB, _cerosrouter = m_cerosRouter, _helioprovider = m_helioProvider, _vat = m_vat, _spot = m_spot, _hay = m_hay, _gemjoin = m_bnbJoin,
+    _ceabnbc = m_ceaBNBc, _cevault = m_ceVault, _hbnb = m_hBNB, _cerosrouter = m_cerosRouter, _helioprovider = m_helioProvider, _vat = m_vat, _spot = m_spot, _hay = m_hay, _gemjoin = m_bnbJoin, 
     _hayjoin = m_hayJoin, _oracle = m_oracle, _jug = m_jug, _vow = m_vow, _dog = m_dog, _clip = m_clipCE, _abaci = m_abaci, _heliorewards = m_rewards, _auctionproxy = m_AuctionLib, _interaction = m_interaction,
     _multisig1 = multisig1, _multisig2 = multisig2, _multisig3 = multisig3, _multisig4 = multisig4;
   } else if (hre.network.name == "bsc_testnet") {
     const {t_ceaBNBc, t_ceVault, t_hBNB, t_cerosRouter, t_abaci, t_oracle, t_vat, t_spot, t_hay
     , t_hayJoin, t_bnbJoin, t_jug, t_vow, t_dog, t_clipCE, t_rewards, t_interaction, t_AuctionLib, t_helioProvider,
     multisig1, multisig2, multisig3, multisig4}  = require('./4_transferOwnerships.json'); // testnet
-    _ceabnbc = t_ceaBNBc, _cevault = t_ceVault, _hbnb = t_hBNB, _cerosrouter = t_cerosRouter, _helioprovider = t_helioProvider, _vat = t_vat, _spot = t_spot, _hay = t_hay, _gemjoin = t_bnbJoin,
+    _ceabnbc = t_ceaBNBc, _cevault = t_ceVault, _hbnb = t_hBNB, _cerosrouter = t_cerosRouter, _helioprovider = t_helioProvider, _vat = t_vat, _spot = t_spot, _hay = t_hay, _gemjoin = t_bnbJoin, 
     _hayjoin = t_hayJoin, _oracle = t_oracle, _jug = t_jug, _vow = t_vow, _dog = t_dog, _clip = t_clipCE, _abaci = t_abaci, _heliorewards = t_rewards, _auctionproxy = t_AuctionLib, _interaction = t_interaction,
     _multisig1 = multisig1, _multisig2 = multisig2, _multisig3 = multisig3, _multisig4 = multisig4;
   }
@@ -106,7 +108,7 @@ async function main() {
   let interaction = await this.Interaction.attach(_interaction);
 
   // WARD transfer to self will result in loss of contract
-  if (_multisig3 == deployer.address || _multisig2 == deployer.address)
+  if (_multisig3 == deployer.address || _multisig2 == deployer.address) 
     throw new Error("same-addresses");
 
   console.log("---------------------------");

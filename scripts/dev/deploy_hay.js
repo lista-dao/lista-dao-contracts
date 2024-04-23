@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const {
     REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT, VAT, FAKE_ABNBC_ILK, AUCTION_PROXY, INTERACTION
 } = require('../../addresses.json');
@@ -28,12 +30,12 @@ async function main() {
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
     const hay = await this.Hay.deploy(97, "HAY");
-    await hay.waitForDeployment();
-    console.log("Hay deployed to:", hay.target);
+    await hay.deployed();
+    console.log("Hay deployed to:", hay.address);
 
-    const hayJoin = await this.HayJoin.deploy(VAT, hay.target);
-    await hayJoin.waitForDeployment();
-    console.log("hayJoin deployed to:", hayJoin.target);
+    const hayJoin = await this.HayJoin.deploy(VAT, hay.address);
+    await hayJoin.deployed();
+    console.log("hayJoin deployed to:", hayJoin.address);
 
     this.Interaction = await hre.ethers.getContractFactory("Interaction", {
         unsafeAllow: ['external-library-linking'],
@@ -44,16 +46,16 @@ async function main() {
     let interaction = this.Interaction.attach(INTERACTION);
     let vat = this.Vat.attach(VAT);
 
-    await interaction.setHay(hay.target, hayJoin.target);
-    await vat.rely(hayJoin.target);
+    await interaction.setHay(hay.address, hayJoin.address);
+    await vat.rely(hayJoin.address);
     await hayJoin.rely(INTERACTION);
-    await hay.rely(hayJoin.target);
+    await hay.rely(hayJoin.address);
 
-    // await interaction.setSpot(spot.target);
+    // await interaction.setSpot(spot.address);
 
     console.log('Validating code');
     await hre.run("verify:verify", {
-        address: hay.target,
+        address: hay.address,
         constructorArguments: [
             97,
             "HAY"
@@ -61,10 +63,10 @@ async function main() {
     });
 
     await hre.run("verify:verify", {
-        address: hayJoin.target,
+        address: hayJoin.address,
         constructorArguments: [
             VAT,
-            hay.target
+            hay.address
         ]
     });
 
