@@ -1,31 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { PythAggregatorV3 } from "@pythnetwork/pyth-sdk-solidity/PythAggregatorV3.sol";
+import { IPyth } from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import { PythStructs } from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import "./interfaces/OracleInterface.sol";
 
 contract PythOracle is AggregatorV3Interface {
 
-  PythAggregatorV3 immutable public pythFeedAdaptor;
+  IPyth immutable public pyth;
+  bytes32 immutable public priceId;
 
-  constructor(address pythContract, bytes32 priceId) {
-    pythFeedAdaptor = new PythAggregatorV3(pythContract, priceId);
+  constructor(address _pyth, bytes32 _priceId) {
+    pyth = IPyth(_pyth);
+    priceId = _priceId;
   }
 
   function decimals() external view returns (uint8) {
-    return pythFeedAdaptor.decimals();
+    PythStructs.Price memory price = pyth.getPriceUnsafe(priceId);
+    return uint8(-1 * int8(price.expo));
   }
 
-  function description() external view returns (string memory) {
-    return pythFeedAdaptor.description();
+  function description() external pure returns (string memory) {
+    return "A port of a chainlink aggregator powered by pyth network feeds";
   }
 
-  function version() external view returns (uint256) {
-    return pythFeedAdaptor.version();
+  function version() external pure returns (uint256) {
+    return 1;
   }
 
   function latestAnswer() external view returns (int256) {
-    return pythFeedAdaptor.latestAnswer();
+    PythStructs.Price memory price = pyth.getPriceUnsafe(priceId);
+    return int256(price.price);
   }
 
   function getRoundData(uint80 _roundId)
@@ -38,7 +43,14 @@ contract PythOracle is AggregatorV3Interface {
     uint256 updatedAt,
     uint80 answeredInRound
   ) {
-    return pythFeedAdaptor.getRoundData(_roundId);
+    PythStructs.Price memory price = pyth.getPriceUnsafe(priceId);
+    return (
+      _roundId,
+      int256(price.price),
+      price.publishTime,
+      price.publishTime,
+      _roundId
+    );
   }
 
   function latestRoundData()
@@ -51,6 +63,14 @@ contract PythOracle is AggregatorV3Interface {
     uint256 updatedAt,
     uint80 answeredInRound
   ) {
-    return pythFeedAdaptor.latestRoundData();
+    PythStructs.Price memory price = pyth.getPriceUnsafe(priceId);
+    roundId = uint80(price.publishTime);
+    return (
+      roundId,
+      int256(price.price),
+      price.publishTime,
+      price.publishTime,
+      roundId
+    );
   }
 }
