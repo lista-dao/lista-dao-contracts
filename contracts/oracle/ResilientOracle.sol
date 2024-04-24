@@ -55,6 +55,10 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
     /// @notice `enableFlagsForOracles` stores the enabled state
     /// for each oracle in the same order as `oracles`
     bool[3] enableFlagsForOracles;
+    /// @notice `timeDeltaTolerance` stores the tolerance of
+    /// the difference between the block timestamp and the price update time
+    /// the unit is seconds
+    uint256 timeDeltaTolerance;
   }
 
   uint256 public constant INVALID_PRICE = 0;
@@ -68,7 +72,8 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
     address indexed asset,
     address indexed mainOracle,
     address indexed pivotOracle,
-    address fallbackOracle
+    address fallbackOracle,
+    uint256 timeDeltaTolerance
   );
 
   /// Event emitted when an oracle is set
@@ -127,7 +132,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
      * @custom:access Only Governance
      * @custom:error Null address error if main-role oracle address is null
      * @custom:error NotNullAddress error is thrown if asset address is null
-     * @custom:error TokenConfigExistance error is thrown if token config is not set
+     * @custom:error TokenConfigExistence error is thrown if token config is not set
      * @custom:event Emits OracleSet event with asset address, oracle address and role of the oracle for the asset
      */
   function setOracle(
@@ -148,7 +153,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
      * @param enable Enabled boolean of the oracle
      * @custom:access Only Governance
      * @custom:error NotNullAddress error is thrown if asset address is null
-     * @custom:error TokenConfigExistance error is thrown if token config is not set
+     * @custom:error TokenConfigExistence error is thrown if token config is not set
      */
   function enableOracle(
     address asset,
@@ -196,7 +201,8 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
       tokenConfig.asset,
       tokenConfig.oracles[uint256(OracleRole.MAIN)],
       tokenConfig.oracles[uint256(OracleRole.PIVOT)],
-      tokenConfig.oracles[uint256(OracleRole.FALLBACK)]
+      tokenConfig.oracles[uint256(OracleRole.FALLBACK)],
+      tokenConfig.timeDeltaTolerance
     );
   }
 
@@ -207,7 +213,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
      * @return oracle Oracle address based on role
      * @return enabled Enabled flag of the oracle based on token config
      */
-  function getOracle(address asset, OracleRole role) public view returns (address oracle, bool enabled) {
+  function getOracle(address asset, OracleRole role)public view returns (address oracle, bool enabled) {
     oracle = tokenConfigs[asset].oracles[uint256(role)];
     enabled = tokenConfigs[asset].enableFlagsForOracles[uint256(role)];
   }
@@ -218,8 +224,13 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
       * @return price USD price in scaled decimal places
       * @custom:error Invalid price error is thrown if the price fetched from the oracle is invalid
       */
-  function getPriceFromOracle(address oracle) external view returns (uint256) {
-    try AggregatorV3Interface(oracle).latestAnswer() returns (int256 answer) {
+  function getPriceFromOracle(address oracle, uint256 tolerance) external view returns (uint256) {
+    try AggregatorV3Interface(oracle).latestRoundData() returns (
+      uint80, int256 answer, uint256, uint256 updatedAt, uint80
+    ) {
+      if (tolerance != 0 && block.timestamp - updatedAt > tolerance) {
+        return 0;
+      }
       return uint256(answer);
     } catch {
       return INVALID_PRICE;
@@ -233,12 +244,15 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
       * @custom:error Invalid price error is thrown if the price fetched from the oracle is invalid
       */
   function _getPrice(address asset) internal view returns (uint256) {
-    uint256 pivotPrice = INVALID_PRICE;
+    uint256 pivotPrice = INVALID_PRICE; // 0
 
     // Get pivot oracle price, Invalid price if not available or error
     (address pivotOracle, bool pivotOracleEnabled) = getOracle(asset, OracleRole.PIVOT);
     if (pivotOracleEnabled && pivotOracle != address(0)) {
-      try this.getPriceFromOracle(pivotOracle) returns (uint256 pricePivot) {
+      try this.getPriceFromOracle(
+        pivotOracle,
+        tokenConfigs[asset].timeDeltaTolerance
+      ) returns (uint256 pricePivot) {
         pivotPrice = pricePivot;
       } catch {}
     }
@@ -292,7 +306,10 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   ) internal view returns (uint256, bool) {
     (address mainOracle, bool mainOracleEnabled) = getOracle(asset, OracleRole.MAIN);
     if (mainOracleEnabled && mainOracle != address(0)) {
-      try this.getPriceFromOracle(mainOracle) returns (uint256 mainOraclePrice) {
+      try this.getPriceFromOracle(
+        mainOracle,
+        tokenConfigs[asset].timeDeltaTolerance
+      ) returns (uint256 mainOraclePrice) {
         if (!pivotEnabled) {
           return (mainOraclePrice, true);
         }
@@ -324,7 +341,10 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
   function _getFallbackOraclePrice(address asset, uint256 pivotPrice) private view returns (uint256, bool) {
     (address fallbackOracle, bool fallbackEnabled) = getOracle(asset, OracleRole.FALLBACK);
     if (fallbackEnabled && fallbackOracle != address(0)) {
-      try this.getPriceFromOracle(fallbackOracle) returns (uint256 fallbackOraclePrice) {
+      try this.getPriceFromOracle(
+        fallbackOracle,
+        tokenConfigs[asset].timeDeltaTolerance
+      ) returns (uint256 fallbackOraclePrice) {
         if (pivotPrice == INVALID_PRICE) {
           return (fallbackOraclePrice, false);
         }
