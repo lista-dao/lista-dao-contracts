@@ -5,6 +5,13 @@ interface OracleInterface {
   function peek(address asset) external view returns (uint256);
 }
 
+interface IAPI3Proxy {
+  function read()
+  external
+  view
+  returns (int224 value, uint32 timestamp);
+}
+
 interface AggregatorV3Interface {
   function decimals() external view returns (uint8);
 
