@@ -86,6 +86,9 @@ async function main() {
   await dog['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('chop'), chop) // 10%
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
+  await interaction.setCollateralDuty(tokenAddress, '1000000004431822000000000000'); //apr 15%
+  console.log("set duty...");
+
   await interaction.poke(tokenAddress, { gasLimit: 1000000 })
   await interaction.drip(tokenAddress, { gasLimit: 1000000 })
 
