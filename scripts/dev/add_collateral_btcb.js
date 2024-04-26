@@ -22,10 +22,10 @@ async function main() {
   }
 
   // core parameters
-  const mat = '15' + ray // Liquidation Ratio
+  const mat = '1515151515151515151515151515' // Liquidation Ratio
   const line = '50000000' + rad // Debt Ceiling
-  const dust = '100000000000000000' + ray // Debt Floor
-  const hole = '250' + rad // Liquidation
+  const dust = '15' + rad // Debt Floor
+  const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
 
 
