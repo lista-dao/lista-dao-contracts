@@ -70,6 +70,7 @@ async function main() {
   this.Vat = await hre.ethers.getContractFactory('Vat')
   const vat = this.Vat.attach(VAT)
   await vat.rely(gemJoin)
+  await vat.rely(clipper)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('dust'), dust)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('line'), line)
 
