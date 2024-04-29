@@ -20,7 +20,7 @@ async function main() {
     if (hre.network.name === "bsc_testnet") {
         LISUSD = '0x89b56C1997cefC6415A140e41A00Ad03dCac3ed0';
         INTERACTION = "0xb7A5999AEaE17C37d07ac4b34e56757c96387c84";
-        AUCTION_PROXY = '';
+        AUCTION_PROXY = '0xfA31c2Fe82E7f7C04098B6D2B1E1cb451A5453F3';
         if (!AUCTION_PROXY) {
             // deploy AuctionProxy
             const AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
@@ -64,7 +64,7 @@ async function main() {
     console.log("Collateral approved:", depositAmount.toString());
     // deposit collateral
     console.log("Depositing collateral...");
-    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount), { gasLimit: 1000000 };
+    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount, { gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral deposited:", depositAmount.toString());
     // borrow collateral
