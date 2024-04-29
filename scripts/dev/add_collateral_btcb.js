@@ -22,10 +22,10 @@ async function main() {
   }
 
   // core parameters
-  const mat = '15' + ray // Liquidation Ratio
+  const mat = '1515151515151515151515151515' // Liquidation Ratio
   const line = '50000000' + rad // Debt Ceiling
-  const dust = '100000000000000000' + ray // Debt Floor
-  const hole = '250' + rad // Liquidation
+  const dust = '15' + rad // Debt Floor
+  const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
 
 
@@ -70,6 +70,7 @@ async function main() {
   this.Vat = await hre.ethers.getContractFactory('Vat')
   const vat = this.Vat.attach(VAT)
   await vat.rely(gemJoin)
+  await vat.rely(clipper)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('dust'), dust)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('line'), line)
 
@@ -85,6 +86,9 @@ async function main() {
   await dog['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('hole'), hole)
   await dog['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('chop'), chop) // 10%
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
+
+  await interaction.setCollateralDuty(tokenAddress, '1000000004431822000000000000'); //apr 15%
+  console.log("set duty...");
 
   await interaction.poke(tokenAddress, { gasLimit: 1000000 })
   await interaction.drip(tokenAddress, { gasLimit: 1000000 })
