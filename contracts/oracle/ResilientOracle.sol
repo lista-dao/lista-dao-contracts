@@ -229,7 +229,7 @@ contract ResilientOracle is OwnableUpgradeable, OracleInterface {
       uint80, int256 answer, uint256, uint256 updatedAt, uint80
     ) {
       if (tolerance != 0 && block.timestamp - updatedAt > tolerance) {
-        return 0;
+        return INVALID_PRICE;
       }
       return uint256(answer);
     } catch {
