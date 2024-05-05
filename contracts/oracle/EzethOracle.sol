@@ -5,34 +5,24 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract EzethOracle is Initializable,AccessControl {
+contract EzethOracle is Initializable, AccessControl {
 
-    //AggregatorV3Interface internal ethUsdPriceFeed;
-    AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface internal ethUsdPriceFeed;
     AggregatorV3Interface internal ezethEthPriceFeed;
-
-
-    function initialize(address aggregatorAddress) external initializer {
-        priceFeed = AggregatorV3Interface(aggregatorAddress);
-    }
 
 
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
-/*    function initialize(address ethUsdAddr,address ezethEthAddr) external initializer {
+    function initialize(address ethUsdAddr,address ezethEthAddr) external initializer {
         ethUsdPriceFeed = AggregatorV3Interface(ethUsdAddr);
         ezethEthPriceFeed = AggregatorV3Interface(ezethEthAddr);
-    }*/
-
-/*    function initialize(address aggregatorAddress1) external initializer {
-        priceFeed = AggregatorV3Interface(aggregatorAddress1);
         _setupRole(UPDATER_ROLE, msg.sender);
-    }*/
+    }
 
     function updateAddress(address ethUsdAddr,address ezethEthAddr) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not an updater");
-        priceFeed = AggregatorV3Interface(ethUsdAddr);
-        ezethEthPriceFeed = AggregatorV3Interface(ethUsdAddr);
+        ethUsdPriceFeed = AggregatorV3Interface(ethUsdAddr);
+        ezethEthPriceFeed = AggregatorV3Interface(ezethEthAddr);
     }
 
     /**
@@ -45,7 +35,7 @@ contract EzethOracle is Initializable,AccessControl {
             /*uint startedAt*/,
             uint timeStamp1,
             /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        ) = ethUsdPriceFeed.latestRoundData();
 
         require(block.timestamp - timeStamp1 < 300, "EthUsdOracle/timestamp-too-old");
 
