@@ -3,39 +3,37 @@ pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract EzethOracle is Initializable, AccessControl {
+contract EzethOracle is Initializable {
 
-    AggregatorV3Interface internal ethUsdPriceFeed;
+    AggregatorV3Interface internal priceFeed;
     AggregatorV3Interface internal ezethEthPriceFeed;
-
-
-    bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
+    address public _admin;
+    //bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
     function initialize(address ethUsdAddr,address ezethEthAddr) external initializer {
-        ethUsdPriceFeed = AggregatorV3Interface(ethUsdAddr);
+        priceFeed = AggregatorV3Interface(ethUsdAddr);
         ezethEthPriceFeed = AggregatorV3Interface(ezethEthAddr);
-        _setupRole(UPDATER_ROLE, msg.sender);
+        //_admin = admin;
     }
 
     function updateAddress(address ethUsdAddr,address ezethEthAddr) external {
-        require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not an updater");
-        ethUsdPriceFeed = AggregatorV3Interface(ethUsdAddr);
+        //require(msg.sender == _admin, "EzethOracle: not admin");
+        priceFeed = AggregatorV3Interface(ethUsdAddr);
         ezethEthPriceFeed = AggregatorV3Interface(ezethEthAddr);
     }
 
     /**
-     * Returns the latest price
-     */
+      * Returns the latest price
+      */
     function peek() public view returns (bytes32, bool) {
         (
-            /*uint80 roundID*/,
+        /*uint80 roundID*/,
             int price1,
-            /*uint startedAt*/,
+        /*uint startedAt*/,
             uint timeStamp1,
-            /*uint80 answeredInRound*/
-        ) = ethUsdPriceFeed.latestRoundData();
+        /*uint80 answeredInRound*/
+        ) = priceFeed.latestRoundData();
 
         require(block.timestamp - timeStamp1 < 300, "EthUsdOracle/timestamp-too-old");
 

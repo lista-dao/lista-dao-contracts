@@ -12,18 +12,23 @@ async function main() {
     let SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
 
     let proxyAddress = '0xeCf92977F937eAECf9F2124c4E3361d248A2988C';
+    const [owner] = await ethers.getSigners();
 
 
     const Oracle = await ethers.getContractFactory("EzethOracle");
+    //const oracle = await upgrades.deployProxy(Oracle, ['0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d','0x77D231e51614C84e15CCC38E2a52BFab49D6853C',owner.address], {initializer: 'initialize'});
+
+    //await oracle.deployed();
     const newImplAddress = await upgrades.prepareUpgrade(proxyAddress, Oracle);
 
     console.log("新的合约实现已经部署在地址:", newImplAddress);
+    console.log("owner: ", owner.address);
 
 
 
     // 3. 更新代理使用新的合约实现
     const upgradedOracle = await upgrades.upgradeProxy(proxyAddress, Oracle);
-    console.log("代理现在正在使用新的合约实现:", upgradedOracle.address);
+    console.log("代理现在正在使用新的合约实现:", upgradedOracle.target);
 
 
 
