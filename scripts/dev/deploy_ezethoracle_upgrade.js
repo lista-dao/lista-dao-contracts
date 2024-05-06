@@ -21,14 +21,14 @@ async function main() {
     //await oracle.deployed();
     const newImplAddress = await upgrades.prepareUpgrade(proxyAddress, Oracle);
 
-    console.log("新的合约实现已经部署在地址:", newImplAddress);
+    console.log("newImplAddress: ", newImplAddress);
     console.log("owner: ", owner.address);
 
 
 
     // 3. 更新代理使用新的合约实现
     const upgradedOracle = await upgrades.upgradeProxy(proxyAddress, Oracle);
-    console.log("代理现在正在使用新的合约实现:", upgradedOracle.target);
+    console.log("upgrade proxy:", upgradedOracle.target);
 
 
 
