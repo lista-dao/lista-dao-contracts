@@ -17,11 +17,11 @@ contract EzethOracle is Initializable {
         //_admin = admin;
     }
 
-    function updateAddress(address ethUsdAddr,address ezethEthAddr) external {
+/*    function updateAddress(address ethUsdAddr,address ezethEthAddr) external {
         //require(msg.sender == _admin, "EzethOracle: not admin");
         priceFeed = AggregatorV3Interface(ethUsdAddr);
         ezethEthPriceFeed = AggregatorV3Interface(ezethEthAddr);
-    }
+    }*/
 
     /**
       * Returns the latest price
@@ -37,21 +37,6 @@ contract EzethOracle is Initializable {
 
         require(block.timestamp - timeStamp1 < 300, "EthUsdOracle/timestamp-too-old");
 
-        (
-        /*uint80 roundID*/,
-            int price2,
-        /*uint startedAt*/,
-            uint timeStamp2,
-        /*uint80 answeredInRound*/
-        ) = ezethEthPriceFeed.latestRoundData();
-
-        require(block.timestamp - timeStamp2 < (13 * 3600), "EzethEthOracle/timestamp-too-old");
-
-        if (price1 <= 0 || price2 <= 0) {
-            return (0, false);
-        }
-
-
-        return (bytes32(uint(price1) * uint(price2) * (10**2)), true);
+        return (bytes32(uint(price1) * (10**10)), true);
     }
 }
