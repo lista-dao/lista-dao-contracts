@@ -18,11 +18,12 @@ async function upgradeProxy(proxyAddress, impAddress) {
 }
 
 async function deployImplementation(contractName) {
-    let contractFactory = await hre.ethers.getContractFactory(contractName);
+    let contractFactory = await ethers.getContractFactory(contractName);
     let contractImpl = await contractFactory.deploy();
-    await contractImpl.deployed();
-    console.log(`${contractName}Imp:  `,contractImpl.address)
-    return contractImpl.address;
+    await contractImpl.deploymentTransaction().wait(6);
+    const address = await contractImpl.getAddress();
+    console.log(`${contractName}Imp:  `, address)
+    return address;
 }
 
 async function verifyImpContract(ImpAddress) {
