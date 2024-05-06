@@ -1,0 +1,33 @@
+{
+  "resilientOracleAddress": "0x2D9f861Fb030Fa2Bf9Ac64EBD11dF7f337bA7582",
+  "boundValidatorAddress": "0x00817A284848f38cf0628F83B3788Fa884642129",
+  "assets": {
+    "btc": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    },
+    "eth": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    },
+    "bnb": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    }
+  }
+}
