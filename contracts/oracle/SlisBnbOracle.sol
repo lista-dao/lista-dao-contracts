@@ -11,7 +11,7 @@ contract SlisBnbOracle is Initializable {
   // @dev Stake Manager Address
   address internal constant stakeManagerAddr = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
   // @dev New price feed address
-  address internal constant bnbPriceFeedAddr = 0xC5A35FC58EFDC4B88DDCA51AcACd2E8F593504bE;
+  address internal constant bnbPriceFeedAddr = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE;
 
   function initialize(address aggregatorAddress) external initializer {
     priceFeed = AggregatorV3Interface(aggregatorAddress);
