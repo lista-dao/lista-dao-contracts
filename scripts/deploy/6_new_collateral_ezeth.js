@@ -18,8 +18,8 @@ async function main() {
 
   const symbol = 'ezETH_1'
   let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
-  // Binance Oracle BTCB Aggregator Address
-  let priceFeed = '0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f'
+  // Binance Oracle ezeth Aggregator Address
+  let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = deployer.address
