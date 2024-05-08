@@ -16,8 +16,8 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
   this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
 
-  const symbol = 'ezETH_1'
-  let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
+  const symbol = 'ezETH'
+  let tokenAddress = '0x2416092f143378750bb29b79ed961ab195cceea5'
   // Binance Oracle ezeth Aggregator Address
   let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
 
