@@ -30,6 +30,7 @@ contract BoundValidator is OwnableUpgradeable, BoundValidatorInterface {
   event ValidateConfigAdded(address indexed asset, uint256 indexed upperBound, uint256 indexed lowerBound);
 
   /// @notice to prevent the implementation contract to initialize itself
+  /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
   }
