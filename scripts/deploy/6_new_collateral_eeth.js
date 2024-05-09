@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
-const {addCollateral} = require('../utils/add_collateral_ezeth')
+const {addCollateral} = require('../utils/add_collateral_eeth')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -14,14 +14,15 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('EzethBinanceOracle')
+  this.Oracle = await hre.ethers.getContractFactory('EethOracle')
 
-  const symbol = 'ezETH'
+  const symbol = 'eETH_1'
   let tokenAddress = '0x2416092f143378750bb29b79ed961ab195cceea5'
-  // Binance Oracle ezeth Aggregator Address
+  //todo replace this pricefeed address to real before going online
   let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
 
   if (hre.network.name === 'bsc_testnet') {
+    this.Oracle = await hre.ethers.getContractFactory('EethOracleDev')
     NEW_OWNER = deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
@@ -32,11 +33,13 @@ async function main() {
     console.log('Deployed: clipCE     : ' + tokenMock.target)
     console.log('Imp                  : ' + tokenMockImplementation)
     tokenAddress = await tokenMock.target
-    //await hre.run('verify:verify', {address: tokenMock.target})
+    await hre.run('verify:verify', {address: tokenMock.target})
     //await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-    priceFeed = '0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d'
+
+    // 这是mock的price feed
+    priceFeed = '0x229C2afD2CA267fAED2551dACf4B5B34E6Bfdd78'
   }
 
   // add collateral

@@ -4,12 +4,12 @@ pragma solidity ^0.8.10;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract EzethBinanceOracle is Initializable {
+contract EethOracle is Initializable {
 
     AggregatorV3Interface internal priceFeed;
 
-    function initialize(address aggregatorAddress) external initializer {
-        priceFeed = AggregatorV3Interface(aggregatorAddress);
+    function initialize(address eEthUsdAddr) external initializer {
+        priceFeed = AggregatorV3Interface(eEthUsdAddr);
     }
 
     /**
@@ -18,14 +18,14 @@ contract EzethBinanceOracle is Initializable {
     function peek() public view returns (bytes32, bool) {
         (
         /*uint80 roundID*/,
-            int price1,
+            int price,
         /*uint startedAt*/,
-            uint timeStamp1,
+            uint timeStamp,
         /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < 300, "EthUsdOracle/timestamp-too-old");
+        require(block.timestamp - timeStamp < 300, "EethUsdOracle/timestamp-too-old");
 
-        return (bytes32(uint(price1) * (10**10)), true);
+        return (bytes32(uint(price) * (10**10)), true);
     }
 }
