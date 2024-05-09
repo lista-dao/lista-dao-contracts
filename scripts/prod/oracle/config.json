@@ -1,0 +1,33 @@
+{
+  "resilientOracleAddress": "",
+  "boundValidatorAddress": "",
+  "assets": {
+    "btc": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    },
+    "eth": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    },
+    "bnb": {
+      "token": "",
+      "mainOracle": "",
+      "pivotOracle": "",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 300,
+      "upperBoundRatio": "",
+      "lowerBoundRatio": ""
+    }
+  }
+}

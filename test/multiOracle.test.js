@@ -12,7 +12,7 @@ describe("MultiOracles", function () {
   const TOKEN = '0x1A26d803C2e796601794f8C5609549643832702C';
 
   let boundValidator, resilientOracle, mainOracle, pivotOracle, fallbackOracle,
-  mainOracleAddress = BINANCE_ORACLE_ADDRESS,
+    mainOracleAddress = BINANCE_ORACLE_ADDRESS,
     pivotOracleAddress = CHAINLINK_ORACLE_ADDRESS,
     fallbackOracleAddress = BINANCE_ORACLE_ADDRESS;
 
