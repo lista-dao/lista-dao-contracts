@@ -3,7 +3,7 @@ const {ethers, upgrades} = require('hardhat');
 async function main() {
     console.log('Running deploy script');
 
-    let collateral = ethers.encodeBytes32String('EZETH');
+    let collateral = ethers.encodeBytes32String('ezETH_1');
     //ETHUSD
     let ethUsdPriceFeed = '0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d'
 
