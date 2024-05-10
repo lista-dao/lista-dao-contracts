@@ -24,7 +24,7 @@ contract EzethBinanceOracle is Initializable {
         /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < 300, "EthUsdOracle/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < 3600, "EthUsdOracle/timestamp-too-old");
 
         return (bytes32(uint(price1) * (10**10)), true);
     }
