@@ -3,11 +3,9 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
-
 import "./interfaces/VatLike.sol";
 import "./interfaces/HayJoinLike.sol";
 import "./interfaces/GemJoinLike.sol";
@@ -26,7 +24,7 @@ uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuardUpgradeable {
+contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -56,6 +54,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     address public whitelistOperator;
     mapping(address => uint) public whitelist;
     mapping(address => uint) public tokensBlacklist;
+    bool private _entered;
+
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
     function setWhitelistOperator(address usr) external auth {
@@ -89,6 +89,12 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     modifier notInBlacklisted(address token) {
         require (tokensBlacklist[token] == 0, "Interaction/token-in-blacklist");
         _;
+    }
+    modifier nonReentrant {
+        require(!_entered, "re-entrant call");
+        _entered = true;
+        _;
+        _entered = false;
     }
     function initialize(
         address vat_,
