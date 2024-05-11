@@ -55,6 +55,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     uint256 public whitelistMode;
     address public whitelistOperator;
     mapping(address => uint) public whitelist;
+    mapping(address => uint) public tokensBlacklist;
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
     function setWhitelistOperator(address usr) external auth {
@@ -68,6 +69,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         for(uint256 i = 0; i < usrs.length; i++)
             whitelist[usrs[i]] = 0;
     }
+    function addToBlacklist(address[] memory tokens) external auth {
+        for(uint256 i = 0; i < tokens.length; i++)
+            tokensBlacklist[tokens[i]] = 1;
+    }
+    function removeFromBlacklist(address[] memory tokens) external auth {
+        for(uint256 i = 0; i < tokens.length; i++)
+            tokensBlacklist[tokens[i]] = 0;
+    }
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
             require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
@@ -77,7 +86,10 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward");
         _;
     }
-
+    modifier notInBlacklisted(address token) {
+        require (tokensBlacklist[token] == 0, "Interaction/token-in-blacklist");
+        _;
+    }
     function initialize(
         address vat_,
         address spot_,
@@ -175,7 +187,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         address participant,
         address token,
         uint256 dink
-    ) external whitelisted(participant) nonReentrant returns (uint256) {
+    ) external whitelisted(participant) notInBlacklisted(token) nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
@@ -202,7 +214,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         return dink;
     }
 
-    function borrow(address token, uint256 hayAmount) external nonReentrant returns (uint256) {
+    function borrow(address token, uint256 hayAmount) external notInBlacklisted(token) nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
