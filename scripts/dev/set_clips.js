@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const {
     REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT, VAT,
     FAKE_ABNBC_ILK, AUCTION_PROXY, INTERACTION, DOG, VOW, ABACI,
@@ -31,30 +33,30 @@ async function main() {
     console.log("CLIP CE");
     // let clip = this.Clip.attach(CLIP);
     await clipCE.rely(DOG);
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "1800"); // 30mins reset time
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-    await clipCE["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-    await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), SPOT);
-    await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("dog"), DOG);
-    await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("vow"), VOW);
-    await clipCE["file(bytes32,address)"](ethers.encodeBytes32String("calc"), ABACI);
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+    await clipCE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clipCE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
     const clipFAKE = await this.Clip.attach(CLIP1);
     console.log("CLIP FAKE");
     await clipFAKE.rely(DOG);
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "1800"); // 30mins reset time
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-    await clipFAKE["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-    await clipFAKE["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), SPOT);
-    await clipFAKE["file(bytes32,address)"](ethers.encodeBytes32String("dog"), DOG);
-    await clipFAKE["file(bytes32,address)"](ethers.encodeBytes32String("vow"), VOW);
-    await clipFAKE["file(bytes32,address)"](ethers.encodeBytes32String("calc"), ABACI);
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "1800"); // 30mins reset time
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "10000000000000000"); // 1% from vow incentive
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+    await clipFAKE["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+    await clipFAKE["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
     console.log('Finished');
 }
 

@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const {
     REAL_ABNBC, ceBNBc, DEPLOYER, Oracle, SPOT, VAT, FAKE_ABNBC_ILK, AUCTION_PROXY, INTERACTION
 } = require('../../addresses.json');
@@ -28,11 +30,11 @@ async function main() {
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
     const spot = await this.Spot.deploy(VAT);
-    await spot.waitForDeployment();
-    console.log("spot deployed to:", spot.target);
+    await spot.deployed();
+    console.log("spot deployed to:", spot.address);
 
-    await spot["file(bytes32,bytes32,address)"](collateral, ethers.encodeBytes32String("pip"), Oracle);
-    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.encodeBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
+    await spot["file(bytes32,bytes32,address)"](collateral, ethers.utils.formatBytes32String("pip"), Oracle);
+    await spot["file(bytes32,bytes32,uint256)"](collateral, ethers.utils.formatBytes32String("mat"), "1250000000000000000000000000"); // Liquidation Ratio
     await spot.poke(collateral);
 
     this.Interaction = await hre.ethers.getContractFactory("Interaction", {
@@ -42,11 +44,11 @@ async function main() {
         },
     });
     let interaction = this.Interaction.attach(INTERACTION);
-    await interaction.setSpot(spot.target);
+    await interaction.setSpot(spot.address);
 
     console.log('Validating code');
     await hre.run("verify:verify", {
-        address: spot.target,
+        address: spot.address,
         constructorArguments: [
             VAT
         ]
