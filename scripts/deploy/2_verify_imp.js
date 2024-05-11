@@ -1,5 +1,7 @@
+const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
+const {ether} = require("@openzeppelin/test-helpers");
 
 const network_file_name = `${network.name}_addresses.json`;
 
@@ -40,7 +42,7 @@ const {
     interactionImplementation,
     AuctionLib,
     helioProvider,
-    helioProviderImplementation
+    helioProviderImplementation 
 } = require('./' + network_file_name);
 
 async function main() {

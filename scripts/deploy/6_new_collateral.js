@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 const fs = require("fs");
 const {ethers, upgrades} = require("hardhat");
 
@@ -15,7 +16,7 @@ async function main() {
   this.Oracle = await hre.ethers.getContractFactory("BusdOracle");
 
   // Set addresses
-  let ILK = ethers.encodeBytes32String("BUSD");
+  let ILK = await ethers.utils.formatBytes32String("BUSD");
   let BUSD = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
   let VAT = "0x33A34eAB3ee892D40420507B820347b1cA2201c4";
   let DOG = "0xd57E7b53a1572d27A04d9c1De2c4D423f1926d0B";
@@ -25,16 +26,16 @@ async function main() {
   let ABACI = "0xc1359eD77E6B0CBF9a8130a4C28FBbB87B9501b7";
 
   // Deploy contracts
-  const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, BUSD]);
-  await gemJoin.waitForDeployment();
-  let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.target);
-  console.log("Deployed: gemJoin    : " + gemJoin.target);
+  const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, BUSD], {initializer: "initialize"});
+  await gemJoin.deployed();
+  let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.address);
+  console.log("Deployed: gemJoin    : " + gemJoin.address);
   console.log("Imp                  : " + gemJoinImplementation);
 
-  const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK]);
-  await clipper.waitForDeployment();
-  let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target);
-  console.log("Deployed: clipCE     : " + clipper.target);
+  const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK], {initializer: "initialize"});
+  await clipper.deployed();
+  let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.address);
+  console.log("Deployed: clipCE     : " + clipper.address);
   console.log("Imp                  : " + clipperImplementation);
 
   let aggregatorAddress;
@@ -44,10 +45,10 @@ async function main() {
     aggregatorAddress = "0x9331b55D9830EF609A2aBCfAc0FBCE050A52fdEa";
   }
 
-  const oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress]);
-  await oracle.waitForDeployment();
-  let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target);
-  console.log("Deployed: oracle     : " + oracle.target);
+  const oracle = await upgrades.deployProxy(this.Oracle, [aggregatorAddress], {initializer: "initialize"});
+  await oracle.deployed();
+  let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.address);
+  console.log("Deployed: oracle     : " + oracle.address);
   console.log("Imp                  : " + oracleImplementation);
 
   // Initialize
@@ -55,16 +56,16 @@ async function main() {
 
   await clipper.rely(DOG);
   await clipper.rely(INTERACTION);
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("buf"), "1100000000000000000000000000"); // 10%
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("tail"), "10800"); // 3h reset time
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
-  await clipper["file(bytes32,uint256)"](ethers.encodeBytes32String("stopped"), "0");
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("spotter"), SPOT);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("dog"), DOG);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("vow"), VOW);
-  await clipper["file(bytes32,address)"](ethers.encodeBytes32String("calc"), ABACI);
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("buf"), "1100000000000000000000000000"); // 10%
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tail"), "10800"); // 3h reset time
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("cusp"), "600000000000000000000000000"); // 60% reset ratio
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("chip"), "100000000000000"); // 0.01% from vow incentive
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("tip"), "10" + rad); // 10$ flat fee incentive
+  await clipper["file(bytes32,uint256)"](ethers.utils.formatBytes32String("stopped"), "0");
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("spotter"), SPOT);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("dog"), DOG);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("vow"), VOW);
+  await clipper["file(bytes32,address)"](ethers.utils.formatBytes32String("calc"), ABACI);
 
   // Transfer Ownerships
   await gemJoin.rely(NEW_OWNER);
@@ -78,11 +79,11 @@ async function main() {
 
   // Store deployed addresses
   const addresses = {
-    gemJoin: gemJoin.target,
+    gemJoin: gemJoin.address,
     gemJoinImplementation: gemJoinImplementation,
-    clipper: clipper.target,
+    clipper: clipper.address,
     clipperImplementation: clipperImplementation,
-    oracle: oracle.target,
+    oracle: oracle.address,
     oracleImplementation: oracleImplementation,
     BUSD: BUSD,
     ilk: ILK
