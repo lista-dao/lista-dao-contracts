@@ -3,11 +3,9 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
-
 import "./interfaces/VatLike.sol";
 import "./interfaces/HayJoinLike.sol";
 import "./interfaces/GemJoinLike.sol";
@@ -26,7 +24,7 @@ uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuardUpgradeable {
+contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -55,6 +53,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     uint256 public whitelistMode;
     address public whitelistOperator;
     mapping(address => uint) public whitelist;
+    mapping(address => uint) public tokensBlacklist;
+    bool private _entered;
+
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
     function setWhitelistOperator(address usr) external auth {
@@ -68,6 +69,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         for(uint256 i = 0; i < usrs.length; i++)
             whitelist[usrs[i]] = 0;
     }
+    function addToBlacklist(address[] memory tokens) external auth {
+        for(uint256 i = 0; i < tokens.length; i++)
+            tokensBlacklist[tokens[i]] = 1;
+    }
+    function removeFromBlacklist(address[] memory tokens) external auth {
+        for(uint256 i = 0; i < tokens.length; i++)
+            tokensBlacklist[tokens[i]] = 0;
+    }
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
             require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
@@ -77,7 +86,16 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         require(msg.sender == whitelistOperator || wards[msg.sender] == 1, "Interaction/not-operator-or-ward");
         _;
     }
-
+    modifier notInBlacklisted(address token) {
+        require (tokensBlacklist[token] == 0, "Interaction/token-in-blacklist");
+        _;
+    }
+    modifier nonReentrant {
+        require(!_entered, "re-entrant call");
+        _entered = true;
+        _;
+        _entered = false;
+    }
     function initialize(
         address vat_,
         address spot_,
@@ -175,7 +193,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         address participant,
         address token,
         uint256 dink
-    ) external whitelisted(participant) nonReentrant returns (uint256) {
+    ) external whitelisted(participant) notInBlacklisted(token) nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
@@ -202,7 +220,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         return dink;
     }
 
-    function borrow(address token, uint256 hayAmount) external nonReentrant returns (uint256) {
+    function borrow(address token, uint256 hayAmount) external notInBlacklisted(token) nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
