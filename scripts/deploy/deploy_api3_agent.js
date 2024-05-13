@@ -13,7 +13,10 @@ async function main() {
   console.log("Imp                     : " + api3OracleImplementation);
 
   console.log('---------- verifying contract ----------')
-  await hre.run("verify:verify", { address: api3Oracle.target });
+  await hre.run("verify:verify", {
+    address: api3Oracle.target,
+    constructorArguments: [API3ProxyAddress]
+  });
 }
 
 main()
