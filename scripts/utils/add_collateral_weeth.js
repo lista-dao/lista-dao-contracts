@@ -60,8 +60,8 @@ module.exports.addCollateral = async function (opts) {
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
 
-  const weETHEeth = '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab'; //weETH/eETH
-  const ethUsdPriceFeed = '0x7a023F0346a564F5e8942dae1342c2bB42909406';// ETH/USD
+  const weETHEeth = '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab'; //weETH/eETH from red stone
+  const ethUsdPriceFeed = '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e';// ETH/USD From chain link
 
 
   const oracle = await upgrades.deployProxy(this.Oracle, [weETHEeth,ethUsdPriceFeed])
