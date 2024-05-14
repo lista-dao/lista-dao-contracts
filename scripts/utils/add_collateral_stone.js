@@ -60,7 +60,7 @@ module.exports.addCollateral = async function (opts) {
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
 
-  let ethUsdPriceFeed = '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
+  let ethUsdPriceFeed = '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' //prod from chain link
 
   //todo
   let stoneEthPriceFeed = ''
