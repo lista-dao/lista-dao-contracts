@@ -16,8 +16,8 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
   this.Oracle = await hre.ethers.getContractFactory('StoneOracle')
 
-  const symbol = 'STONE_1'
-  let tokenAddress = '0x2416092f143378750bb29b79ed961ab195cceea5'
+  const symbol = 'STONE'
+  let tokenAddress = '0x80137510979822322193fc997d400d5a6c747bf7'
   //todo replace this pricefeed address to real before going online
   let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
 

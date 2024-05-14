@@ -25,7 +25,7 @@ module.exports.addCollateral = async function (opts) {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  //this.Oracle = await hre.ethers.getContractFactory('StoneOracle')
+  this.Oracle = await hre.ethers.getContractFactory('WeethOracle')
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
@@ -37,7 +37,7 @@ module.exports.addCollateral = async function (opts) {
   let ABACI = '0xc1359eD77E6B0CBF9a8130a4C28FBbB87B9501b7'
 
   if (hre.network.name === 'bsc_testnet') {
-    this.Oracle = await hre.ethers.getContractFactory('StoneOracleDev')
+    this.Oracle = await hre.ethers.getContractFactory('WeethOracleDev')
     NEW_OWNER = deployer.address
     VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
     DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
@@ -60,12 +60,15 @@ module.exports.addCollateral = async function (opts) {
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
 
+  const weETHEeth = '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab'; //weETH/eETH
+  const ethUsdPriceFeed = '0x7a023F0346a564F5e8942dae1342c2bB42909406';// ETH/USD
 
-/*  const oracle = await upgrades.deployProxy(this.Oracle, [priceFeed])
+
+  const oracle = await upgrades.deployProxy(this.Oracle, [weETHEeth,ethUsdPriceFeed])
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
-  console.log('Imp                  : ' + oracleImplementation)*/
+  console.log('Imp                  : ' + oracleImplementation)
 
   // Initialize
   await gemJoin.rely(INTERACTION)
@@ -104,10 +107,10 @@ module.exports.addCollateral = async function (opts) {
     gemJoinImplementation: gemJoinImplementation,
     clipper: clipper.target,
     clipperImplementation: clipperImplementation,
-    oracle: '0x8e8dA7b46F2596D53c94f2F0eB4ef98e5ce38349',
-    oracleImplementation: '0xbedF0ABD16d87C4ed0DDF1Bc40dfF1926eb4dd6a',
-    weethEthpriceFeed:'0xFe6BdDA126f5EE3f0B73D5A9Cdf7943d46ef6f28',
-    ethUsdpriceFeed:'0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5',
+    oracle: oracle.target,
+    oracleImplementation: oracleImplementation,
+    weethEthpriceFeed:weETHEeth,
+    ethUsdpriceFeed:ethUsdPriceFeed,
   }
 
   const json_addresses = JSON.stringify(addresses)

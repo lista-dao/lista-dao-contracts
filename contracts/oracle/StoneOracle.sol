@@ -6,10 +6,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract StoneOracle is Initializable {
 
-    AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface internal stoneEthPrice;
+    AggregatorV3Interface internal ethUsdPrice;
 
-    function initialize(address stoneAddr) external initializer {
-        priceFeed = AggregatorV3Interface(stoneAddr);
+    function initialize(address stoneEthPriceAddr,address ethUsdPriceAddr) external initializer {
+        stoneEthPrice = AggregatorV3Interface(stoneEthPriceAddr);
+        ethUsdPrice = AggregatorV3Interface(ethUsdPriceAddr);
     }
 
     /**
@@ -18,14 +20,29 @@ contract StoneOracle is Initializable {
     function peek() public view returns (bytes32, bool) {
         (
         /*uint80 roundID*/,
-            int price,
+            int price1,
         /*uint startedAt*/,
-            uint timeStamp,
+            uint timeStamp1,
         /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        ) = stoneEthPrice.latestRoundData();
 
-        require(block.timestamp - timeStamp < 300, "StoneOracle/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < (24 * 3600), "stoneEthPriceFeed/timestamp-too-old");
 
-        return (bytes32(uint(price) * (10**10)), true);
+        (
+        /*uint80 roundID*/,
+            int price2,
+        /*uint startedAt*/,
+            uint timeStamp2,
+        /*uint80 answeredInRound*/
+        ) = ethUsdPrice.latestRoundData();
+
+        require(block.timestamp - timeStamp2 < 300, "ethUsdPriceFeed/timestamp-too-old");
+
+        if (price1 <= 0 || price2 <= 0) {
+            return (0, false);
+        }
+
+
+        return (bytes32(uint(price1) * uint(price2) * (10**2)), true);
     }
 }
