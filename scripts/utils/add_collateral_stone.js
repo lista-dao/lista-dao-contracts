@@ -60,8 +60,13 @@ module.exports.addCollateral = async function (opts) {
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
 
+  let ethUsdPriceFeed = '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
 
-  const oracle = await upgrades.deployProxy(this.Oracle, [priceFeed])
+  //todo
+  let stoneEthPriceFeed = ''
+
+
+  const oracle = await upgrades.deployProxy(this.Oracle, [stoneEthPriceFeed,ethUsdPriceFeed])
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
