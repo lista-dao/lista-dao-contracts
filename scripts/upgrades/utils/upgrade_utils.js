@@ -5,10 +5,10 @@ async function upgradeProxy(proxyAddress, impAddress) {
 
     const proxyAdminBytes = await ethers.provider.getStorageAt(proxyAddress, admin_slot);
     const PROXY_ADMIN_ABI = ["function upgrade(address proxy, address implementation) public"]
-    
+
     const proxyAdminAddress = parseAddress(proxyAdminBytes);
     let proxyAdmin = await ethers.getContractAt(PROXY_ADMIN_ABI, proxyAdminAddress);
-  
+
     if (proxyAdminAddress != ethers.constants.AddressZero) {
         await (await proxyAdmin.upgrade(proxyAddress, impAddress)).wait();
         console.log("Upgraded Successfully...")
@@ -17,8 +17,8 @@ async function upgradeProxy(proxyAddress, impAddress) {
     }
 }
 
-async function deployImplementation(contractName) {
-    let contractFactory = await ethers.getContractFactory(contractName);
+async function deployImplementation(contractName, args) {
+    let contractFactory = await ethers.getContractFactory(contractName, args);
     let contractImpl = await contractFactory.deploy();
     await contractImpl.deploymentTransaction().wait(6);
     const address = await contractImpl.getAddress();
@@ -27,7 +27,7 @@ async function deployImplementation(contractName) {
 }
 
 async function verifyImpContract(ImpAddress) {
-    await hre.run("verify:verify", {address: ImpAddress}); 
+    await hre.run("verify:verify", {address: ImpAddress});
 }
 
 function parseAddress(addressString){
