@@ -9,14 +9,16 @@ contract WeethOracleDev is Initializable,AccessControl {
 
     AggregatorV3Interface internal weethEthPrice;
     AggregatorV3Interface internal ethUsdPrice;
-    uint internal weethEthHeartbeat = 24 * 3600;
-    uint internal ethUsdHeartbeat = 600;
+    uint internal weethEthHeartbeat ;
+    uint internal ethUsdHeartbeat;
 
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
-    function initialize(address weethEthPriceAddr,address ethUsdPriceAddr) external initializer {
+    function initialize(address weethEthPriceAddr,address ethUsdPriceAddr,uint weethHeartbeat,uint ethHeartbeat) external initializer {
         weethEthPrice = AggregatorV3Interface(weethEthPriceAddr);
         ethUsdPrice = AggregatorV3Interface(ethUsdPriceAddr);
+        weethEthHeartbeat = weethHeartbeat;
+        ethUsdHeartbeat = ethHeartbeat;
         _setupRole(UPDATER_ROLE, msg.sender);
     }
 
