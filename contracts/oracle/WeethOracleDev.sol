@@ -5,23 +5,38 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract StoneOracleDev is Initializable,AccessControl {
+contract WeethOracleDev is Initializable,AccessControl {
 
-    AggregatorV3Interface internal stoneEthPrice;
+    AggregatorV3Interface internal weethEthPrice;
     AggregatorV3Interface internal ethUsdPrice;
+    uint internal weethEthHeartbeat = 24 * 3600;
+    uint internal ethUsdHeartbeat = 600;
+
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
-    function initialize(address stoneEthPriceAddr,address ethUsdPriceAddr) external initializer {
-        stoneEthPrice = AggregatorV3Interface(stoneEthPriceAddr);
+    function initialize(address weethEthPriceAddr,address ethUsdPriceAddr) external initializer {
+        weethEthPrice = AggregatorV3Interface(weethEthPriceAddr);
         ethUsdPrice = AggregatorV3Interface(ethUsdPriceAddr);
         _setupRole(UPDATER_ROLE, msg.sender);
     }
 
-    function updateAddress(address stoneEthPriceAddr,address ethUsdPriceAddr) external {
+    function updateAddress(address weethEthPriceAddr,address ethUsdPriceAddr) external {
         require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not an updater");
-        stoneEthPrice = AggregatorV3Interface(stoneEthPriceAddr);
+        weethEthPrice = AggregatorV3Interface(weethEthPriceAddr);
         ethUsdPrice = AggregatorV3Interface(ethUsdPriceAddr);
     }
+
+    function updateHeartBeat(uint weethHeartbeat,uint ethHeartbeat) external {
+        require(hasRole(UPDATER_ROLE, msg.sender), "Caller is not an updater");
+        if ( weethEthHeartbeat > 0 ) {
+            weethEthHeartbeat = weethHeartbeat;
+        }
+        if( ethHeartbeat > 0 ) {
+            ethUsdHeartbeat = ethHeartbeat;
+        }
+    }
+
+
 
     /**
       * Returns the latest price
@@ -33,9 +48,9 @@ contract StoneOracleDev is Initializable,AccessControl {
         /*uint startedAt*/,
             uint timeStamp1,
         /*uint80 answeredInRound*/
-        ) = stoneEthPrice.latestRoundData();
+        ) = weethEthPrice.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < (24 * 3600), "stoneEthPriceFeed/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < weethEthHeartbeat, "weethEthPriceFeed/timestamp-too-old");
 
         (
         /*uint80 roundID*/,
@@ -45,7 +60,7 @@ contract StoneOracleDev is Initializable,AccessControl {
         /*uint80 answeredInRound*/
         ) = ethUsdPrice.latestRoundData();
 
-        require(block.timestamp - timeStamp2 < 300, "ethUsdPriceFeed/timestamp-too-old");
+        require(block.timestamp - timeStamp2 < ethUsdHeartbeat, "ethUsdPriceFeed/timestamp-too-old");
 
         if (price1 <= 0 || price2 <= 0) {
             return (0, false);
