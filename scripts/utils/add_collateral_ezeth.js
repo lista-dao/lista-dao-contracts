@@ -25,7 +25,7 @@ module.exports.addCollateral = async function (opts) {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  //this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
+  this.Oracle = await hre.ethers.getContractFactory('EzethBinanceOracle')
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
@@ -60,13 +60,11 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + clipperImplementation)
 
 
-/*
   const oracle = await upgrades.deployProxy(this.Oracle, [priceFeed])
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
   console.log('Imp                  : ' + oracleImplementation)
-*/
 
   // Initialize
   await gemJoin.rely(INTERACTION)
