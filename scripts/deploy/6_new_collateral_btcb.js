@@ -18,8 +18,8 @@ async function main() {
 
   const symbol = 'BTCB'
   let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
-  // Binance Oracle BTCB Aggregator Address
-  let priceFeed = '0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f'
+  // chain link btc/usd price feed
+  let priceFeed = '0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf'
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = deployer.address

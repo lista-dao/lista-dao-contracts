@@ -103,8 +103,8 @@ module.exports.addCollateral = async function (opts) {
     gemJoinImplementation: gemJoinImplementation,
     clipper: clipper.target,
     clipperImplementation: clipperImplementation,
-    oracle: '0xeCf92977F937eAECf9F2124c4E3361d248A2988C',
-    oracleImplementation: '0xe9FD3c9B357be56C35ca51cDeA6165Ce17e982cF',
+    oracle: oracle.target,
+    oracleImplementation: oracleImplementation,
     priceFeed,
   }
 
@@ -121,5 +121,5 @@ module.exports.addCollateral = async function (opts) {
 
   await hre.run('verify:verify', {address: gemJoinImplementation})
   await hre.run('verify:verify', {address: clipperImplementation})
-  //await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
+  await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/EzethOracle.sol:EzethOracle'})
 }
