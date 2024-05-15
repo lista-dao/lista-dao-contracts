@@ -48,8 +48,8 @@ async function main() {
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',
     clipperCusp: '600000000000000000000000000',
-    clipperChip: '100000000000000',
-    clipperTip: '10' + rad,
+    clipperChip: '0',
+    clipperTip: '5' + rad,
     clipperStopped: '0'
   })
 }
