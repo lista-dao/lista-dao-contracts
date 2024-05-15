@@ -26,7 +26,7 @@ contract WeethOracle is Initializable {
         /*uint80 answeredInRound*/
         ) = weethEthPrice.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < 6 * 3600, "weethEthPriceFeed/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < (6 * 3600 + 600), "weethEthPriceFeed/timestamp-too-old");
 
         (
         /*uint80 roundID*/,

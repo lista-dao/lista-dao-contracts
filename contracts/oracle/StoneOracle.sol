@@ -26,7 +26,7 @@ contract StoneOracle is Initializable {
         /*uint80 answeredInRound*/
         ) = stoneEthPrice.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < (24 * 3600), "stoneEthPriceFeed/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < (24 * 3600 + 600), "stoneEthPriceFeed/timestamp-too-old");
 
         (
         /*uint80 roundID*/,
