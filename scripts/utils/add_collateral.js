@@ -9,7 +9,9 @@ module.exports.addCollateral = async function (opts) {
   const {
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName = 'BtcOracle',
+    oracleInitializeArgs = [],
+    oracleInitializer = 'initialize',
     owner,
     clipperBuf = '1100000000000000000000000000',
     clipperTail = '10800',
@@ -25,7 +27,7 @@ module.exports.addCollateral = async function (opts) {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
+  this.Oracle = await hre.ethers.getContractFactory(oracleName)
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
@@ -60,7 +62,7 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + clipperImplementation)
 
 
-  const oracle = await upgrades.deployProxy(this.Oracle, [priceFeed])
+  const oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer})
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
@@ -105,7 +107,7 @@ module.exports.addCollateral = async function (opts) {
     clipperImplementation: clipperImplementation,
     oracle: oracle.target,
     oracleImplementation: oracleImplementation,
-    priceFeed,
+    oracleInitializeArgs,
   }
 
   const json_addresses = JSON.stringify(addresses)

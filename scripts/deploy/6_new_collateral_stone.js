@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
-const {addCollateral} = require('../utils/add_collateral_stone')
+const {addCollateral} = require('../utils/add_collateral')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -14,15 +14,17 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('StoneOracle')
 
   const symbol = 'STONE'
   let tokenAddress = '0x80137510979822322193fc997d400d5a6c747bf7'
-  //todo replace this pricefeed address to real before going online
-  let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
+  let oracleName = 'StoneOracle';
+  let oracleInitializeArgs = [
+    '0xADCc15cE3900A2Fc8544e26fD89897C0484e98Fc', // STONE/ETH price feed of api3
+    '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' // ETH/USD price feed of chain link
+  ];
+  let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
-    this.Oracle = await hre.ethers.getContractFactory('StoneOracleDev')
     NEW_OWNER = deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
@@ -38,15 +40,17 @@ async function main() {
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
 
-    // 这是mock的price feed
-    priceFeed = '0x77D231e51614C84e15CCC38E2a52BFab49D6853C'
+    // mock price feed
+    oracleInitializeArgs = ['0x77D231e51614C84e15CCC38E2a52BFab49D6853C', '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'];
   }
 
   // add collateral
   await addCollateral({
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName,
+    oracleInitializeArgs,
+    oracleInitializer,
     owner: NEW_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',

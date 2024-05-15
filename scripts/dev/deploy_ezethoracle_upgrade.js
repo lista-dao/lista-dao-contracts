@@ -15,7 +15,7 @@ async function main() {
     const [owner] = await ethers.getSigners();
 
 
-    const Oracle = await ethers.getContractFactory("EzethOracle");
+    const Oracle = await ethers.getContractFactory("EzEthOracle");
     //const oracle = await upgrades.deployProxy(Oracle, ['0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d','0x77D231e51614C84e15CCC38E2a52BFab49D6853C',owner.address], {initializer: 'initialize'});
 
     //await oracle.deployed();
@@ -35,7 +35,7 @@ async function main() {
 
 
 /*
-    this.Oracle = await hre.ethers.getContractFactory('EzethOracle')
+    this.Oracle = await hre.ethers.getContractFactory('EzEthOracle')
 
     const oracle = await upgrades.deployProxy(this.Oracle, [ethUsdPriceFeed])
     await oracle.waitForDeployment()
@@ -56,7 +56,7 @@ async function main() {
 
 
     //await hre.run('verify:verify', {address: oracle.target})
-    await hre.run('verify:verify', {address: newImplAddress, contract: 'contracts/oracle/EzethOracle.sol:EzethOracle'})
+    await hre.run('verify:verify', {address: newImplAddress, contract: 'contracts/oracle/EzEthOracle.sol:EzEthOracle'})
 
     console.log('Finished');
 }

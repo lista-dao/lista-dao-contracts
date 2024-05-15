@@ -14,12 +14,13 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
 
   const symbol = 'BTCB'
   let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
-  // chain link btc/usd price feed
-  let priceFeed = '0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf'
+  // chain link BTC/USD price feed
+  let oracleName = 'BtcOracle';
+  let oracleInitializeArgs = ['0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf'];
+  let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = deployer.address
@@ -36,14 +37,16 @@ async function main() {
     await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-    priceFeed = '0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'
+    oracleInitializeArgs = ['0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'];
   }
 
   // add collateral
   await addCollateral({
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName,
+    oracleInitializeArgs,
+    oracleInitializer,
     owner: NEW_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',
