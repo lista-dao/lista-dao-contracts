@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/OracleInterface.sol";
 
 /**
@@ -11,11 +10,11 @@ import "./interfaces/OracleInterface.sol";
   * which fully compatible with Chainlink's AggregatorV3Interface.
   * @dev Price returns in 18 decimal places, to match our businesses logic we will divide the value by 10^10.
   */
-contract API3Oracle is AggregatorV3Interface, Initializable {
+contract API3Oracle is AggregatorV3Interface {
 
-  IAPI3Proxy internal api3Proxy;
+  IAPI3Proxy public immutable api3Proxy;
 
-  function initialize(address _api3Proxy) external initializer {
+  constructor(address _api3Proxy) {
     api3Proxy = IAPI3Proxy(_api3Proxy);
   }
 
