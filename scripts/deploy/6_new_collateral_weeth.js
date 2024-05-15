@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
-const {addCollateral} = require('../utils/add_collateral_weeth')
+const {addCollateral} = require('../utils/add_collateral')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -14,15 +14,17 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('WeethOracle')
 
   const symbol = 'weETH'
   let tokenAddress = '0x20cFB850133a98B2516389b04D33C92377B6772A'
-  //todo replace this pricefeed address to real before going online
-  let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
+  let oracleName = 'WeEthOracle';
+  let oracleInitializeArgs = [
+    '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', //weETH/eETH price feed of red stone
+    '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' // ETH/USD price feed of chain link
+  ];
+  let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
-    this.Oracle = await hre.ethers.getContractFactory('WeethOracleDev')
     NEW_OWNER = deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
@@ -38,15 +40,22 @@ async function main() {
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
 
-    // 这是mock的price feed
-    priceFeed = '0x77D231e51614C84e15CCC38E2a52BFab49D6853C'
+    // testnet oracle name
+    // oracleName = 'BtcOracle'
+    // todo: replace the price feeds with testnet price feeds
+    oracleInitializeArgs = [
+      '0x77D231e51614C84e15CCC38E2a52BFab49D6853C',
+      '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
+    ];
   }
 
   // add collateral
   await addCollateral({
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName,
+    oracleInitializeArgs,
+    oracleInitializer,
     owner: NEW_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',

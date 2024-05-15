@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
-const {addCollateral} = require('../utils/add_collateral_ezeth')
+const {addCollateral} = require('../utils/add_collateral')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -14,12 +14,13 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('EzethOracle')
 
   const symbol = 'ezETH'
   let tokenAddress = '0x2416092f143378750bb29b79ed961ab195cceea5'
   // Binance Oracle ezeth Aggregator Address
-  let priceFeed = '0x763c59a3D23936CD7B73571112744f2cFc2537F8'
+  let oracleName = 'EzEthOracle';
+  let oracleInitializeArgs = ['0x763c59a3D23936CD7B73571112744f2cFc2537F8'];
+  let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = deployer.address
@@ -36,14 +37,16 @@ async function main() {
     //await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-    priceFeed = '0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d'
+    oracleInitializeArgs = ['0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d'];
   }
 
   // add collateral
   await addCollateral({
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName,
+    oracleInitializeArgs,
+    oracleInitializer,
     owner: NEW_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',

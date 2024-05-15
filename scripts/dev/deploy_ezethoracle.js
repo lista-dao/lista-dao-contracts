@@ -11,7 +11,7 @@ async function main() {
     let ezEthEthPriceFeed = '0x77D231e51614C84e15CCC38E2a52BFab49D6853C'
     let SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
 
-    this.Oracle = await hre.ethers.getContractFactory('EzethOracle')
+    this.Oracle = await hre.ethers.getContractFactory('EzEthOracle')
 
     const oracle = await upgrades.deployProxy(this.Oracle, [ethUsdPriceFeed,ezEthEthPriceFeed])
     await oracle.waitForDeployment()
@@ -30,7 +30,7 @@ async function main() {
 
 
     await hre.run('verify:verify', {address: oracle.target})
-    await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/EzethOracle.sol:EzethOracle'})
+    await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/EzEthOracle.sol:EzEthOracle'})
 
     console.log('Finished');
 }
