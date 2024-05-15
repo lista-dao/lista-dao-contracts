@@ -292,8 +292,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
         if (unlocked < dink) {
             int256 diff = int256(dink) - int256(unlocked);
             vat.frob(collateralType.ilk, participant, participant, participant, - diff, 0);
-            vat.flux(collateralType.ilk, participant, address(this), uint256(diff));
         }
+        // move the dink amount of collateral from participant to the current contract
+        vat.flux(collateralType.ilk, participant, address(this), dink);
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
@@ -560,7 +561,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy, ReentrancyGuard
     }
 
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
-        return AuctionProxy.getAllActiveAuctionsForClip(collaterals[token].clip);
+        return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
     function resetAuction(address token, uint256 auctionId, address keeper) external {

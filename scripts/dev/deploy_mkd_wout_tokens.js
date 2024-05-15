@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 const { VAT, SPOT, aBNBc,
     USB,
     UsbJoin,
@@ -31,176 +33,176 @@ async function main() {
     this.Clip = await hre.ethers.getContractFactory("Clipper");
 
     const vat = await this.Vat.deploy();
-    await vat.waitForDeployment();
-    console.log("Vat deployed to:", vat.target);
+    await vat.deployed();
+    console.log("Vat deployed to:", vat.address);
 
-    const spot = await this.Spot.deploy(vat.target);
-    await spot.waitForDeployment();
-    console.log("Spot deployed to:", spot.target);
+    const spot = await this.Spot.deploy(vat.address);
+    await spot.deployed();
+    console.log("Spot deployed to:", spot.address);
 
     // const abnbc = await this.ABNBC.deploy();
-    // await abnbc.waitForDeployment();
-    // console.log("aBNBc deployed to:", abnbc.target);
+    // await abnbc.deployed();
+    // console.log("aBNBc deployed to:", abnbc.address);
 
     // const usb = await this.Usb.deploy(97);
-    // await usb.waitForDeployment();
-    // console.log("Usb deployed to:", usb.target);
+    // await usb.deployed();
+    // console.log("Usb deployed to:", usb.address);
 
-    const usbJoin = await this.UsbJoin.deploy(vat.target, USB);
-    await usbJoin.waitForDeployment();
-    console.log("usbJoin deployed to:", usbJoin.target);
+    const usbJoin = await this.UsbJoin.deploy(vat.address, USB);
+    await usbJoin.deployed();
+    console.log("usbJoin deployed to:", usbJoin.address);
     //
-    const abnbcJoin = await this.GemJoin.deploy(vat.target, collateral, aBNBc);
-    await abnbcJoin.waitForDeployment();
-    console.log("abnbcJoin deployed to:", abnbcJoin.target);
+    const abnbcJoin = await this.GemJoin.deploy(vat.address, collateral, aBNBc);
+    await abnbcJoin.deployed();
+    console.log("abnbcJoin deployed to:", abnbcJoin.address);
 
-    const abnbcJoin2 = await this.GemJoin.deploy(vat.target, collateral2, REAL_ABNBC);
-    await abnbcJoin2.waitForDeployment();
-    console.log("abnbcJoin2 deployed to:", abnbcJoin2.target);
+    const abnbcJoin2 = await this.GemJoin.deploy(vat.address, collateral2, REAL_ABNBC);
+    await abnbcJoin2.deployed();
+    console.log("abnbcJoin2 deployed to:", abnbcJoin2.address);
 
-    const bnbJoin = await this.GemJoin.deploy(vat.target, collateral3, ceBNBc);
-    await bnbJoin.waitForDeployment();
-    console.log("bnbJoin deployed to:", bnbJoin.target);
+    const bnbJoin = await this.GemJoin.deploy(vat.address, collateral3, ceBNBc);
+    await bnbJoin.deployed();
+    console.log("bnbJoin deployed to:", bnbJoin.address);
 
     // const oracle = await this.Oracle.deploy();
-    // await oracle.waitForDeployment();
-    // console.log("Oracle deployed to:", oracle.target);
+    // await oracle.deployed();
+    // console.log("Oracle deployed to:", oracle.address);
     // const oracle2 = await this.Oracle.deploy();
-    // await oracle2.waitForDeployment();
-    // console.log("Oracle2 deployed to:", oracle2.target);
+    // await oracle2.deployed();
+    // console.log("Oracle2 deployed to:", oracle2.address);
 
-    jug = await this.Jug.deploy(vat.target);
-    await jug.waitForDeployment();
-    console.log("Jug deployed to:", jug.target);
+    jug = await this.Jug.deploy(vat.address);
+    await jug.deployed();
+    console.log("Jug deployed to:", jug.address);
 
-    const flop = await this.Flop.deploy(vat.target, usbJoin.target);
-    await flop.waitForDeployment();
-    console.log("Flop deployed to:", flop.target);
+    const flop = await this.Flop.deploy(vat.address, usbJoin.address);
+    await flop.deployed();
+    console.log("Flop deployed to:", flop.address);
 
-    const flap = await this.Flap.deploy(vat.target, usbJoin.target);
-    await flap.waitForDeployment();
-    console.log("Flap deployed to:", flap.target);
+    const flap = await this.Flap.deploy(vat.address, usbJoin.address);
+    await flap.deployed();
+    console.log("Flap deployed to:", flap.address);
 
-    const vow = await this.Vow.deploy(vat.target, flap.target, flop.target);
-    await vow.waitForDeployment();
-    console.log("Vow deployed to:", vow.target);
+    const vow = await this.Vow.deploy(vat.address, flap.address, flop.address);
+    await vow.deployed();
+    console.log("Vow deployed to:", vow.address);
 
-    const dog = await this.Dog.deploy(vat.target);
-    await dog.waitForDeployment();
-    console.log("Dog deployed to:", dog.target);
+    const dog = await this.Dog.deploy(vat.address);
+    await dog.deployed();
+    console.log("Dog deployed to:", dog.address);
 
-    const jar = await this.Jar.deploy("Helio Earn", "EARN", vat.target, vow.target, usbJoin.target);
-    await jar.waitForDeployment();
-    console.log("Jar deployed to:", jar.target);
+    const jar = await this.Jar.deploy("Helio Earn", "EARN", vat.address, vow.address, usbJoin.address);
+    await jar.deployed();
+    console.log("Jar deployed to:", jar.address);
 
-    const clip1 = await this.Clip.deploy(vat.target, spot.target, dog.target, collateral);
-    await clip1.waitForDeployment();
-    console.log("Clip1 deployed to:", clip1.target);
-    const clip2 = await this.Clip.deploy(vat.target, spot.target, dog.target, collateral2);
-    await clip2.waitForDeployment();
-    console.log("Clip2 deployed to:", clip2.target);
-    const clip3 = await this.Clip.deploy(vat.target, spot.target, dog.target, collateral3);
-    await clip3.waitForDeployment();
-    console.log("Clip3 deployed to:", clip3.target);
+    const clip1 = await this.Clip.deploy(vat.address, spot.address, dog.address, collateral);
+    await clip1.deployed();
+    console.log("Clip1 deployed to:", clip1.address);
+    const clip2 = await this.Clip.deploy(vat.address, spot.address, dog.address, collateral2);
+    await clip2.deployed();
+    console.log("Clip2 deployed to:", clip2.address);
+    const clip3 = await this.Clip.deploy(vat.address, spot.address, dog.address, collateral3);
+    await clip3.deployed();
+    console.log("Clip3 deployed to:", clip3.address);
 
     console.log('Validating code');
     await hre.run("verify:verify", {
-        address: vat.target
+        address: vat.address
     });
 
     // await hre.run("verify:verify", {
-    //     address: usb.target,
+    //     address: usb.address,
     //     constructorArguments: [
     //         97
     //     ],
     // });
     //
     // await hre.run("verify:verify", {
-    //     address: abnbc.target,
+    //     address: abnbc.address,
     // });
     //
     // await hre.run("verify:verify", {
-    //     address: oracle.target,
+    //     address: oracle.address,
     // });
     // await hre.run("verify:verify", {
-    //     address: oracle2.target,
+    //     address: oracle2.address,
     // });
 
     await hre.run("verify:verify", {
-        address: spot.target,
+        address: spot.address,
         constructorArguments: [
-            vat.target
+            vat.address
         ],
     });
 
     await hre.run("verify:verify", {
-        address: usbJoin.target,
+        address: usbJoin.address,
         constructorArguments: [
-            vat.target,
+            vat.address,
             USB,
         ],
     });
     await hre.run("verify:verify", {
-        address: abnbcJoin.target,
+        address: abnbcJoin.address,
         constructorArguments: [
-            vat.target,
+            vat.address,
             collateral,
             aBNBc,
         ],
     });
     await hre.run("verify:verify", {
-        address: abnbcJoin2.target,
+        address: abnbcJoin2.address,
         constructorArguments: [
-            vat.target,
+            vat.address,
             collateral2,
             REAL_ABNBC
         ],
     });
     await hre.run("verify:verify", {
-        address: bnbJoin.target,
+        address: bnbJoin.address,
         constructorArguments: [
-            vat.target,
+            vat.address,
             collateral3,
             ceBNBc,
         ],
     });
 
     await hre.run("verify:verify", {
-        address: jug.target,
+        address: jug.address,
         constructorArguments: [
-            vat.target
+            vat.address
         ],
     });
     await hre.run("verify:verify", {
-        address: flop.target,
+        address: flop.address,
         constructorArguments: [
-            vat.target,
-            usbJoin.target,
+            vat.address,
+            usbJoin.address,
         ],
     });
     await hre.run("verify:verify", {
-        address: flap.target,
+        address: flap.address,
         constructorArguments: [
-            vat.target,
-            usbJoin.target,
+            vat.address,
+            usbJoin.address,
         ],
     });
     await hre.run("verify:verify", {
-        address: vow.target,
+        address: vow.address,
         constructorArguments: [
-            vat.target,
-            flap.target,
-            flop.target
+            vat.address,
+            flap.address,
+            flop.address
         ],
     });
     await hre.run("verify:verify", {
-        address: jar.target,
+        address: jar.address,
         constructorArguments: [
             "Helio Earn",
             "EARN",
-            vat.target,
-            vow.target,
-            usbJoin.target,
+            vat.address,
+            vow.address,
+            usbJoin.address,
         ],
     });
 
