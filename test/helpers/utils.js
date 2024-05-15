@@ -1,4 +1,4 @@
-import { ethers, network } from "hardhat";
+const { network } = require("hardhat");
 
 const advanceTime = async (seconds) => {
   await network.provider.send("evm_increaseTime", [seconds]);
@@ -6,15 +6,15 @@ const advanceTime = async (seconds) => {
 };
 
 const toWad = (num) => {
-  return ethers.parseUnits(num, 18);
+  return ethers.utils.parseUnits(num, 18);
 };
 
 const toRay = (num) => {
-  return ethers.parseUnits(num, 27);
+  return ethers.utils.parseUnits(num, 27);
 };
 
 const toRad = (num) => {
-  return ethers.parseUnits(num, 45);
+  return ethers.utils.parseUnits(num, 45);
 };
 
 const printSale = (sale) => {
@@ -32,7 +32,7 @@ const printSale = (sale) => {
   console.log("top ->", sale.top.toString());
 };
 
-module.exports = {
+export {
   toWad,
   toRay,
   toRad,

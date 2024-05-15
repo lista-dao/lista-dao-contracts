@@ -9,7 +9,7 @@ import "hardhat-spdx-license-identifier";
 import "hardhat-abi-exporter";
 import "hardhat-storage-layout";
 import "@openzeppelin/hardhat-upgrades";
-import "fs";
+import * as fs from "fs";
 
 import '@typechain/hardhat'
 import '@nomicfoundation/hardhat-ethers'
@@ -52,8 +52,8 @@ const config: HardhatUserConfig = {
 
   etherscan: {
     apiKey: {
-      bsc: process.env.BSC_API_KEY,
-      bscTestnet: process.env.BSC_API_KEY
+      bsc: process.env.BSC_API_KEY || '',
+      bscTestnet: process.env.BSC_API_KEY || ''
     }
   },
 
@@ -71,18 +71,22 @@ const config: HardhatUserConfig = {
     enabled: process.env.REPORT_GAS ? true : false,
     currency: 'USD',
   },
+
+    typechain: {
+        outDir: 'typechain',
+    },
 };
 
 export default config;
 
 
-function getSortedFiles(dependenciesGraph) {
+function getSortedFiles(dependenciesGraph: any) {
   const tsort = require("tsort")
   const graph = tsort()
 
-  const filesMap = {}
+  const filesMap: any = {}
   const resolvedFiles = dependenciesGraph.getResolvedFiles()
-  resolvedFiles.forEach((f) => (filesMap[f.sourceName] = f))
+  resolvedFiles.forEach((f: any) => (filesMap[f.sourceName] = f))
 
   for (const [from, deps] of dependenciesGraph.entries()) {
     for (const to of deps) {
@@ -94,13 +98,13 @@ function getSortedFiles(dependenciesGraph) {
 
   // If an entry has no dependency it won't be included in the graph, so we
   // add them and then dedup the array
-  const withEntries = topologicalSortedNames.concat(resolvedFiles.map((f) => f.sourceName))
+  const withEntries: any = topologicalSortedNames.concat(resolvedFiles.map((f: any) => f.sourceName))
 
-  const sortedNames = [...new Set(withEntries)]
-  return sortedNames.map((n) => filesMap[n])
+  const sortedNames: any = new Set(withEntries).values()
+  return sortedNames.map((n: any) => filesMap[n])
 }
 
-function getFileWithoutImports(resolvedFile) {
+function getFileWithoutImports(resolvedFile: any) {
   const IMPORT_SOLIDITY_REGEX = /^\s*import(\s+)[\s\S]*?;\s*$/gm
 
   return resolvedFile.content.rawContent.replace(IMPORT_SOLIDITY_REGEX, "").trim()
@@ -138,11 +142,11 @@ subtask("flat:get-flattened-sources", "Returns all contracts and their dependenc
     flattened = `// SPDX-License-Identifier: MIXED\n\n${flattened}`
 
     // Remove every line started with "pragma experimental ABIEncoderV2;" except the first one
-    flattened = flattened.replace(/pragma experimental ABIEncoderV2;\n/gm, ((i) => (m) => (!i++ ? m : ""))(0))
+    flattened = flattened.replace(/pragma experimental ABIEncoderV2;\n/gm, ((i) => (m: any) => (!i++ ? m : ""))(0))
     // Remove every line started with "pragma abicoder v2;" except the first one
-    flattened = flattened.replace(/pragma abicoder v2;\n/gm, ((i) => (m) => (!i++ ? m : ""))(0))
+    flattened = flattened.replace(/pragma abicoder v2;\n/gm, ((i) => (m: any) => (!i++ ? m : ""))(0))
     // Remove every line started with "pragma solidity ****" except the first one
-    flattened = flattened.replace(/pragma solidity .*$\n/gm, ((i) => (m) => (!i++ ? m : ""))(0))
+    flattened = flattened.replace(/pragma solidity .*$\n/gm, ((i) => (m: any) => (!i++ ? m : ""))(0))
 
 
     flattened = flattened.trim()
@@ -157,7 +161,7 @@ subtask("flat:get-flattened-sources", "Returns all contracts and their dependenc
 subtask("flat:get-dependency-graph")
   .addOptionalParam("files", undefined, undefined, types.any)
   .setAction(async ({ files }, { run }) => {
-    const sourcePaths = files === undefined ? await run("compile:solidity:get-source-paths") : files.map((f) => fs.realpathSync(f))
+    const sourcePaths = files === undefined ? await run("compile:solidity:get-source-paths") : files.map((f: any) => fs.realpathSync(f))
 
     const sourceNames = await run("compile:solidity:get-source-names", {
       sourcePaths,
