@@ -25,7 +25,7 @@ module.exports.addCollateral = async function (opts) {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('EzethBinanceOracle')
+  this.Oracle = await hre.ethers.getContractFactory('EzethOracle')
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
@@ -117,7 +117,7 @@ module.exports.addCollateral = async function (opts) {
   // Verify
   await hre.run('verify:verify', {address: gemJoin.target})
   await hre.run('verify:verify', {address: clipper.target})
-  //await hre.run('verify:verify', {address: oracle.target})
+  await hre.run('verify:verify', {address: oracle.target})
 
   await hre.run('verify:verify', {address: gemJoinImplementation})
   await hre.run('verify:verify', {address: clipperImplementation})
