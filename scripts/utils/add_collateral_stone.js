@@ -60,13 +60,12 @@ module.exports.addCollateral = async function (opts) {
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
 
-  let ethUsdPriceFeed = '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' //prod from chain link
+  let ethUsdPriceFeedAddr = '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' //prod from chain link
 
-  //todo
-  let stoneEthPriceFeed = ''
+  let stoneEthPriceFeedAddr = '0xADCc15cE3900A2Fc8544e26fD89897C0484e98Fc'
 
 
-  const oracle = await upgrades.deployProxy(this.Oracle, [stoneEthPriceFeed,ethUsdPriceFeed])
+  const oracle = await upgrades.deployProxy(this.Oracle, [stoneEthPriceFeedAddr,ethUsdPriceFeedAddr])
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
@@ -111,7 +110,8 @@ module.exports.addCollateral = async function (opts) {
     clipperImplementation: clipperImplementation,
     oracle: oracle.target,
     oracleImplementation: oracleImplementation,
-    priceFeed,
+    ethUsdPriceFeed: ethUsdPriceFeedAddr,
+    stoneEthPriceFeed: stoneEthPriceFeedAddr,
   }
 
   const json_addresses = JSON.stringify(addresses)
@@ -123,8 +123,9 @@ module.exports.addCollateral = async function (opts) {
   // Verify
   await hre.run('verify:verify', {address: gemJoin.target})
   await hre.run('verify:verify', {address: clipper.target})
+  await hre.run('verify:verify', {address: oracle.target})
 
-  if (hre.network.name === 'bsc_testnet') {
+/*  if (hre.network.name === 'bsc_testnet') {
     console.log('verify testnet contract: ', oracleImplementation)
     await hre.run('verify:verify', {
       address: oracle.target,
@@ -135,7 +136,7 @@ module.exports.addCollateral = async function (opts) {
       address: oracle.target,
       contract: 'contracts/oracle/StoneOracle.sol:StoneOracle'
     });
-  }
+  }*/
 
   console.log('finished..')
 }
