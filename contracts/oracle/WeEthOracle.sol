@@ -4,9 +4,9 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/AggregatorV3Interface.sol";
 
-contract StoneOracle is Initializable {
+contract WeEthOracle is Initializable {
 
-    AggregatorV3Interface public stoneEthPriceFeed;
+    AggregatorV3Interface public weEthPriceFeed;
     AggregatorV3Interface public ethPriceFeed;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -14,8 +14,8 @@ contract StoneOracle is Initializable {
         _disableInitializers();
     }
 
-    function initialize(address _stoneEthPriceFeed,address _ethPriceFeed) external initializer {
-        stoneEthPriceFeed = AggregatorV3Interface(_stoneEthPriceFeed);
+    function initialize(address _weEthPriceFeed,address _ethPriceFeed) external initializer {
+        weEthPriceFeed = AggregatorV3Interface(_weEthPriceFeed);
         ethPriceFeed = AggregatorV3Interface(_ethPriceFeed);
     }
 
@@ -29,9 +29,9 @@ contract StoneOracle is Initializable {
         /*uint startedAt*/,
             uint timeStamp1,
         /*uint80 answeredInRound*/
-        ) = stoneEthPriceFeed.latestRoundData();
+        ) = weEthPriceFeed.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < (24 * 3600 + 300), "stoneEthPriceFeed/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < (6 * 3600 + 300), "weEthPriceFeed/timestamp-too-old");
 
         (
         /*uint80 roundID*/,

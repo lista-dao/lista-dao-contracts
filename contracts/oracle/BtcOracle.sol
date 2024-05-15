@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./interfaces/AggregatorV3Interface.sol";
 
 contract BtcOracle is Initializable {
 
-    AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface public priceFeed;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address aggregatorAddress) external initializer {
         priceFeed = AggregatorV3Interface(aggregatorAddress);
@@ -29,6 +34,6 @@ contract BtcOracle is Initializable {
         if (price <= 0) {
             return (0, false);
         }
-        return (bytes32(uint(price) * (10**10)), true);
+        return (bytes32(uint(price) * 1e10), true);
     }
 }

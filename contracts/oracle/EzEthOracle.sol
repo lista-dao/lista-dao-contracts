@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./interfaces/AggregatorV3Interface.sol";
 
-contract EzethOracle is Initializable {
+contract EzEthOracle is Initializable {
 
-    AggregatorV3Interface internal priceFeed;
+    AggregatorV3Interface public priceFeed;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address aggregatorAddress) external initializer {
         priceFeed = AggregatorV3Interface(aggregatorAddress);
@@ -24,8 +29,8 @@ contract EzethOracle is Initializable {
         /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < (3600 + 600), "ezETHUsdOracle/timestamp-too-old");
+        require(block.timestamp - timeStamp1 < (3600 + 300), "ezEthOracle/timestamp-too-old");
 
-        return (bytes32(uint(price1) * (10**10)), true);
+        return (bytes32(uint(price1) * 1e10), true);
     }
 }
