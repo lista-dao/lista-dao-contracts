@@ -14,7 +14,7 @@ async function main() {
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('EzethBinanceOracle')
+  this.Oracle = await hre.ethers.getContractFactory('EzethOracle')
 
   const symbol = 'ezETH'
   let tokenAddress = '0x2416092f143378750bb29b79ed961ab195cceea5'
