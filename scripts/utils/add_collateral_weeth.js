@@ -122,6 +122,7 @@ module.exports.addCollateral = async function (opts) {
   // Verify
   await hre.run('verify:verify', {address: gemJoin.target})
   await hre.run('verify:verify', {address: clipper.target})
+  await hre.run('verify:verify', {address: oracle.target})
 
 /*  if (hre.network.name === 'bsc_testnet') {
     console.log('verify testnet contract: ', oracleImplementation)
