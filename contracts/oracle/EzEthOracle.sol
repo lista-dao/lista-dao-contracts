@@ -23,17 +23,17 @@ contract EzEthOracle is Initializable {
     function peek() public view returns (bytes32, bool) {
         (
         /*uint80 roundID*/,
-            int price1,
+            int price,
         /*uint startedAt*/,
-            uint timeStamp1,
+            uint timeStamp,
         /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
 
-        require(block.timestamp - timeStamp1 < (3600 + 300), "ezEthOracle/timestamp-too-old");
+        require(block.timestamp - timeStamp < (3600 + 300), "ezEthOracle/timestamp-too-old");
 
         if (price < 0) {
             return (0, false);
         }
-        return (bytes32(uint(price1) * 1e10), true);
+        return (bytes32(uint(price) * 1e10), true);
     }
 }
