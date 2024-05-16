@@ -32,7 +32,7 @@ const printSale = (sale) => {
   console.log("top ->", sale.top.toString());
 };
 
-module.exports = {
+export {
   toWad,
   toRay,
   toRad,
