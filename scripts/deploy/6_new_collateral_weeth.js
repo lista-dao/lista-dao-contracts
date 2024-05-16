@@ -16,7 +16,7 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
 
   const symbol = 'weETH'
-  let tokenAddress = '0x20cFB850133a98B2516389b04D33C92377B6772A'
+  let tokenAddress = '0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A'
   let oracleName = 'WeEthOracle';
   let oracleInitializeArgs = [
     '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', //weETH/eETH price feed of red stone
