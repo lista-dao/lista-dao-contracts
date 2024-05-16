@@ -31,6 +31,9 @@ contract EzEthOracle is Initializable {
 
         require(block.timestamp - timeStamp1 < (3600 + 300), "ezEthOracle/timestamp-too-old");
 
+        if (price < 0) {
+            return (0, false);
+        }
         return (bytes32(uint(price1) * 1e10), true);
     }
 }
