@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
+const {transferProxyAdminOwner} = require('../upgrades/utils/upgrade_utils')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -13,6 +14,7 @@ module.exports.addCollateral = async function (opts) {
     oracleInitializeArgs = [],
     oracleInitializer = 'initialize',
     owner,
+    proxyAdminOwner,
     clipperBuf = '1100000000000000000000000000',
     clipperTail = '10800',
     clipperCusp = '600000000000000000000000000',
@@ -23,6 +25,7 @@ module.exports.addCollateral = async function (opts) {
 
   [deployer] = await ethers.getSigners()
   let NEW_OWNER = owner || '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
+  let NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
@@ -39,7 +42,8 @@ module.exports.addCollateral = async function (opts) {
   let ABACI = '0xc1359eD77E6B0CBF9a8130a4C28FBbB87B9501b7'
 
   if (hre.network.name === 'bsc_testnet') {
-    NEW_OWNER = deployer.address
+    NEW_OWNER = owner || deployer.address
+    NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || deployer.address
     VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
     DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
     SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
@@ -54,19 +58,33 @@ module.exports.addCollateral = async function (opts) {
   let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.target)
   console.log('Deployed: gemJoin    : ' + gemJoin.target)
   console.log('Imp                  : ' + gemJoinImplementation)
+  // transfer proxy admin ownership
+  if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    await transferProxyAdminOwner(gemJoin.target, NEW_PROXY_ADMIN_OWNER)
+    console.log('Proxy Admin Ownership Of gemJoin Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
+  }
 
   const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK])
   await clipper.waitForDeployment()
   let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target)
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
-
+  // transfer proxy admin ownership
+  if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    await transferProxyAdminOwner(clipper.target, NEW_PROXY_ADMIN_OWNER)
+    console.log('Proxy Admin Ownership Of clipCE Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
+  }
 
   const oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer})
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
   console.log('Imp                  : ' + oracleImplementation)
+  // transfer proxy admin ownership
+  if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    await transferProxyAdminOwner(oracle.target, NEW_PROXY_ADMIN_OWNER)
+    console.log('Proxy Admin Ownership Of Oracle Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
+  }
 
   // Initialize
   await gemJoin.rely(INTERACTION)
@@ -108,6 +126,8 @@ module.exports.addCollateral = async function (opts) {
     oracle: oracle.target,
     oracleImplementation: oracleImplementation,
     oracleInitializeArgs,
+    owner: NEW_OWNER,
+    proxyAdminOwner: NEW_PROXY_ADMIN_OWNER,
   }
 
   const json_addresses = JSON.stringify(addresses)

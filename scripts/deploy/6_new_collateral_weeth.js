@@ -10,6 +10,7 @@ async function main() {
 
   [deployer] = await ethers.getSigners()
   let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
+  let PROXY_ADMIN_OWNER = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
@@ -25,7 +26,8 @@ async function main() {
   let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
-    NEW_OWNER = deployer.address
+    NEW_OWNER = process.env.OWNER || deployer.address
+    PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
     const ERC20UpgradeableMock = await hre.ethers.getContractFactory('ERC20UpgradeableMock')
@@ -57,6 +59,7 @@ async function main() {
     oracleInitializeArgs,
     oracleInitializer,
     owner: NEW_OWNER,
+    proxyAdminOwner: PROXY_ADMIN_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',
     clipperCusp: '600000000000000000000000000',
