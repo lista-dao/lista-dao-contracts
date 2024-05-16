@@ -43,7 +43,7 @@ contract WeEthOracle is Initializable {
 
         require(block.timestamp - timeStamp2 < 300, "ethPriceFeed/timestamp-too-old");
 
-        if (price1 <= 0 || price2 <= 0) {
+        if (price1 < 0 || price2 < 0) {
             return (0, false);
         }
 
