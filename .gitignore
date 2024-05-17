@@ -12,3 +12,6 @@ artifacts
 
 .idea
 .DS_Store
+
+# Ignore the temporary files
+*temp.js

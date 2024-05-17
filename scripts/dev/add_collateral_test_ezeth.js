@@ -12,15 +12,15 @@ async function main() {
 
     [deployer] = await ethers.getSigners();
     // token address
-    let TOKEN = "0x3fD47f01b876DC09eAf4667a516B8a6b46EA1999";
+    let TOKEN = "0xF88257D7674F3Bb7Aa1b946cd499233f4093695a";
     let INTERACTION = "0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4";
-    let AUCTION_PROXY = '0x272d6589cecc19165cfcd0466f73a648cb1ea700'
+    let AUCTION_PROXY = '0x272d6589cecc19165cfcd0466f73a648cb1ea700';
     let LISUSD = '0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5';
 
     if (hre.network.name === "bsc_testnet") {
         LISUSD = '0x89b56C1997cefC6415A140e41A00Ad03dCac3ed0';
         INTERACTION = "0xb7A5999AEaE17C37d07ac4b34e56757c96387c84";
-        AUCTION_PROXY = '';
+        AUCTION_PROXY = '0x265C40E8FD28066b9B34B252590110E2afFd3A30';
         if (!AUCTION_PROXY) {
             // deploy AuctionProxy
             const AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
@@ -40,9 +40,11 @@ async function main() {
 
     const interaction = this.Interaction.attach(INTERACTION);
     // approve lisusd
+    console.log("Approving LisUSD...");
     this.LisUsd = await ethers.getContractFactory("LisUSD");
     const lisusd = this.LisUsd.attach(LISUSD);
     await lisusd.approve(INTERACTION, ethers.MaxUint256.toString());
+    console.log("LisUSD approved");
     // approve collateral
     this.Token = await ethers.getContractFactory("ERC20UpgradeableMock");
     const token = this.Token.attach(TOKEN);
@@ -50,7 +52,7 @@ async function main() {
     const balance = await token.balanceOf(deployer.address);
     console.log("Balance:", balance)
     const depositAmount = ethers.parseEther('100');
-    const borrowAmount = ethers.parseEther('100');
+    const borrowAmount = ethers.parseEther('15');
     console.log("Balance:", ethers.parseEther(balance.toString()));
     if (balance < BigInt(depositAmount)) {
         console.error("Not enough balance");
@@ -62,12 +64,11 @@ async function main() {
     console.log("Collateral approved:", depositAmount.toString());
     // deposit collateral
     console.log("Depositing collateral...");
-    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount, { gasLimit: 1000000 });
+    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount,{ gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral deposited:", depositAmount.toString());
     // borrow collateral
     console.log("Borrowing collateral...");
-    // estimate borrow
     tx = await interaction.borrow(TOKEN, borrowAmount, { gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral borrowed:", borrowAmount.toString());
