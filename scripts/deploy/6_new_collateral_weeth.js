@@ -10,19 +10,24 @@ async function main() {
 
   [deployer] = await ethers.getSigners()
   let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
+  let PROXY_ADMIN_OWNER = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
-  this.Oracle = await hre.ethers.getContractFactory('BtcOracle')
 
-  const symbol = 'BTCB101'
-  let tokenAddress = '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c'
-  // Binance Oracle BTCB Aggregator Address
-  let priceFeed = '0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f'
+  const symbol = 'weETH'
+  let tokenAddress = '0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A'
+  let oracleName = 'WeEthOracle';
+  let oracleInitializeArgs = [
+    '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', //weETH/eETH price feed of red stone
+    '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' // ETH/USD price feed of chain link
+  ];
+  let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
-    NEW_OWNER = deployer.address
+    NEW_OWNER = process.env.OWNER || deployer.address
+    PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
     const ERC20UpgradeableMock = await hre.ethers.getContractFactory('ERC20UpgradeableMock')
@@ -32,24 +37,34 @@ async function main() {
     console.log('Deployed: clipCE     : ' + tokenMock.target)
     console.log('Imp                  : ' + tokenMockImplementation)
     tokenAddress = await tokenMock.target
-    await hre.run('verify:verify', {address: tokenMock.target})
-    await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
+    //await hre.run('verify:verify', {address: tokenMock.target})
+    //await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-    priceFeed = '0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'
+
+    // testnet oracle name
+    // oracleName = 'BtcOracle'
+    // todo: replace the price feeds with testnet price feeds
+    oracleInitializeArgs = [
+      '0x77D231e51614C84e15CCC38E2a52BFab49D6853C',
+      '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
+    ];
   }
 
   // add collateral
   await addCollateral({
     symbol,
     tokenAddress,
-    priceFeed,
+    oracleName,
+    oracleInitializeArgs,
+    oracleInitializer,
     owner: NEW_OWNER,
+    proxyAdminOwner: PROXY_ADMIN_OWNER,
     clipperBuf: '1100000000000000000000000000',
     clipperTail: '10800',
     clipperCusp: '600000000000000000000000000',
-    clipperChip: '100000000000000',
-    clipperTip: '10' + rad,
+    clipperChip: '0',
+    clipperTip: '5' + rad,
     clipperStopped: '0'
   })
 }
