@@ -4,27 +4,27 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./hMath.sol";
-import "./oracle/libraries/FullMath.sol";
-import "./interfaces/VatLike.sol";
-import "./interfaces/HayJoinLike.sol";
-import "./interfaces/GemJoinLike.sol";
-import "./interfaces/JugLike.sol";
-import "./interfaces/DogLike.sol";
-import "./interfaces/PipLike.sol";
-import "./interfaces/SpotLike.sol";
-import "./interfaces/IRewards.sol";
-import "./interfaces/IAuctionProxy.sol";
-import "./ceros/interfaces/IHelioProvider.sol";
-import "./ceros/interfaces/IDao.sol";
+import "../../hMath.sol";
+import "../../oracle/libraries/FullMath.sol";
+import "../../interfaces/VatLike.sol";
+import "../../interfaces/HayJoinLike.sol";
+import "../../interfaces/GemJoinLike.sol";
+import "../../interfaces/JugLike.sol";
+import "../../interfaces/DogLike.sol";
+import "../../interfaces/PipLike.sol";
+import "../../interfaces/SpotLike.sol";
+import "../../interfaces/IRewards.sol";
+import "../../interfaces/IAuctionProxy.sol";
+import "../../ceros/interfaces/IHelioProvider.sol";
+import "../../ceros/interfaces/IDao.sol";
 
-import "./libraries/AuctionProxy.sol";
+import "../../libraries/AuctionProxy.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
+contract InteractionV1 is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -255,8 +255,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
-        dropRewards(token, msg.sender);
-        drip(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
 
@@ -278,6 +276,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         require(dart >= 0, "Interaction/too-much-requested");
 
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
+        dropRewards(token, msg.sender);
+        drip(token);
 
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
@@ -310,9 +310,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         if (unlocked < dink) {
             int256 diff = int256(dink) - int256(unlocked);
             vat.frob(collateralType.ilk, participant, participant, participant, - diff, 0);
+            vat.flux(collateralType.ilk, participant, address(this), uint256(diff));
         }
-        // move the dink amount of collateral from participant to the current contract
-        vat.flux(collateralType.ilk, participant, address(this), dink);
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
