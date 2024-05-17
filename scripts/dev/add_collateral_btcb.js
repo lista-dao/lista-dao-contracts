@@ -9,23 +9,23 @@ async function main() {
   [deployer] = await ethers.getSigners()
 
   const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-    'symbol': 'BTCB101',
-    'tokenAddress': '0x3fD47f01b876DC09eAf4667a516B8a6b46EA1999',
-    'ilk': '0x4254434231303100000000000000000000000000000000000000000000000000',
-    'gemJoin': '0x009F6323786F916fD44B5aF4093E485dffa1f878',
+    'symbol': 'BTCB100',
+    'tokenAddress': '0xf2d6189723Ef25c4CECE486cfd5d852c0C3176eB',
+    'ilk': '0x4254434231303000000000000000000000000000000000000000000000000000',
+    'gemJoin': '0x66D82575203A205598186D0a3e0B52dC97FaeacE',
     'gemJoinImplementation': '0x3D0EcFBDf421dffA5e5fB56A7382670c9084955B',
-    'clipper': '0xdb6ACeA45B532b5Ab76B8b295eDCf29f5A6BFf47',
+    'clipper': '0x7d2C244673Dce3510D1c40b1a0A2C0e0Bc93bAA6',
     'clipperImplementation': '0xc868bf27Ce5768E977C9D911245cb1aa19b4eE1F',
-    'oracle': '0xA78368C130dDFDe43Fb91b2C4B33759791BDF947',
+    'oracle': '0xC2268b365aa072cAA1bD162AeF7b490758Bb23Ca',
     'oracleImplementation': '0x63B46e02C1134B2b3c08e7873C800C3dcf286d73',
     'priceFeed': '0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'
   }
 
   // core parameters
-  const mat = '15' + ray // Liquidation Ratio // 150%
-  const line = '50000000' + rad // Debt Ceiling // 50M
-  const dust = '100000000000000000' + ray // Debt Floor // 0.1
-  const hole = '250' + rad // Liquidation
+  const mat = '1515151515151515151515151515' // Liquidation Ratio
+  const line = '50000000' + rad // Debt Ceiling
+  const dust = '15' + rad // Debt Floor
+  const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
 
 
@@ -70,6 +70,7 @@ async function main() {
   this.Vat = await hre.ethers.getContractFactory('Vat')
   const vat = this.Vat.attach(VAT)
   await vat.rely(gemJoin)
+  await vat.rely(clipper)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('dust'), dust)
   await vat['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('line'), line)
 
@@ -86,8 +87,11 @@ async function main() {
   await dog['file(bytes32,bytes32,uint256)'](ilk, ethers.encodeBytes32String('chop'), chop) // 10%
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
-  await interaction.poke(tokenAddress)
-  await interaction.drip(tokenAddress)
+  await interaction.setCollateralDuty(tokenAddress, '1000000004431822000000000000'); //apr 15%
+  console.log("set duty...");
+
+  await interaction.poke(tokenAddress, { gasLimit: 1000000 })
+  await interaction.drip(tokenAddress, { gasLimit: 1000000 })
 
   console.log('Finished')
 }
