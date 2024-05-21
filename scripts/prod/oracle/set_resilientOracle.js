@@ -12,15 +12,39 @@ async function main() {
     const asset = config.assets[assetName];
     console.log(`[ResilientOracle] setting ${assetName}...`);
     console.log(asset);
-    const tx = await resilientOracle.setTokenConfig([
-      asset.token,
-      [asset.mainOracle, asset.pivotOracle, asset.fallbackOracle],
-      [true, true, true],
-      asset.timeDeltaTolerance
-    ]);
-    await tx.wait(2);
+    // check is configured
+    const oracle = await resilientOracle.getTokenConfig(asset.token);
+    // not configured
+    if ((oracle.asset || "").toLowerCase() !== asset.token.toLowerCase()) {
+      const tx = await resilientOracle.setTokenConfig([
+        asset.token,
+        [
+          zeroIfEmpty(asset.mainOracle),
+          zeroIfEmpty(asset.pivotOracle),
+          zeroIfEmpty(asset.fallbackOracle)
+        ],
+        [
+          notEmptyAddress(asset.mainOracle),
+          notEmptyAddress(asset.pivotOracle),
+          notEmptyAddress(asset.fallbackOracle)
+        ],
+        asset.timeDeltaTolerance
+      ]);
+      await tx.wait(2);
+    } else {
+      console.log("[ResilientOracle] configured already")
+    }
   }
   console.log('[ResilientOracle] config done')
+}
+
+function zeroIfEmpty(address) {
+  return address === "" ? "0x0000000000000000000000000000000000000000" : address;
+}
+
+function notEmptyAddress(address) {
+  return address !== "";
+
 }
 
 main()
