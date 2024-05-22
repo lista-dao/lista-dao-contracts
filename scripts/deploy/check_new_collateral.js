@@ -5,15 +5,6 @@ const allConfig = require('./check_new_collateral.json');
 const {ethers} = require("hardhat");
 
 async function main() {
-    let rpc_url = 'https://bsc-dataseed.binance.org/';
-
-    if (hre.network.name === 'bsc_testnet') {
-        rpc_url = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
-    }
-
-    const web3 = new Web3(rpc_url);
-
-
     console.log("check gemJoin")
     let gemJoinContract = await ethers.getContractAt(allConfig["gemJoinAbi"], allConfig["gemJoin"]);
 
