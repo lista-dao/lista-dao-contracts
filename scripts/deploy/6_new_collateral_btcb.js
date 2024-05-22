@@ -24,7 +24,7 @@ async function main() {
   let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
-/*    NEW_OWNER = process.env.OWNER || deployer.address
+    NEW_OWNER = process.env.OWNER || deployer.address
     PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
     // deploy token
@@ -39,7 +39,7 @@ async function main() {
     await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-    oracleInitializeArgs = ['0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'];*/
+    oracleInitializeArgs = ['0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'];
   }
 
   // add collateral
