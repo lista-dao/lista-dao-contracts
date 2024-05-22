@@ -3,7 +3,7 @@ const { ethers } = hre;
 const config = require('./config.json');
 
 // --------- New owner address ------------
-const NEW_OWNER = "0x8d388136d578dCD791D081c6042284CED6d9B0c6";
+const NEW_OWNER = "0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37";
 // ----------------------------------------
 
 
