@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
 const {transferProxyAdminOwner} = require('../upgrades/utils/upgrade_utils')
+const contractAddresses = require('../deploy/contract_address.json');
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -23,7 +24,18 @@ module.exports.addCollateral = async function (opts) {
     clipperStopped = '0'
   } = opts;
 
-  [deployer] = await ethers.getSigners()
+  const {
+    VAT,
+    DOG,
+    SPOT,
+    INTERACTION,
+    VOW,
+    ABACI,
+    JUG
+  } = (hre.network.name === 'bsc_testnet') ? contractAddresses["testnet"] : contractAddresses["mainnet"];
+
+
+  [deployer] = await ethers.getSigners();
   let NEW_OWNER = owner || '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
   let NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
@@ -34,22 +46,10 @@ module.exports.addCollateral = async function (opts) {
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
-  let VAT = '0x33A34eAB3ee892D40420507B820347b1cA2201c4'
-  let DOG = '0xd57E7b53a1572d27A04d9c1De2c4D423f1926d0B'
-  let SPOT = '0x49bc2c4E5B035341b7d92Da4e6B267F7426F3038'
-  let INTERACTION = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
-  let VOW = '0x2078A1969Ea581D618FDBEa2C0Dc13Fc15CB9fa7'
-  let ABACI = '0xc1359eD77E6B0CBF9a8130a4C28FBbB87B9501b7'
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = owner || deployer.address
     NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || deployer.address
-    VAT = '0x382589e4dE7A061fcb9716c203983d8FE847AE0b'
-    DOG = '0x3d2165EDf3Cc07992f54d9310FB800C81BC641F7'
-    SPOT = '0xa2882B6AC7cBA1b8784BF5D72F38CF0E6416263e'
-    INTERACTION = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
-    VOW = '0xBB87858855C0C29Ea4021F4087F323f598CbD782'
-    ABACI = '0x0a014DdeFB329b99acf01C7F23Da39e06F0480d2'
   }
 
   // Deploy contracts
