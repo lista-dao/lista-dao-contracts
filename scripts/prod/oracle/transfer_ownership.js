@@ -19,7 +19,7 @@ async function main() {
     "BoundValidator",
     config.boundValidatorAddress
   );
-  const tx2 = await resilientOracle.transferOwnership(NEW_OWNER);
+  const tx2 = await boundValidator.transferOwnership(NEW_OWNER);
   await tx2.wait(2);
   console.log(`New owner of Bound Validator ${NEW_OWNER} proposed.`);
 
