@@ -14,6 +14,8 @@ const main = async () => {
     '0x876cd9a380Ee7712129b52f8293F6f06056c3104',
     '0x5AaBBBe154C0AFA072e313d46b29592936493b26',
     '0xDF5A8e190CF63D74a4Ec743253fA26D4C7539Be8',
+    '0x9DdD9bc74D1abab667097581FAE6Ee8Dd3be5ff2', // BoundValidator
+    '0xf3afD82A4071f272F403dC176916141f44E6c750', // ResilientOracle
   ]
   const newOwner = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
   // transfer proxy admin ownership
