@@ -44,12 +44,12 @@ module.exports.addCollateral = async function (opts) {
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = owner || deployer.address
     NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || deployer.address
-    VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
-    DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
-    SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
-    INTERACTION = '0xb7A5999AEaE17C37d07ac4b34e56757c96387c84'
-    VOW = '0x08b0e59E3AC9266738c6d14bAbAA414f3A989ccc'
-    ABACI = '0x1f4F2aF5F8970654466d334208D1478eaabB28E3'
+    VAT = '0x382589e4dE7A061fcb9716c203983d8FE847AE0b'
+    DOG = '0x3d2165EDf3Cc07992f54d9310FB800C81BC641F7'
+    SPOT = '0xa2882B6AC7cBA1b8784BF5D72F38CF0E6416263e'
+    INTERACTION = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
+    VOW = '0xBB87858855C0C29Ea4021F4087F323f598CbD782'
+    ABACI = '0x0a014DdeFB329b99acf01C7F23Da39e06F0480d2'
   }
 
   // Deploy contracts
@@ -97,6 +97,7 @@ module.exports.addCollateral = async function (opts) {
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('chip'), clipperChip) // 0.01% from vow incentive
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tip'), clipperTip) // 10$ flat fee incentive
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('stopped'), clipperStopped)
+
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('spotter'), SPOT)
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('dog'), DOG)
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('vow'), VOW)
@@ -141,7 +142,7 @@ module.exports.addCollateral = async function (opts) {
   await hre.run('verify:verify', {address: clipper.target})
   await hre.run('verify:verify', {address: oracle.target})
 
-  await hre.run('verify:verify', {address: gemJoinImplementation})
-  await hre.run('verify:verify', {address: clipperImplementation})
-  await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
+  // await hre.run('verify:verify', {address: gemJoinImplementation})
+  // await hre.run('verify:verify', {address: clipperImplementation})
+  // await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
 }
