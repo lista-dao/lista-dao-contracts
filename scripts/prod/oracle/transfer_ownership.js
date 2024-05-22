@@ -6,15 +6,23 @@ const config = require('./config.json');
 const NEW_OWNER = "0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37";
 // ----------------------------------------
 
-
 async function main() {
   const resilientOracle = await ethers.getContractAt(
     "ResilientOracle",
     config.resilientOracleAddress
   );
-  const tx = await resilientOracle.transferOwnership(NEW_OWNER);
-  await tx.wait(2);
-  console.log(`New owner ${NEW_OWNER} proposed.`)
+  const tx1 = await resilientOracle.transferOwnership(NEW_OWNER);
+  await tx1.wait(2);
+  console.log(`New owner of Resilient Oracle ${NEW_OWNER} proposed.`);
+
+  const boundValidator = await ethers.getContractAt(
+    "BoundValidator",
+    config.boundValidatorAddress
+  );
+  const tx2 = await resilientOracle.transferOwnership(NEW_OWNER);
+  await tx2.wait(2);
+  console.log(`New owner of Bound Validator ${NEW_OWNER} proposed.`);
+
 }
 main()
   .then(() => process.exit(0))
