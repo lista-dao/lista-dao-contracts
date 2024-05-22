@@ -9,16 +9,20 @@ async function main() {
   [deployer] = await ethers.getSigners()
 
   const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-    'symbol': 'BTCB100',
-    'tokenAddress': '0xf2d6189723Ef25c4CECE486cfd5d852c0C3176eB',
-    'ilk': '0x4254434231303000000000000000000000000000000000000000000000000000',
-    'gemJoin': '0x66D82575203A205598186D0a3e0B52dC97FaeacE',
-    'gemJoinImplementation': '0x3D0EcFBDf421dffA5e5fB56A7382670c9084955B',
-    'clipper': '0x7d2C244673Dce3510D1c40b1a0A2C0e0Bc93bAA6',
-    'clipperImplementation': '0xc868bf27Ce5768E977C9D911245cb1aa19b4eE1F',
-    'oracle': '0xC2268b365aa072cAA1bD162AeF7b490758Bb23Ca',
-    'oracleImplementation': '0x63B46e02C1134B2b3c08e7873C800C3dcf286d73',
-    'priceFeed': '0x491fD333937522e69D1c3FB944fbC5e95eEF9f59'
+    "symbol": "BTCB",
+    "tokenAddress": "0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec",
+    "ilk": "0x4254434200000000000000000000000000000000000000000000000000000000",
+    "gemJoin": "0x634a700977faFd2dA4445E106E49945bdCBcC9E9",
+    "gemJoinImplementation": "0xB64BDeBdC7572D48fb29fDB1352080abD9bc2fc8",
+    "clipper": "0x11D1F6dC395882b3415EE8229A719BA6d648943d",
+    "clipperImplementation": "0x21f8Ff25c0cE07521dF5c10c2E04f13F86325988",
+    "oracle": "0xe882747De24Ef4B2170C8b5de21b7dEEfe141DE2",
+    "oracleImplementation": "0x86B503CAe0a6ceb83f0913c11689B3fBC97cCB66",
+    "oracleInitializeArgs": [
+      "0x491fD333937522e69D1c3FB944fbC5e95eEF9f59"
+    ],
+    "owner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093",
+    "proxyAdminOwner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093"
   }
 
   // core parameters
@@ -36,10 +40,10 @@ async function main() {
   let AUCTION_PROXY
 
   if (hre.network.name === 'bsc_testnet') {
-    VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
-    DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
-    SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
-    INTERACTION = '0xb7A5999AEaE17C37d07ac4b34e56757c96387c84'
+    VAT = '0x382589e4dE7A061fcb9716c203983d8FE847AE0b'
+    DOG = '0x3d2165EDf3Cc07992f54d9310FB800C81BC641F7'
+    SPOT = '0xa2882B6AC7cBA1b8784BF5D72F38CF0E6416263e'
+    INTERACTION = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
     if (!AUCTION_PROXY) {
       // deploy AuctionProxy
       const AuctionProxy = await hre.ethers.getContractFactory('AuctionProxy')

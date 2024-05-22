@@ -44,9 +44,9 @@ async function main() {
 
     // testnet oracle name
     // oracleName = 'BtcOracle'
-    // todo: replace the price feeds with testnet price feeds
+    oracleName = 'WeEthOracleDev'
     oracleInitializeArgs = [
-      '0x77D231e51614C84e15CCC38E2a52BFab49D6853C',
+      '0x5e30647EFB47e1bD07cb34A294B2087Dff2D5b56',
       '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
     ];
   }
