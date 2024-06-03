@@ -75,7 +75,7 @@ module.exports.addCollateral = async function (opts) {
     console.log('Proxy Admin Ownership Of clipCE Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
-  const oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer})
+  const oracle = await upgrades.deployProxy(this.Oracle)
   await oracle.waitForDeployment()
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
