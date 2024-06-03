@@ -9,16 +9,20 @@ async function main() {
   [deployer] = await ethers.getSigners()
 
   const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-    "symbol": "ezETH_1",
-    "tokenAddress": "0xF88257D7674F3Bb7Aa1b946cd499233f4093695a",
-    "ilk": "0x657a4554485f3100000000000000000000000000000000000000000000000000",
-    "gemJoin": "0x0D2944d3e9E38b19b34d62716c2751f0684A2665",
+    "symbol": "ezETH",
+    "tokenAddress": "0xDB9A93d9ae2eB2C8d91B2217C2B3dd4Ef311faBa",
+    "ilk": "0x657a455448000000000000000000000000000000000000000000000000000000",
+    "gemJoin": "0xE70BfF6C251dFA84cA0d7BcB3DDC9595430b23a6",
     "gemJoinImplementation": "0xB64BDeBdC7572D48fb29fDB1352080abD9bc2fc8",
-    "clipper": "0x58FEc3718470dD15b1CE6A773525629434A7C9c8",
+    "clipper": "0x9792c38C38683Da3d437B0aA1B0D8F07d0245aC1",
     "clipperImplementation": "0x21f8Ff25c0cE07521dF5c10c2E04f13F86325988",
-    "oracle": "0xeCf92977F937eAECf9F2124c4E3361d248A2988C",
-    "oracleImplementation": "0xe9FD3c9B357be56C35ca51cDeA6165Ce17e982cF",
-    "priceFeed": "0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d"
+    "oracle": "0x3C5bE42BBF57b531Cb2a83B557211a23A2B991FB",
+    "oracleImplementation": "0x4Ca6f7E50F101217a874e5691a5a64f359Fba957",
+    "oracleInitializeArgs": [
+      "0xc0e60De0CB09a432104C823D3150dDEEA90E8f7d"
+    ],
+    "owner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093",
+    "proxyAdminOwner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093"
   }
 
   // core parameters
@@ -36,10 +40,10 @@ async function main() {
   let AUCTION_PROXY
 
   if (hre.network.name === 'bsc_testnet') {
-    VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
-    DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
-    SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
-    INTERACTION = '0xb7A5999AEaE17C37d07ac4b34e56757c96387c84'
+    VAT = '0x382589e4dE7A061fcb9716c203983d8FE847AE0b'
+    DOG = '0x3d2165EDf3Cc07992f54d9310FB800C81BC641F7'
+    SPOT = '0xa2882B6AC7cBA1b8784BF5D72F38CF0E6416263e'
+    INTERACTION = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
     if (!AUCTION_PROXY) {
       // deploy AuctionProxy
       const AuctionProxy = await hre.ethers.getContractFactory('AuctionProxy')
