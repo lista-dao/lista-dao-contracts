@@ -26,6 +26,7 @@ async function main() {
   let oracleInitializer = 'initialize';
 
   if (hre.network.name === 'bsc_testnet') {
+    oracleName = 'StoneOracleDev'
     NEW_OWNER = process.env.OWNER || deployer.address
     PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
@@ -37,13 +38,13 @@ async function main() {
     console.log('Deployed: clipCE     : ' + tokenMock.target)
     console.log('Imp                  : ' + tokenMockImplementation)
     tokenAddress = await tokenMock.target
-    //await hre.run('verify:verify', {address: tokenMock.target})
-    //await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
+    // await hre.run('verify:verify', {address: tokenMock.target})
+    // await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
 
     // mock price feed
-    oracleInitializeArgs = ['0x77D231e51614C84e15CCC38E2a52BFab49D6853C', '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'];
+    oracleInitializeArgs = ['0x335d1C771d87abf679b56d6573F48896D805114d', '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'];
   }
 
   // add collateral
