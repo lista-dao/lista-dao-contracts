@@ -1,18 +1,25 @@
 const {ethers, upgrades} = require("hardhat");
+const {transferProxyAdminOwner} = require("../upgrades/utils/upgrade_utils");
 
 
 async function main() {
     console.log('Running deploy script');
-    let [owner] = await ethers.getSigners();
-    const Oracle = await hre.ethers.getContractFactory("MultiOracleMock");
-    const oracle = await Oracle.deploy();
-    await oracle.waitForDeployment();
 
+    let [owner] = await ethers.getSigners();
+    this.Oracle = await hre.ethers.getContractFactory("MultiOracleMock");
+
+    let oracle = await upgrades.deployProxy(this.Oracle,[owner.address]);
+    await oracle.waitForDeployment();
+    let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
+    console.log('Deployed: oracle     : ' + oracle.target)
+    console.log('Imp                  : ' + oracleImplementation)
     //await hre.run("verify:verify", {address: oracle.target});
+
+    let UPDATER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("UPDATER_ROLE"));
 
     console.log('oracle deploy at', oracle.target);
 
-    let hasRole = await oracle.hasRole('0x73e573f9566d61418a34d5de3ff49360f9c51fec37f7486551670290f6285dab', owner);
+    let hasRole = await oracle.hasRole(UPDATER_ROLE, owner.address);
     console.log('DEPLOYER: %s has ADMIN_ROLE: %s', owner.address, hasRole);
     console.log('Finished');
 
