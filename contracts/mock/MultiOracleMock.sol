@@ -11,10 +11,8 @@ contract MultiOracleMock is AccessControl, Initializable {
 
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _setupRole(UPDATER_ROLE, msg.sender);
-        _disableInitializers();
+    function initialize(address deployer) public initializer {
+        _setupRole(UPDATER_ROLE, deployer);
     }
 
     function updateToken(address _token) external {
