@@ -17,7 +17,7 @@ async function main() {
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
 
   const symbol = 'solvBTC'
-  let tokenAddress = '0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A'
+  let tokenAddress = '0x4aae823a6a0b376De6A78e74eCC5b079d38cBCf7'
   let oracleName = 'SolvBtcOracle';
   let oracleInitializeArgs = [''];
   let oracleInitializer = '';
