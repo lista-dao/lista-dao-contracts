@@ -1,0 +1,33 @@
+{
+  "resilientOracleAddress": "0xf3afD82A4071f272F403dC176916141f44E6c750",
+  "boundValidatorAddress": "0x9DdD9bc74D1abab667097581FAE6Ee8Dd3be5ff2",
+  "assets": {
+    "btc": {
+      "token": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
+      "mainOracle": "0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf",
+      "pivotOracle": "0x83968bCa5874D11e02fD80444cDDB431a1DbEc0f",
+      "fallbackOracle": "0xa51738d1937FFc553d5070f43300B385AA2D9F55",
+      "timeDeltaTolerance": 3900,
+      "upperBoundRatio": "1010000000000000000",
+      "lowerBoundRatio": "990000000000000000"
+    },
+    "eth": {
+      "token": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
+      "mainOracle": "0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e",
+      "pivotOracle": "0x7a023F0346a564F5e8942dae1342c2bB42909406",
+      "fallbackOracle": "",
+      "timeDeltaTolerance": 3900,
+      "upperBoundRatio": "1010000000000000000",
+      "lowerBoundRatio": "990000000000000000"
+    },
+    "bnb": {
+      "token": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+      "mainOracle": "0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE",
+      "pivotOracle": "0xC5A35FC58EFDC4B88DDCA51AcACd2E8F593504bE",
+      "fallbackOracle": "0x8dd2D85C7c28F43F965AE4d9545189C7D022ED0e",
+      "timeDeltaTolerance": 3900,
+      "upperBoundRatio": "1010000000000000000",
+      "lowerBoundRatio": "990000000000000000"
+    }
+  }
+}
