@@ -19,7 +19,7 @@ async function main() {
   const symbol = 'solvBTC'
   let tokenAddress = '0x4aae823a6a0b376De6A78e74eCC5b079d38cBCf7'
   let oracleName = 'SolvBtcOracle';
-  let oracleInitializeArgs = [''];
+  let oracleInitializeArgs = [];
   let oracleInitializer = '';
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = process.env.OWNER || deployer.address
