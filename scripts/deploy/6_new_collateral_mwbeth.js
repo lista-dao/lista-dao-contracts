@@ -16,15 +16,11 @@ async function main() {
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
 
-  const symbol = 'weETH'
+  const symbol = 'mwBETH'
   let tokenAddress = '0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A'
-  let oracleName = 'WeEthOracle';
-  let oracleInitializeArgs = [
-    '0x9b2C948dbA5952A1f5Ab6fA16101c1392b8da1ab', //weETH/eETH price feed of red stone
-    '0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e' // ETH/USD price feed of chain link
-  ];
-  let oracleInitializer = 'initialize';
-
+  let oracleName = 'MwbEthOracle';
+  let oracleInitializeArgs = [''];
+  let oracleInitializer = '';
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = process.env.OWNER || deployer.address
     PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
@@ -41,14 +37,6 @@ async function main() {
     //await hre.run('verify:verify', {address: tokenMockImplementation, contract: 'contracts/mock/ERC20UpgradeableMock.sol:ERC20UpgradeableMock'})
     // mint 10000000 tokens to deployer
     await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
-
-    // testnet oracle name
-    // oracleName = 'BtcOracle'
-    oracleName = 'WeEthOracleDev'
-    oracleInitializeArgs = [
-      '0x5e30647EFB47e1bD07cb34A294B2087Dff2D5b56',
-      '0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5'
-    ];
   }
 
   // add collateral

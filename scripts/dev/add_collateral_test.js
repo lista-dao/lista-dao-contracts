@@ -5,22 +5,26 @@ const hre = require('hardhat')
 
 // Global Variables
 let wad = "000000000000000000", // 18 Decimals
-  ray = "000000000000000000000000000", // 27 Decimals
-  rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
+    ray = "000000000000000000000000000", // 27 Decimals
+    rad = "000000000000000000000000000000000000000000000"; // 45 Decimals
 
 async function main() {
 
     [deployer] = await ethers.getSigners();
     // token address
-    let TOKEN = "0xf2d6189723Ef25c4CECE486cfd5d852c0C3176eB";
+    let TOKEN = "0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec";  //btcb
+    //let TOKEN = "0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec";  //btcb
+    //let TOKEN = "0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec";  //btcb
+    //let TOKEN = "0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec";  //btcb
+
     let INTERACTION = "0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4";
     let AUCTION_PROXY = '0x272d6589cecc19165cfcd0466f73a648cb1ea700';
     let LISUSD = '0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5';
 
     if (hre.network.name === "bsc_testnet") {
-        LISUSD = '0x89b56C1997cefC6415A140e41A00Ad03dCac3ed0';
-        INTERACTION = "0xb7A5999AEaE17C37d07ac4b34e56757c96387c84";
-        AUCTION_PROXY = '0xfA31c2Fe82E7f7C04098B6D2B1E1cb451A5453F3';
+        LISUSD = '0x785b5d1Bde70bD6042877cA08E4c73e0a40071af';
+        INTERACTION = "0x70C4880A3f022b32810a4E9B9F26218Ec026f279";
+        AUCTION_PROXY = '0xa8d7806c77a5E844E05A8C07f18E3e2a9a2B39bb';
         if (!AUCTION_PROXY) {
             // deploy AuctionProxy
             const AuctionProxy = await hre.ethers.getContractFactory("AuctionProxy");
@@ -64,7 +68,7 @@ async function main() {
     console.log("Collateral approved:", depositAmount.toString());
     // deposit collateral
     console.log("Depositing collateral...");
-    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount, { gasLimit: 1000000 });
+    tx = await interaction.deposit(deployer.address, TOKEN, depositAmount,{ gasLimit: 1000000 });
     await tx.wait();
     console.log("Collateral deposited:", depositAmount.toString());
     // borrow collateral
@@ -89,8 +93,8 @@ async function main() {
 }
 
 main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-      console.error(error);
-      process.exit(1);
-  });
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });

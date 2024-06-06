@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
 const {transferProxyAdminOwner} = require('../upgrades/utils/upgrade_utils')
+const contractAddresses = require('../deploy/contract_address.json');
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -23,7 +24,18 @@ module.exports.addCollateral = async function (opts) {
     clipperStopped = '0'
   } = opts;
 
-  [deployer] = await ethers.getSigners()
+  const {
+    VAT,
+    DOG,
+    SPOT,
+    INTERACTION,
+    VOW,
+    ABACI,
+    JUG
+  } = (hre.network.name === 'bsc_testnet') ? contractAddresses["testnet"] : contractAddresses["mainnet"];
+
+
+  [deployer] = await ethers.getSigners();
   let NEW_OWNER = owner || '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
   let NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
@@ -34,22 +46,10 @@ module.exports.addCollateral = async function (opts) {
 
   // Set addresses
   const ILK = ethers.encodeBytes32String(symbol)
-  let VAT = '0x33A34eAB3ee892D40420507B820347b1cA2201c4'
-  let DOG = '0xd57E7b53a1572d27A04d9c1De2c4D423f1926d0B'
-  let SPOT = '0x49bc2c4E5B035341b7d92Da4e6B267F7426F3038'
-  let INTERACTION = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
-  let VOW = '0x2078A1969Ea581D618FDBEa2C0Dc13Fc15CB9fa7'
-  let ABACI = '0xc1359eD77E6B0CBF9a8130a4C28FBbB87B9501b7'
 
   if (hre.network.name === 'bsc_testnet') {
     NEW_OWNER = owner || deployer.address
     NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || deployer.address
-    VAT = '0xC9eeBDB18bD05dCF981F340b838E8CdD946D60ad'
-    DOG = '0x77e4FcEbCDd30447f6e2E486B00a552A6493da0F'
-    SPOT = '0x15493D9141481505f7CA3e591Cea2cBB03637B1d'
-    INTERACTION = '0xb7A5999AEaE17C37d07ac4b34e56757c96387c84'
-    VOW = '0x08b0e59E3AC9266738c6d14bAbAA414f3A989ccc'
-    ABACI = '0x1f4F2aF5F8970654466d334208D1478eaabB28E3'
   }
 
   // Deploy contracts
@@ -75,8 +75,13 @@ module.exports.addCollateral = async function (opts) {
     console.log('Proxy Admin Ownership Of clipCE Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
-  const oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer})
-  await oracle.waitForDeployment()
+  let oracle
+  if (oracleInitializer.length > 0) {
+    oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer});
+  } else {
+    oracle = await upgrades.deployProxy(this.Oracle);
+  }
+  await oracle.waitForDeployment();
   let oracleImplementation = await upgrades.erc1967.getImplementationAddress(oracle.target)
   console.log('Deployed: oracle     : ' + oracle.target)
   console.log('Imp                  : ' + oracleImplementation)
@@ -97,6 +102,7 @@ module.exports.addCollateral = async function (opts) {
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('chip'), clipperChip) // 0.01% from vow incentive
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tip'), clipperTip) // 10$ flat fee incentive
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('stopped'), clipperStopped)
+
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('spotter'), SPOT)
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('dog'), DOG)
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('vow'), VOW)
@@ -141,7 +147,7 @@ module.exports.addCollateral = async function (opts) {
   await hre.run('verify:verify', {address: clipper.target})
   await hre.run('verify:verify', {address: oracle.target})
 
-  await hre.run('verify:verify', {address: gemJoinImplementation})
-  await hre.run('verify:verify', {address: clipperImplementation})
-  await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
+  // await hre.run('verify:verify', {address: gemJoinImplementation})
+  // await hre.run('verify:verify', {address: clipperImplementation})
+  // await hre.run('verify:verify', {address: oracleImplementation, contract: 'contracts/oracle/BtcOracle.sol:BtcOracle'})
 }

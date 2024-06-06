@@ -9,18 +9,17 @@ async function main() {
   [deployer] = await ethers.getSigners()
 
   const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-    "symbol": "STONE",
-    "tokenAddress": "0xb982479692b9f9D5d6582a36f49255205b18aE9e",
-    "ilk": "0x53544f4e45000000000000000000000000000000000000000000000000000000",
-    "gemJoin": "0x8648578d298fAd279F88c9A2De254657bA2DcaA3",
+    "symbol": "mwBETH",
+    "tokenAddress": "0x5b8E97Cbf8b623737bBf9F3842e3895d23a1F98E",
+    "ilk": "0x6d77424554480000000000000000000000000000000000000000000000000000",
+    "gemJoin": "0x79f4B51dd1a50fC0A9Cff67774F0165DFE833454",
     "gemJoinImplementation": "0xB64BDeBdC7572D48fb29fDB1352080abD9bc2fc8",
-    "clipper": "0x30616A7A9585228529b2ea45a04ecB46eC3e9336",
+    "clipper": "0x3A3B7bA9fB7655EaD86b95342a1f3b1a92b62673",
     "clipperImplementation": "0x21f8Ff25c0cE07521dF5c10c2E04f13F86325988",
-    "oracle": "0x0cd25aA6C56B263aEb7Ae004AF1D22b85C104CD8",
-    "oracleImplementation": "0x481c5D96aC94Eb52B4dAc583Bb16Df5CB4C271e4",
+    "oracle": "0x8E0eAc465dE01c7D84Ba6e31d7CD49d5C344b757",
+    "oracleImplementation": "0x2FED3a32D478f3eE124D4b9c597c473922EB3cBe",
     "oracleInitializeArgs": [
-      "0x335d1C771d87abf679b56d6573F48896D805114d",
-      "0x635780E5D02Ab29d7aE14d266936A38d3D5B0CC5"
+      ""
     ],
     "owner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093",
     "proxyAdminOwner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093"
@@ -28,7 +27,7 @@ async function main() {
 
   // core parameters
   const mat = '2000000000000000000000000000' // Liquidation Ratio
-  const line = '1000000' + rad // Debt Ceiling
+  const line = '500000' + rad // Debt Ceiling
   const dust = '15' + rad // Debt Floor
   const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
@@ -93,7 +92,7 @@ async function main() {
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
 
-  await interaction.setCollateralDuty(tokenAddress, '1000000004431822000000000000'); //apr 15%
+  await interaction.setCollateralDuty(tokenAddress, '1000000003734875566854894262'); //apr 15%
   console.log("set duty...");
 
   await interaction.poke(tokenAddress, { gasLimit: 1000000 })
