@@ -121,28 +121,21 @@ ReentrancyGuardUpgradeable
     /// @param account receipient's address
     /// @param amount amount of assets to withdraw
     /// @return shares : amount of assets(excluding fee)
-    function withdrawETH(address account, uint256 amount) 
+    function withdrawETH(address account, uint256 amount)
     external
     override
-    nonReentrant 
+    nonReentrant
     whenNotPaused
-    onlyProvider 
+    onlyProvider
     returns (uint256 shares) {
         address src = msg.sender;
         ICertToken(vaultToken).burn(src, amount);
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);
         feeEarned += amount - shares;
-        if(ethBalance < shares) {
-            (bool sent, ) = payable(account).call{value: ethBalance}("");
-            require(sent, "transfer failed");
-            uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
-            require(withdrawn <= shares - ethBalance, "invalid withdrawn amount");
-            shares = ethBalance + withdrawn;
-        } else {
-            (bool sent, ) = payable(account).call{value: shares}("");
-            require(sent, "transfer failed");
-        } 
+        require(shares <= ethBalance, "insufficient balance");
+        (bool sent, ) = payable(account).call{value: shares}("");
+        require(sent, "transfer failed");
         emit Withdraw(src, src, src, amount, shares);
         return shares;
     }
@@ -444,11 +437,11 @@ ReentrancyGuardUpgradeable
     }
 
     /// @dev only owner can call this function to withdraw earned fees
-    function withdrawFee() external nonReentrant onlyOwner{
+    function withdrawFee() external nonReentrant onlyOwner {
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
-            feeEarned = 0;
             (bool sent, ) = payable(feeReceiver).call{value: feeEarned}("");
             require(sent, "transfer failed");
+            feeEarned = 0;
             emit FeeClaimed(feeReceiver, feeEarned);
         }
     }
