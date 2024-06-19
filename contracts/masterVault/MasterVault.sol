@@ -437,7 +437,7 @@ ReentrancyGuardUpgradeable
     }
 
     /// @dev only owner can call this function to withdraw earned fees
-    function withdrawFee() external nonReentrant onlyOwner{
+    function withdrawFee() external nonReentrant onlyOwner {
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
             (bool sent, ) = payable(feeReceiver).call{value: feeEarned}("");
             require(sent, "transfer failed");
