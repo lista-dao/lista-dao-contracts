@@ -133,9 +133,16 @@ ReentrancyGuardUpgradeable
         uint256 ethBalance = totalAssetInVault();
         shares = _assessFee(amount, withdrawalFee);
         feeEarned += amount - shares;
-        require(shares <= ethBalance, "insufficient balance");
-        (bool sent, ) = payable(account).call{value: shares}("");
-        require(sent, "transfer failed");
+        if(ethBalance < shares) {
+            (bool sent, ) = payable(account).call{value: ethBalance}("");
+            require(sent, "transfer failed");
+            uint256 withdrawn = withdrawFromActiveStrategies(account, shares - ethBalance);
+            require(withdrawn <= shares - ethBalance, "invalid withdrawn amount");
+            shares = ethBalance + withdrawn;
+        } else {
+            (bool sent, ) = payable(account).call{value: shares}("");
+            require(sent, "transfer failed");
+        }
         emit Withdraw(src, src, src, amount, shares);
         return shares;
     }
