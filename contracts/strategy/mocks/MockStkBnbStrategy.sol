@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "../StkBnbStrategy.sol";
+import "../../old/strategy/StkBnbStrategy.sol";
 
 contract MockStkBnbStrategy is StkBnbStrategy {
     function setupDistribute(WithdrawRequest[] calldata _withdrawReqs) payable public {

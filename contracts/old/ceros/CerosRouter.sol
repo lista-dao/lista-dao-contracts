@@ -5,12 +5,12 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IDex.sol";
-import "./interfaces/ICerosRouter.sol";
-import "./interfaces/IBinancePool.sol";
-import "./interfaces/IBNBStakingPool.sol";
-import "./interfaces/ICertToken.sol";
+import "../../ceros/interfaces/IVault.sol";
+import "../../ceros/interfaces/IDex.sol";
+import "../../ceros/interfaces/ICerosRouter.sol";
+import "../../ceros/interfaces/IBinancePool.sol";
+import "../../ceros/interfaces/IBNBStakingPool.sol";
+import "../../ceros/interfaces/ICertToken.sol";
 
 contract CerosRouter is
 ICerosRouter,
