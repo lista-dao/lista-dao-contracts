@@ -4,10 +4,9 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/ICertToken.sol";
-contract CeVault is
+import "../../../ceros/interfaces/IVault.sol";
+import "../../../ceros/interfaces/ICertToken.sol";
+contract CeVaultV2 is
 IVault,
 OwnableUpgradeable,
 PausableUpgradeable,
@@ -24,8 +23,6 @@ ReentrancyGuardUpgradeable
     mapping(address => uint256) private _claimed; // in aBNBc
     mapping(address => uint256) private _depositors; // in aBNBc
     mapping(address => uint256) private _ceTokenBalances; // in aBNBc
-
-    using SafeERC20 for IERC20;
     /**
      * Modifiers
      */
@@ -70,7 +67,7 @@ ReentrancyGuardUpgradeable
     returns (uint256)
     {
         uint256 ratio = _aBNBc.ratio();
-        IERC20(_aBNBc).safeTransferFrom(msg.sender, address(this), amount);
+        _aBNBc.transferFrom(msg.sender, address(this), amount);
         uint256 toMint = (amount * 1e18) / ratio;
         _depositors[account] += amount; // aBNBc
         _ceTokenBalances[account] += toMint;
@@ -105,7 +102,7 @@ ReentrancyGuardUpgradeable
         require(availableYields > 0, "has not got yields to claim");
         // return back aBNBc to recipient
         _claimed[owner] += availableYields;
-        IERC20(_aBNBc).safeTransfer(recipient, availableYields);
+        _aBNBc.transfer(recipient, availableYields);
         emit Claimed(owner, recipient, availableYields);
         return availableYields;
     }
@@ -143,7 +140,7 @@ ReentrancyGuardUpgradeable
         // burn ceToken from owner
         ICertToken(_ceToken).burn(owner, amount);
         _depositors[owner] -= realAmount; // aBNBc
-        IERC20(_aBNBc).safeTransfer(recipient, realAmount);
+        _aBNBc.transfer(recipient, realAmount);
         emit Withdrawn(owner, recipient, realAmount);
         return realAmount;
     }
@@ -209,5 +206,10 @@ ReentrancyGuardUpgradeable
     }
     function getRouter() external view returns(address) {
         return address(_router);
+    }
+    function changeCeToken(address ceTokenAddress) external onlyOwner {
+        address old = address(_ceToken);
+        _ceToken = ICertToken(ceTokenAddress);
+        emit CeTokenChanged(old, ceTokenAddress);
     }
 }
