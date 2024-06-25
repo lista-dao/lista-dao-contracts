@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "../masterVault/interfaces/IMasterVault.sol";
-import "../bnbx/interfaces/IStakeManager.sol";
-import "./BaseStrategy.sol";
+import "../../masterVault/interfaces/IMasterVault.sol";
+import "../../bnbx/interfaces/IStakeManager.sol";
+import "../../strategy/BaseStrategy.sol";
 
 contract BnbxYieldConverterStrategy is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;

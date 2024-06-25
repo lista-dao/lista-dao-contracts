@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
-import "./BaseStrategy.sol";
+import "../../strategy/BaseStrategy.sol";
 import "../stkBNB/interfaces/IAddressStore.sol";
 import "../stkBNB/interfaces/IStakedBNBToken.sol";
 import "../stkBNB/interfaces/IStakePool.sol";
@@ -372,10 +372,10 @@ contract StkBnbStrategy is BaseStrategy, IERC777Recipient {
         bytes calldata data,
         bytes calldata operatorData
     ) external override {
-        
+
         // Handle token transfer event
         // Implement custom logic here
-        
+
         // Log the token transfer details
         emit TokenReceived(operator, from, to, amount, data, operatorData);
     }

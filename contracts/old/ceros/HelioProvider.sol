@@ -5,13 +5,13 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IDex.sol";
-import "./interfaces/IDao.sol";
-import "./interfaces/ICerosRouter.sol";
-import "./interfaces/IHelioProvider.sol";
-import "./interfaces/IBinancePool.sol";
-import "./interfaces/ICertToken.sol";
+import "../../ceros/interfaces/IVault.sol";
+import "../../ceros/interfaces/IDex.sol";
+import "../../ceros/interfaces/IDao.sol";
+import "../../ceros/interfaces/ICerosRouter.sol";
+import "../../ceros/interfaces/IHelioProvider.sol";
+import "../../ceros/interfaces/IBinancePool.sol";
+import "../../ceros/interfaces/ICertToken.sol";
 contract HelioProvider is
 IHelioProvider,
 OwnableUpgradeable,
