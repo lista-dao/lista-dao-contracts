@@ -15,6 +15,8 @@ import "./interfaces/PipLike.sol";
 import "./interfaces/SpotLike.sol";
 import "./interfaces/IRewards.sol";
 import "./interfaces/IAuctionProxy.sol";
+import "./interfaces/IDynamicDutyCalculator.sol";
+
 import "./ceros/interfaces/IHelioProvider.sol";
 import "./ceros/interfaces/IDao.sol";
 
@@ -55,6 +57,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     mapping(address => uint) public whitelist;
     mapping(address => uint) public tokensBlacklist;
     bool private _entered;
+    IDynamicDutyCalculator public dutyCalculator;
 
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
@@ -158,11 +161,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         emit CollateralEnabled(token, ilk);
     }
 
-    function setCollateralDuty(address token, uint data) external auth {
+    function setCollateralDuty(address token, uint256 duty) public auth {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
         jug.drip(collateralType.ilk);
-        jug.file(collateralType.ilk, "duty", data);
+        jug.file(collateralType.ilk, "duty", duty);
     }
 
     function setHelioProvider(address token, address helioProvider) external auth {
@@ -326,7 +329,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
-        jug.drip(collateralType.ilk);
+        bytes32 _ilk = collateralType.ilk;
+        (uint256 currentDuty,) = jug.ilks(_ilk);
+        uint256 duty = dutyCalculator.calculateDuty(token, currentDuty, true);
+        if (duty != currentDuty) {
+            setCollateralDuty(token, duty);
+        } else {
+            jug.drip(_ilk);
+        }
     }
 
     function poke(address token) public {
@@ -592,5 +602,19 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     function _checkIsLive(uint256 live) internal pure {
         require(live != 0, "Interaction/inactive collateral");
+    }
+
+    function setDutyCalculator(address _dutyCalculator) external auth {
+        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "Interaction/invalid-dutyCalculator-address");
+        dutyCalculator = IDynamicDutyCalculator(_dutyCalculator);
+        require(dutyCalculator.interaction() == address(this), "Interaction/invalid-dutyCalculator-interaction");
+    }
+
+    function getNextDuty(address _collateral) external returns (uint256 duty) {
+        CollateralType memory collateral = collaterals[_collateral];
+
+        (uint256 currentDuty,) = jug.ilks(collateral.ilk);
+
+        duty = dutyCalculator.calculateDuty(_collateral, currentDuty, false);
     }
 }
