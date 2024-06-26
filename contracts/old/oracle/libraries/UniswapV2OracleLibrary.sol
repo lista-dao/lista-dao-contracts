@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "../interfaces/IUniswapV2Pair.sol";
-import "./FixedPoint.sol";
+import "../../../oracle/interfaces/IUniswapV2Pair.sol";
+import "../../../oracle/libraries/FixedPoint.sol";
 
 // library with helper methods for oracles that are concerned with computing average prices
 library UniswapV2OracleLibrary {

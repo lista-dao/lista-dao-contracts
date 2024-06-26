@@ -2,8 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-import "../interfaces/IUniswapV2Pair.sol";
+import "../../../oracle/interfaces/IUniswapV2Pair.sol";
 
 library UniswapV2Library {
   using SafeMath for uint256;

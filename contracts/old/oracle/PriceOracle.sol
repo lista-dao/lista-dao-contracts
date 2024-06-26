@@ -6,7 +6,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import { IMovingWindowOracle } from "../interfaces/IMovingWindowOracle.sol";
+import { IMovingWindowOracle } from "../../interfaces/IMovingWindowOracle.sol";
 
 contract PriceOracle is Initializable, UUPSUpgradeable, OwnableUpgradeable {
   address public wbnb;
