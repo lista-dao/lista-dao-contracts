@@ -2,8 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/GemJoinLike.sol";
+import "../../interfaces/JugLike.sol";
 
-    struct CollateralType {
+struct CollateralType {
     GemJoinLike gem;
     bytes32 ilk;
     uint32 live; //0 - inactive, 1 - started, 2 - stopped
@@ -11,7 +12,6 @@ import "../../interfaces/GemJoinLike.sol";
 }
 
 interface IDao {
-
     event Deposit(address indexed user, address collateral, uint256 amount, uint256 totalAmount);
     event Borrow(address indexed user, address collateral, uint256 collateralAmount, uint256 amount, uint256 liquidationPrice);
     event Payback(address indexed user, address collateral, uint256 amount, uint256 debt, uint256 liquidationPrice);
@@ -34,4 +34,11 @@ interface IDao {
     ) external returns (uint256);
 
     function dropRewards(address token, address usr) external;
+
+    function setCollateralDuty(address token, uint256 duty) external;
+
+    function jug() external view returns(JugLike);
+
+    function collaterals(address token) external view returns (GemJoinLike, bytes32, uint32, address);
+
 }
