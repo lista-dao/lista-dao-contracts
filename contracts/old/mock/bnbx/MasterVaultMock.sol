@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "../../strategy/IBaseStrategy.sol";
+import "../../../strategy/IBaseStrategy.sol";
 
 contract MasterVaultMock {
     IBaseStrategy public strategy;

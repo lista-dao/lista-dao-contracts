@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "../../bnbx/interfaces/IStakeManager.sol";
+import "../../strategy/bnbx/interfaces/IStakeManager.sol";
 import "./BnbxMock.sol";
 
 contract BnbxStakeManagerMock is IStakeManager {
