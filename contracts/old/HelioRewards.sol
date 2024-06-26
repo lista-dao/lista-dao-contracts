@@ -4,16 +4,16 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./hMath.sol";
-import "./oracle/libraries/FullMath.sol";
+import "../hMath.sol";
+import "../oracle/libraries/FullMath.sol";
 
-import "./interfaces/VatLike.sol";
-import "./interfaces/IRewards.sol";
-import "./interfaces/PipLike.sol";
+import "../interfaces/VatLike.sol";
+import "../interfaces/IRewards.sol";
+import "../interfaces/PipLike.sol";
 
 /*
    "Distribute Helio Tokens to Borrowers".
-   Borrowers of Hay token against collaterals are incentivized 
+   Borrowers of Hay token against collaterals are incentivized
    to get Helio Tokens.
 */
 
@@ -29,7 +29,7 @@ contract HelioRewards is IRewards, OwnableUpgradeable {
 
     // --- State Vars/Constants ---
     uint256 constant YEAR = 365 * 24 * 3600;
-    uint256 constant RAY = 10 ** 27;  
+    uint256 constant RAY = 10 ** 27;
 
     struct Ilk {
         uint256 rewardRate;  // Collateral, per-second reward rate [ray]
