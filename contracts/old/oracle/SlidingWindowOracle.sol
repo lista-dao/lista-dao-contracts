@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { IUniswapV2Factory } from "./interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Pair } from "./interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Factory } from "../../oracle/interfaces/IUniswapV2Factory.sol";
+import { IUniswapV2Pair } from "../../oracle/interfaces/IUniswapV2Pair.sol";
 
-import { FixedPoint } from "./libraries/FixedPoint.sol";
+import { FixedPoint } from "../../oracle/libraries/FixedPoint.sol";
 import { UniswapV2Library } from "./libraries/UniswapV2Library.sol";
 import { UniswapV2OracleLibrary } from "./libraries/UniswapV2OracleLibrary.sol";
 
