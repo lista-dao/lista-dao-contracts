@@ -15,6 +15,7 @@ import "./interfaces/PipLike.sol";
 import "./interfaces/SpotLike.sol";
 import "./interfaces/IRewards.sol";
 import "./interfaces/IAuctionProxy.sol";
+import "./interfaces/IBorrowLisUSDListaDistributor.sol";
 import "./ceros/interfaces/IHelioProvider.sol";
 import "./ceros/interfaces/IDao.sol";
 
@@ -56,6 +57,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     mapping(address => uint) public tokensBlacklist;
     bool private _entered;
 
+    IBorrowLisUSDListaDistributor public borrowLisUSDListaDistributor;
+
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
     function setWhitelistOperator(address usr) external auth {
@@ -76,6 +79,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function removeFromBlacklist(address[] memory tokens) external auth {
         for(uint256 i = 0; i < tokens.length; i++)
             tokensBlacklist[tokens[i]] = 0;
+    }
+    function setListaDistributor(address distributor) external auth {
+        if(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor) {
+            borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
+        }
     }
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
@@ -241,6 +249,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
+
+        takeSnapshot(token, msg.sender, art);
+
         emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
     }
@@ -282,8 +293,18 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
+        takeSnapshot(token, msg.sender, userDebt);
+
         emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
         return dart;
+    }
+
+    // Take a snapshot of the user's debt
+    function takeSnapshot(address token, address user, address amount) private {
+        // ensure the distributor address is set
+        if (address(borrowLisUSDListaDistributor) != address(0)) {
+            borrowLisUSDListaDistributor.takeSnapshot(token, user, amount);
+        }
     }
 
     // Unlock and transfer to the user `dink` amount of ceABNBc
