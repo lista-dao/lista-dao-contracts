@@ -13,9 +13,11 @@ import "./interfaces/OracleInterface.sol";
 contract API3Oracle is AggregatorV3Interface {
 
   IAPI3Proxy public immutable api3Proxy;
+  string public immutable tokenName;
 
-  constructor(address _api3Proxy) {
+  constructor(address _api3Proxy, string memory _tokenName) {
     api3Proxy = IAPI3Proxy(_api3Proxy);
+    tokenName = _tokenName;
   }
 
   function decimals() external pure returns (uint8) {

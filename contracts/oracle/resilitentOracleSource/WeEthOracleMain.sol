@@ -3,16 +3,20 @@ pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./interfaces/IAPI3Proxy.sol";
 
-contract WBETHOracleV2 is Initializable, AggregatorV3Interface {
+contract WeEthOracleMain is Initializable, AggregatorV3Interface {
 
-  address internal ethUsdPriceFeed;
-  address internal wBethEthPriceFeed;
+  AggregatorV3Interface public weEthPriceFeed;
+  AggregatorV3Interface public ethPriceFeed;
 
-  function initialize(address _ethUsdPriceFeedAddr, address _wBethEthPriceFeedAddr) external initializer {
-    ethUsdPriceFeed = _ethUsdPriceFeedAddr;
-    wBethEthPriceFeed = _wBethEthPriceFeedAddr;
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(address _weEthPriceFeed, address _ethPriceFeed) external initializer {
+    weEthPriceFeed = AggregatorV3Interface(_weEthPriceFeed);
+    ethPriceFeed = AggregatorV3Interface(_ethPriceFeed);
   }
 
   function decimals() external pure returns (uint8) {
@@ -20,7 +24,7 @@ contract WBETHOracleV2 is Initializable, AggregatorV3Interface {
   }
 
   function description() external pure returns (string memory) {
-    return "WBETH/USD Oracle";
+    return "WeETH/USD Oracle";
   }
 
   function version() external pure returns (uint256) {
@@ -77,17 +81,27 @@ contract WBETHOracleV2 is Initializable, AggregatorV3Interface {
    * Returns the latest price
    */
   function getPrice() internal view returns (int256 value, uint256 timestamp) {
-    // get the latest ETH/USD price
-    (int224 ethUsdPrice, uint32 updateTimestamp1) = IAPI3Proxy(ethUsdPriceFeed).read();
-    require(block.timestamp - updateTimestamp1 < 86700, "Oracle/ethUsd-timestamp-too-old");
-    require(ethUsdPrice > 0, "Oracle/ethUsd-price-invalid");
+    (
+    /*uint80 roundID*/,
+      int256 price1,
+    /*uint startedAt*/,
+      uint timeStamp1,
+    /*uint80 answeredInRound*/
+    ) = weEthPriceFeed.latestRoundData();
 
-    // get the latest wbETH/ETH price
-    (int224 wBethEthPrice, uint32 updateTimestamp2) = IAPI3Proxy(wBethEthPriceFeed).read();
-    require(block.timestamp - updateTimestamp2 < 86700, "Oracle/wbethEth-timestamp-too-old");
-    require(wBethEthPrice > 0, "Oracle/wbethEth-price-invalid");
+    require(block.timestamp - timeStamp1 < (6 * 3600 + 300), "weEthPriceFeed/timestamp-too-old");
 
-    timestamp = uint256(updateTimestamp2 > updateTimestamp1 ? updateTimestamp2 : updateTimestamp1);
-    value = int256(wBethEthPrice * ethUsdPrice) / 1e28;
+    (
+    /*uint80 roundID*/,
+      int256 price2,
+    /*uint startedAt*/,
+      uint timeStamp2,
+    /*uint80 answeredInRound*/
+    ) = ethPriceFeed.latestRoundData();
+
+    require(block.timestamp - timeStamp2 < 300, "ethPriceFeed/timestamp-too-old");
+
+    timestamp = uint256(timeStamp1 > timeStamp2 ? timeStamp1 : timeStamp2);
+    value = int256(wBethEthPrice * ethUsdPrice) * 1e2;
   }
 }

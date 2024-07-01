@@ -2,8 +2,8 @@ const hre = require("hardhat");
 const {ethers, upgrades} = hre;
 
 async function main() {
-  // Deploy resilientOracle
-  const WBETHOracle = await ethers.getContractFactory("WBETHOracleV2");
+  // Deploy WBETHOracle
+  const WBETHOracle = await ethers.getContractFactory("WBEthOraclePivot");
   const wBETHOracle = await upgrades.deployProxy(
     WBETHOracle,
     [
@@ -16,11 +16,11 @@ async function main() {
   await wBETHOracle.waitForDeployment();
 
   let wBETHOracleImplementation = await upgrades.erc1967.getImplementationAddress(wBETHOracle.target);
-  console.log("Deployed: WBETHOracleV2 : " + wBETHOracle.target);
-  console.log("Imp                     : " + wBETHOracleImplementation);
+  console.log("Deployed: WBETHOraclePivot : " + wBETHOracle.target);
+  console.log("Imp                        : " + wBETHOracleImplementation);
 
   // verify contracts
-  console.log('\n\n---------- verifying WBETHOracleV2 ----------')
+  console.log('\n\n---------- verifying WBETHOraclePivot ----------')
   await hre.run("verify:verify", { address: wBETHOracle.target });
 }
 
