@@ -1,14 +1,11 @@
 const hre = require("hardhat");
 const {ethers, upgrades} = hre;
-const { upgradeProxy , deployImplementation , verifyImpContract} = require("../upgrades/utils/upgrade_utils");
-
-const ORACLE_CONTRACT = "WBETHOracleV2";
 
 async function main() {
   // Deploy resilientOracle
-  const NewOracle = await ethers.getContractFactory(ORACLE_CONTRACT);
-  const newOracle = await upgrades.deployProxy(
-    NewOracle,
+  const WBETHOracle = await ethers.getContractFactory("WBETHOracleV2");
+  const wBETHOracle = await upgrades.deployProxy(
+    WBETHOracle,
     [
       "0x98643CB1BDA4060d8BD2dc19bceB0acF6F03ae17",
       "0x6a844ed6a1C5fE5f4C05C531C7A0D67d4D8d9f70"
@@ -16,17 +13,15 @@ async function main() {
     {
       initializer: "initialize"
     });
-  await newOracle.waitForDeployment();
+  await wBETHOracle.waitForDeployment();
 
-  let resilientOracleImplementation = await upgrades.erc1967.getImplementationAddress(resilientOracle.target);
-  console.log("Deployed: ResilientOracle    : " + resilientOracle.target);
-  console.log("Imp                         : " + resilientOracleImplementation);
+  let wBETHOracleImplementation = await upgrades.erc1967.getImplementationAddress(wBETHOracle.target);
+  console.log("Deployed: WBETHOracleV2 : " + wBETHOracle.target);
+  console.log("Imp                     : " + wBETHOracleImplementation);
 
   // verify contracts
-  console.log('---------- verifying BoundValidator ----------')
-  await hre.run("verify:verify", { address: boundValidator.target });
-  console.log('\n\n---------- verifying ResilientOracle ----------')
-  await hre.run("verify:verify", { address: resilientOracle.target });
+  console.log('\n\n---------- verifying WBETHOracleV2 ----------')
+  await hre.run("verify:verify", { address: wBETHOracle.target });
 }
 
 main()
