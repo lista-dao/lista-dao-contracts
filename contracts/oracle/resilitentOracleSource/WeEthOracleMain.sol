@@ -102,6 +102,6 @@ contract WeEthOracleMain is Initializable, AggregatorV3Interface {
     require(block.timestamp - timeStamp2 < 300, "ethPriceFeed/timestamp-too-old");
 
     timestamp = uint256(timeStamp1 > timeStamp2 ? timeStamp1 : timeStamp2);
-    value = int256(wBethEthPrice * ethUsdPrice) * 1e2;
+    value = int256(price1 * price2) * 1e2;
   }
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./interfaces/IAPI3Proxy.sol";
+import "../interfaces/IAPI3Proxy.sol";
 
 contract WBEthOraclePivot is Initializable, AggregatorV3Interface {
 
