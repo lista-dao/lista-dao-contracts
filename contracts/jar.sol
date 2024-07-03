@@ -186,9 +186,9 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         emit Uncage();
     }
     function setListaDistributor(address distributor) external auth {
-        if(distributor != address(0) && address(stakeLisUSDListaDistributor) != distributor) {
-            stakeLisUSDListaDistributor = IStakeLisUSDListaDistributor(distributor);
-        }
+        require(distributor != address(0), "Interaction/lista-distributor-zero-address");
+        require(address(stakeLisUSDListaDistributor) == distributor, "Interaction/same-distributor-address");
+        stakeLisUSDListaDistributor = IStakeLisUSDListaDistributor(distributor);
     }
 
     // --- User ---
@@ -249,8 +249,8 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     }
     /**
      * @dev take snapshot of user's LisUSD staking amount
-     * @param token collateral token address
      * @param user user address
+     * @param balance user's latest staked LisUSD amount
      */
     function takeSnapshot(address user, uint256 balance) private {
         // ensure the distributor address is set

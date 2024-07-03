@@ -81,9 +81,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             tokensBlacklist[tokens[i]] = 0;
     }
     function setListaDistributor(address distributor) external auth {
-        if(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor) {
-            borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
-        }
+        require(distributor != address(0), "Interaction/lista-distributor-zero-address");
+        require(address(borrowLisUSDListaDistributor) == distributor, "Interaction/same-distributor-address");
+        borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
