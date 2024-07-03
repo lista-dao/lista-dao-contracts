@@ -92,7 +92,8 @@ contract WBEthOraclePivot is Initializable, AggregatorV3Interface {
     require(block.timestamp - updateTimestamp2 < 86700, "wBEthPriceFeed/timestamp-too-old");
     require(wBethEthPrice > 0, "wBEthPriceFeed/price-invalid");
 
-    timestamp = uint256(updateTimestamp2 > updateTimestamp1 ? updateTimestamp2 : updateTimestamp1);
     value = int256(wBethEthPrice * ethUsdPrice) / 1e28;
+    // returns the oldest timestamp
+    timestamp = uint256(updateTimestamp2 > updateTimestamp1 ? updateTimestamp2 : updateTimestamp2);
   }
 }

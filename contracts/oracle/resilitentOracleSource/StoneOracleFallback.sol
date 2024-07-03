@@ -3,20 +3,21 @@ pragma solidity ^0.8.10;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../interfaces/IAPI3Proxy.sol";
 
-contract WeEthOracleMain is Initializable, AggregatorV3Interface {
+contract StoneOracleFallback is Initializable, AggregatorV3Interface {
 
-  AggregatorV3Interface public weEthPriceFeed;
   AggregatorV3Interface public ethPriceFeed;
+  AggregatorV3Interface public stoneEthPriceFeed;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
   }
 
-  function initialize(address _weEthPriceFeed, address _ethPriceFeed) external initializer {
-    weEthPriceFeed = AggregatorV3Interface(_weEthPriceFeed);
-    ethPriceFeed = AggregatorV3Interface(_ethPriceFeed);
+  function initialize(address _ethPriceFeedAddr, address _stoneETHPriceFeedAddr) external initializer {
+    ethPriceFeed = AggregatorV3Interface(_ethPriceFeedAddr);
+    stoneETHPriceFeed = AggregatorV3Interface(_stoneETHPriceFeedAddr);
   }
 
   function decimals() external pure returns (uint8) {
@@ -24,7 +25,7 @@ contract WeEthOracleMain is Initializable, AggregatorV3Interface {
   }
 
   function description() external pure returns (string memory) {
-    return "WeETH/USD Oracle";
+    return "STONE/USD Oracle";
   }
 
   function version() external pure returns (uint256) {
@@ -85,24 +86,24 @@ contract WeEthOracleMain is Initializable, AggregatorV3Interface {
     /*uint80 roundID*/,
       int256 price1,
     /*uint startedAt*/,
-      uint timeStamp1,
+      uint256 timeStamp1,
     /*uint80 answeredInRound*/
-    ) = weEthPriceFeed.latestRoundData();
-
-    require(block.timestamp - timeStamp1 < (6 * 3600 + 300), "weEthPriceFeed/timestamp-too-old");
+    ) = stoneEthPriceFeed.latestRoundData();
+    require(block.timestamp - timeStamp1 < (24 * 3600 + 300), "stoneEthPriceFeed/timestamp-too-old");
+    require(price1 > 0, "stoneEthPriceFeed/price-is-zero");
 
     (
     /*uint80 roundID*/,
       int256 price2,
     /*uint startedAt*/,
-      uint timeStamp2,
+      uint256 timeStamp2,
     /*uint80 answeredInRound*/
     ) = ethPriceFeed.latestRoundData();
-
     require(block.timestamp - timeStamp2 < 300, "ethPriceFeed/timestamp-too-old");
+    require(price2 > 0, "ethPriceFeed/price-is-zero");
 
-    value = int256(price1 * price2) * 1e2;
-    // returns the oldest timestamp
+    value = uint256(price1) * uint(price2) * 1e2;
+    // return the oldest timestamp
     timestamp = uint256(timeStamp1 > timeStamp2 ? timeStamp2 : timeStamp1);
   }
 }
