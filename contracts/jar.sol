@@ -247,11 +247,26 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
 
         emit Redeem(accounts);
     }
-    // Take a snapshot of the user's debt
-    function takeSnapshot(address user, address balance) private {
+    /**
+     * @dev take snapshot of user's LisUSD staking amount
+     * @param token collateral token address
+     * @param user user address
+     */
+    function takeSnapshot(address user, uint256 balance) private {
         // ensure the distributor address is set
-        if (address(borrowLisUSDListaDistributor) != address(0)) {
+        if (address(stakeLisUSDListaDistributor) != address(0)) {
             stakeLisUSDListaDistributor.takeSnapshot(user, balance);
+        }
+    }
+    /**
+     * @dev synchronize user's LisUSD staking amount to the snapshot contract
+     * @notice this function can be called by anyone
+               it also act as an initialisation function of user's snapshot data
+     * @param user user address
+     */
+    function syncSnapshot(address user) external {
+        if (balanceOf[user] > 0) {
+            takeSnapshot(user, balanceOf[user]);
         }
     }
 }
