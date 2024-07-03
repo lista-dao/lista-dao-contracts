@@ -29,5 +29,4 @@ contract Dao is IDao {
     return dink;
   }
 
-  function dropRewards(address token, address usr) external {}
 }
