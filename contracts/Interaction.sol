@@ -299,11 +299,31 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return dart;
     }
 
-    // Take a snapshot of the user's debt
-    function takeSnapshot(address token, address user, address amount) private {
+    /**
+     * @dev take snapshot of user's debt
+     * @param token collateral token address
+     * @param user user address
+     */
+    function takeSnapshot(address token, address user, uint256 amount) private {
         // ensure the distributor address is set
         if (address(borrowLisUSDListaDistributor) != address(0)) {
             borrowLisUSDListaDistributor.takeSnapshot(token, user, amount);
+        }
+    }
+
+    /**
+     * @dev synchronize user's debt to the snapshot contract
+     * @notice this function can be called by anyone
+               it also act as an initialisation function of user's snapshot data
+     * @param token collateral token address
+     * @param user user address
+     */
+    function syncSnapshot(address token, address user) external {
+        // check user debt is 0?
+        (, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
+        // sync user debt only if it is greater than 0
+        if (userDebt > 0) {
+            takeSnapshot(token, user, userDebt);
         }
     }
 
