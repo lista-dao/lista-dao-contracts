@@ -41,7 +41,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     HayJoinLike public hayJoin;
     JugLike public jug;
     address public dog;
-    IRewards public helioRewards;
+    IRewards public helioRewards; // Deprecated
 
     mapping(address => uint256) public deposits;
     mapping(address => CollateralType) public collaterals;
@@ -233,7 +233,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
         drip(token);
-        dropRewards(token, msg.sender);
 
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
         int256 dart = int256(hayAmount * RAY / rate);
@@ -256,17 +255,12 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return uint256(dart);
     }
 
-    function dropRewards(address token, address usr) public {
-        helioRewards.drop(token, usr);
-    }
-
     // Burn user's HAY.
     // N.B. User collateral stays the same.
     function payback(address token, uint256 hayAmount) external nonReentrant returns (int256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
-        dropRewards(token, msg.sender);
         drip(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
@@ -375,10 +369,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         _checkIsLive(collateralType.live);
 
         spotter.poke(collateralType.ilk);
-    }
-
-    function setRewards(address rewards) external auth {
-        helioRewards = IRewards(rewards);
     }
 
     //    /////////////////////////////////
@@ -565,7 +555,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address user,
         address keeper
     ) external returns (uint256) {
-        dropRewards(token, user);
+        poke(token);
         CollateralType memory collateral = collaterals[token];
         (uint256 ink,) = vat.urns(collateral.ilk, user);
         IHelioProvider provider = IHelioProvider(helioProviders[token]);
@@ -606,7 +596,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         );
 
         address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
-        dropRewards(address(hay), urn);
 
         emit Liquidation(urn, token, collateralAmount, leftover);
     }
