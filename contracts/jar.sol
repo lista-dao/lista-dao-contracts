@@ -187,7 +187,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     }
     function setListaDistributor(address distributor) external auth {
         require(distributor != address(0), "Interaction/lista-distributor-zero-address");
-        require(address(stakeLisUSDListaDistributor) == distributor, "Interaction/same-distributor-address");
+        require(address(stakeLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
         stakeLisUSDListaDistributor = IStakeLisUSDListaDistributor(distributor);
     }
 
