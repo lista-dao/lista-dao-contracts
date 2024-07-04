@@ -82,7 +82,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
     function setListaDistributor(address distributor) external auth {
         require(distributor != address(0), "Interaction/lista-distributor-zero-address");
-        require(address(borrowLisUSDListaDistributor) == distributor, "Interaction/same-distributor-address");
+        require(address(borrowLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
