@@ -197,6 +197,35 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     }
 
     /**
+     * @dev Set the address of the specified contract.
+     * @param what The contract to set. bytes32 representation of the state variable name.
+     * @param _addr The address to set.
+     */
+    function file(bytes32 what, address _addr) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_addr != address(0), "AggMonetaryPolicy/zero-address-provided");
+
+        if (what == "interaction") {
+            require(interaction != _addr, "AggMonetaryPolicy/interaction-already-set");
+            interaction = _addr;
+        } else if (what == "lisUSD") {
+            require(lisUSD != _addr, "AggMonetaryPolicy/lisUSD-already-set");
+            lisUSD = _addr;
+        } else if (what == "oracle") {
+            require(address(oracle) != _addr, "AggMonetaryPolicy/oracle-already-set");
+            oracle = OracleInterface(_addr);
+        } else revert("AggMonetaryPolicy/file-unrecognized-param");
+
+        emit File(what, _addr);
+    }
+
+    /**
+     * @dev Get the addresses of the contracts.
+     */
+    function getContracts() external view returns (address _interaction, address _lisUSD, address _oracle) {
+        return (interaction, lisUSD, address(oracle));
+    }
+
+    /**
      * @dev Adaptor for `FixedMath0x._exp` method since it's designed for negative power only.
      *      if price > 1, use _exp directly
      *      if price < 1, e^power = 1 / e^(-power)
