@@ -160,6 +160,24 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(duty, 1000000004466999177996065553);
    }
 
+   function test_calculateDuty_1_011_normal() public {
+        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+        vm.stopPrank();
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(101100000)) // returns $1.011
+        );
+        assertEq(oracle.peek(lisUSD), 101100000);
+
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        assertEq(_lastPrice, 0);
+        assertEq(_enabled, true);
+
+   }
+
    function test_setPriceRange() public {
         vm.startPrank(admin);
         uint256 _minPrice = 8e7; // $0.80
@@ -194,6 +212,29 @@ contract DynamicDutyCalculatorTest is Test {
         vm.stopPrank();
 
         assertEq(dynamicDutyCalculator.priceDeviation(), _priceDeviation);
+   }
+
+   function test_file() public {
+        vm.startPrank(admin);
+        dynamicDutyCalculator.file("interaction", address(0xAA));
+        dynamicDutyCalculator.file("lisUSD", address(0xBB));
+        dynamicDutyCalculator.file("oracle", address(0xCC));
+        vm.stopPrank();
+
+        (address _interaction, address _lisUSD, address _oracle) = dynamicDutyCalculator.getContracts();
+        assertEq(_interaction, address(0xAA));
+        assertEq(_lisUSD, address(0xBB));
+        assertEq(_oracle, address(0xCC));
+   }
+
+   function testRevert_file() public {
+        vm.expectRevert("AccessControl: account 0x34a1d3fff3958843c43ad80f30b94c510645c316 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
+        dynamicDutyCalculator.file("interaction", address(0xAA));
+
+        vm.startPrank(admin);
+        vm.expectRevert("AggMonetaryPolicy/file-unrecognized-param");
+        dynamicDutyCalculator.file("proxy", address(0xAA));
+        vm.stopPrank();
    }
 }
 
