@@ -45,7 +45,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     // set duty to minDuty if price goes above maxPrice; initial value is 1.1 * PEG
     uint256 public maxPrice;
 
-    uint256 constant PEG = 1e8; // $1
+    // $1; lisUSD price feed decimal is 8
+    uint256 constant PEG = 1e8;
 
     bytes32 public constant INTERACTION = keccak256("INTERACTION");
 
@@ -73,8 +74,6 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
         minPrice = 9e7;
         maxPrice = 11e7;
-
-        priceDeviation = 200000; // $0.002
 
         _setRoleAdmin(INTERACTION, DEFAULT_ADMIN_ROLE);
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
