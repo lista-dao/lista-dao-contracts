@@ -12,6 +12,7 @@ interface IDynamicDutyCalculator {
     event PriceRangeUpdated(uint256 minPrice, uint256 maxPrice);
     event DutyRangeUpdated(uint256 minDuty, uint256 maxDuty);
     event PriceDeviationUpdated(uint256 priceDeviation);
+    event File(bytes32 what, address addr);
 
     function interaction() external view returns (address);
 
