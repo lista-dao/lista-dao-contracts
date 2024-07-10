@@ -8,7 +8,8 @@ import "../interfaces/IDynamicDutyCalculator.sol";
 import "../interfaces/JugLike.sol";
 import "../libraries/FixedMath0x.sol";
 
-import { OracleInterface } from "../oracle/interfaces/OracleInterface.sol";
+//import { OracleInterface } from "../oracle/interfaces/OracleInterface.sol";
+import "../oracle/interfaces/IResilientOracle.sol";
 
 /**
     * @title DynamicDutyCalculator
@@ -21,7 +22,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     address lisUSD;
 
     // lisUSD price oracle
-    OracleInterface oracle;
+    IResilientOracle oracle;
 
     // the minimum price deviation required between two consecutive duty updates
     uint256 public priceDeviation;
@@ -66,7 +67,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
         interaction = _interaction;
         lisUSD = _lisUSD;
-        oracle = OracleInterface(_priceOracle);
+        oracle = IResilientOracle(_priceOracle);
         priceDeviation = _priceDeviation;
 
         minDuty = 1e27;
@@ -75,7 +76,6 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         minPrice = 9e7;
         maxPrice = 11e7;
 
-        _setRoleAdmin(INTERACTION, DEFAULT_ADMIN_ROLE);
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(INTERACTION, _interaction);
     }
@@ -111,37 +111,38 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      * @return duty The duty for the collateral token.
      */
     function calculateDuty(address _collateral, uint256 _currentDuty, bool _updateLastPrice) public onlyRole(INTERACTION) returns (uint256 duty) {
-        if (!ilks[_collateral].enabled) {
+        Ilk storage ilk = ilks[_collateral];
+        if (!ilk.enabled) {
             return _currentDuty; // if collateral not enabled for dynamic interest rate mechanism, return current duty
         }
         uint256 price = oracle.peek(lisUSD);
 
         // return max duty if price is too low
         if (price <= minPrice) {
-            if(_updateLastPrice) {
-                ilks[_collateral].lastPrice = price;
+            if (_updateLastPrice) {
+                ilk.lastPrice = price;
             }
             return maxDuty;
         }
 
         // return min duty if price is too high
         if (price >= maxPrice) {
-            if(_updateLastPrice) {
-                ilks[_collateral].lastPrice = price;
+            if (_updateLastPrice) {
+                ilk.lastPrice = price;
             }
             return minDuty;
         }
 
         // return current duty if lastPrice - 0.002 <= price <= lastPrice + 0.002
-        uint256 lastPrice = ilks[_collateral].lastPrice;
-        if (price <= lastPrice + priceDeviation && price >= lastPrice - priceDeviation) {
+        if (price <= ilk.lastPrice + priceDeviation && price >= ilk.lastPrice - priceDeviation) {
             return _currentDuty;
         }
 
-        uint256 rate = calculateRate(price, ilks[_collateral].beta, ilks[_collateral].rate0);
         if (_updateLastPrice) {
-            ilks[_collateral].lastPrice = price;
+            ilk.lastPrice = price;
         }
+
+        uint256 rate = calculateRate(price, ilk.beta, ilk.rate0);
         duty = rate + 1e27;
     }
 
@@ -212,7 +213,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
             lisUSD = _addr;
         } else if (what == "oracle") {
             require(address(oracle) != _addr, "AggMonetaryPolicy/oracle-already-set");
-            oracle = OracleInterface(_addr);
+            oracle = IResilientOracle(_addr);
         } else revert("AggMonetaryPolicy/file-unrecognized-param");
 
         emit File(what, _addr);
