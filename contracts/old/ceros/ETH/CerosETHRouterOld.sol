@@ -5,12 +5,12 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../interfaces/IETHVault.sol";
-import "../interfaces/ICerosETHRouter.sol";
-import "../interfaces/ICertToken.sol";
-import "../interfaces/IBETH.sol";
+import "../../../ceros/interfaces/IETHVault.sol";
+import "../../../ceros/interfaces/ICerosETHRouter.sol";
+import "../../../ceros/interfaces/ICertToken.sol";
+import "../../../ceros/interfaces/IBETH.sol";
 
-contract CerosETHRouter is
+contract CerosETHRouterOld is
 ICerosETHRouter,
 OwnableUpgradeable,
 PausableUpgradeable,
@@ -202,14 +202,5 @@ ReentrancyGuardUpgradeable
     }
     function getMinStake() external view returns(uint256) {
         return _minStake;
-    }
-
-    /**
-     * @dev Change referral address, onlyOwner
-     * @param referral new address
-     */
-    function changeReferral(address referral) external onlyOwner {
-        require(referral != address(0) && referral != _referral, "invalid referral address");
-        _referral = referral;
     }
 }
