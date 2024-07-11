@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
@@ -198,6 +200,17 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_calculateDuty_1_011_disabled() public {
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        assertEq(_lastPrice, 0);
+        assertEq(_enabled, false);
+
+        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        bool updateLastPrice = true;
+        vm.startPrank(address(interaction));
+        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        vm.stopPrank();
+        assertEq(duty, currentDuty); // return current duty as the collateral is disabled
+
         assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, false);
@@ -209,14 +222,12 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 101100000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (_enabled, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 0);
         assertEq(_enabled, false);
 
         vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
         assertEq(duty, currentDuty); // return current duty as the collateral is disabled
