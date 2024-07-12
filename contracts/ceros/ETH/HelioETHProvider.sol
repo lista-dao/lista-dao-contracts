@@ -28,6 +28,8 @@ ReentrancyGuardUpgradeable
     IDao public _dao;
     address public _proxy;
     uint256 _minWithdrawalAmount;
+    address payable public feeReceiver;
+
     using SafeERC20 for IERC20;
     /**
      * Modifiers
@@ -88,15 +90,15 @@ ReentrancyGuardUpgradeable
      * CLAIM
      */
     // claim in wBETH, if the balance is not enough, in ETH
-    function claim(address recipient)
+    function claim()
     external
     override
     nonReentrant
     onlyOperator
     returns (uint256 yields)
     {
-        yields = _ceETHRouter.claim(recipient);
-        emit Claim(recipient, yields);
+        yields = _ceETHRouter.claim(feeReceiver);
+        emit Claim(feeReceiver, yields);
         return yields;
     }
     /**
@@ -213,5 +215,12 @@ ReentrancyGuardUpgradeable
     function changeMinWithdrwalAmount(uint256 amount) external onlyOwner {
         _minWithdrawalAmount = amount;
         emit ChangeWithdrwalAmount(amount);
+    }
+    /// @dev only owner can change fee receiver address
+    /// @param _feeReceiver new fee receiver address
+    function changeFeeReceiver(address payable _feeReceiver) external onlyOwner {
+        require(_feeReceiver != address(0));
+        feeReceiver = _feeReceiver;
+        emit FeeReceiverChanged(_feeReceiver);
     }
 }
