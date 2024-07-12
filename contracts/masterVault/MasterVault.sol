@@ -24,7 +24,7 @@ ReentrancyGuardUpgradeable
         uint256 allocation;
         uint256 debt;
     }
-    
+
     mapping (address => StrategyParams) public strategyParams;
     mapping(address => bool) public manager;
 
@@ -35,7 +35,7 @@ ReentrancyGuardUpgradeable
     uint256 public feeEarned;
     uint256 public MAX_STRATEGIES;
     uint256 public totalDebt;      // Amount of assets that all strategies have borrowed
-    
+
     address[] public strategies;
     address public provider;
     address public vaultToken;
@@ -100,12 +100,12 @@ ReentrancyGuardUpgradeable
 
     /// @dev deposits assets and mints shares(amount - (swapFee + depositFee)) to caller's address
     /// @return shares - number of minted vault tokens
-    function depositETH() public 
+    function depositETH() public
     payable
     override
     nonReentrant
-    whenNotPaused 
-    onlyProvider 
+    whenNotPaused
+    onlyProvider
     returns (uint256 shares) {
         address src = msg.sender;
         uint256 amount = msg.value;
@@ -156,7 +156,7 @@ ReentrancyGuardUpgradeable
                 if (strategyParams[strategies[i]].debt >= amount - withdrawn) {
                     withdrawn += _withdrawFromStrategy(strategies[i], recipient, amount - withdrawn);
                     return withdrawn;
-                } 
+                }
                 else {
                     withdrawn += _withdrawFromStrategy(strategies[i], recipient, strategyParams[strategies[i]].debt);
                 }
@@ -216,8 +216,8 @@ ReentrancyGuardUpgradeable
     /// @dev internal function to withdraw specific amount of assets from the given strategy
     /// @param strategy address of the strategy
     /// @param amount assets to withdraw from the strategy
-    /// NOTE: subtracts the given amount of assets instead of value(withdrawn funds) because 
-    ///       of the swapFee that is deducted in the binancePool contract and that fee needs 
+    /// NOTE: subtracts the given amount of assets instead of value(withdrawn funds) because
+    ///       of the swapFee that is deducted in the binancePool contract and that fee needs
     ///       to be paid by the users only
     function _withdrawFromStrategy(address strategy, address recipient, uint256 amount) private returns(uint256) {
         require(amount > 0, "invalid withdrawal amount");
@@ -277,7 +277,7 @@ ReentrancyGuardUpgradeable
 
     /// @dev sets new strategy
     /// @param strategy address of the strategy
-    /// @param allocation percentage of total assets available in the contract 
+    /// @param allocation percentage of total assets available in the contract
     ///                   that needs to be allocated to the given strategy
     function setStrategy(
         address strategy,
@@ -308,11 +308,11 @@ ReentrancyGuardUpgradeable
         strategies.push(strategy);
         emit StrategyAdded(strategy, allocation);
     }
-    
+
     /// @dev withdraws all the assets from the strategy and marks it inactive
     /// @param strategy address of the strategy
-    /// NOTE: To avoid any unforeseen issues because of solidity divisions 
-    ///       and always be able to deactivate a strategy, 
+    /// NOTE: To avoid any unforeseen issues because of solidity divisions
+    ///       and always be able to deactivate a strategy,
     ///       it withdraws strategy's (debt - 10) assets and set debt to 0.
     function retireStrat(address strategy) external onlyManager {
         // require(strategyParams[strategy].active, "strategy is not active");
@@ -383,18 +383,18 @@ ReentrancyGuardUpgradeable
         return (totalAssets() > feeEarned) ? totalAssets() - feeEarned : 0;
     }
 
-    /// @dev migrates strategy contract - withdraws everything from the oldStrategy and 
+    /// @dev migrates strategy contract - withdraws everything from the oldStrategy and
     ///      overwrites it with new strategy
     /// @param oldStrategy address of the old strategy
-    /// @param newStrategy address of the new strategy 
+    /// @param newStrategy address of the new strategy
     /// @param newAllocation percentage of total assets available in the contract
     ///                      that needs to be allocated to the new strategy
     function migrateStrategy(address oldStrategy, address newStrategy, uint256 newAllocation) external onlyManager {
         require(oldStrategy != address(0));
         require(newStrategy != address(0));
-        
+
         uint256 oldStrategyDebt = strategyParams[oldStrategy].debt;
-        
+
         if(oldStrategyDebt > 0) {
             uint256 withdrawn = _withdrawFromStrategy(oldStrategy, address(this), strategyParams[oldStrategy].debt);
             require(withdrawn > 0, "cannot withdraw from strategy");
@@ -410,7 +410,7 @@ ReentrancyGuardUpgradeable
                 isValidStrategy = true;
                 strategies[i] = newStrategy;
                 strategyParams[newStrategy] = params;
-                
+
                 break;
             }
         }
@@ -444,7 +444,7 @@ ReentrancyGuardUpgradeable
     }
 
     /// @dev only owner can call this function to withdraw earned fees
-    function withdrawFee() external nonReentrant onlyOwner {
+    function withdrawFee() external nonReentrant onlyManager {
         if(feeEarned > 0 && totalAssets() >= feeEarned) {
             (bool sent, ) = payable(feeReceiver).call{value: feeEarned}("");
             require(sent, "transfer failed");
@@ -483,7 +483,7 @@ ReentrancyGuardUpgradeable
         require(manager[_manager]);
         manager[_manager] = false;
         emit ManagerRemoved(_manager);
-    } 
+    }
 
     /// @dev only owner can change provider address
     /// @param newProvider new provider address
@@ -506,7 +506,7 @@ ReentrancyGuardUpgradeable
     /// @param allocation new allocation - percentage of total assets available in the contract
     ///                   that needs to be allocated to the new strategy
     function changeStrategyAllocation(address strategy, uint256 allocation) external onlyOwner {
-        require(strategy != address(0));        
+        require(strategy != address(0));
         strategyParams[strategy].allocation = allocation;
         require(_isValidAllocation(), "allocations cannot be more than 100%");
 
