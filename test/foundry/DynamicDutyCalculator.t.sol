@@ -79,6 +79,16 @@ contract DynamicDutyCalculatorTest is Test {
    function testRevert_setCollateralParams() public {
         vm.expectRevert("AccessControl: account 0x34a1d3fff3958843c43ad80f30b94c510645c316 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+
+        vm.startPrank(admin);
+        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        dynamicDutyCalculator.setCollateralParams(collateral, 3e5, rate0, true);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        dynamicDutyCalculator.setCollateralParams(collateral, 1e8, rate0, true);
+        vm.stopPrank();
    }
 
    function test_calculateDuty_0_950() public {
