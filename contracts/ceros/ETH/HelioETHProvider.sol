@@ -220,7 +220,7 @@ ReentrancyGuardUpgradeable
     }
     /// @dev only owner can change fee receiver address
     /// @param feeReceiver new fee receiver address
-    function changeFeeReceiver(address payable feeReceiver) external onlyOwner {
+    function changeFeeReceiver(address feeReceiver) external onlyOwner {
         require(feeReceiver != address(0) && _feeReceiver != feeReceiver , "feeReceiver must be non-zero or different from the current one");
         _feeReceiver = feeReceiver;
         emit FeeReceiverChanged(_feeReceiver);
