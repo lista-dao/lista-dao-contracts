@@ -7,13 +7,26 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "../interfaces/IDynamicDutyCalculator.sol";
 import "../interfaces/JugLike.sol";
 import "../libraries/FixedMath0x.sol";
-
-//import { OracleInterface } from "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/IResilientOracle.sol";
 
 /**
     * @title DynamicDutyCalculator
-    * @notice Contract for the AMO dynamic interest rate mechanism.
+    * @author Lista
+    * @notice Contract for calculating the dynamic interest rate for collaterals to maintain the stability of the lisUSD peg.
+    *
+    * The calculation is based on the following formula:
+    *
+    *   delta = PEG - lisUSD price
+    *   r = r0 * e^(delta / beta)
+    *   duty = r + 1e27
+    *
+    * Where
+        - r is the rate,
+        - r0 is the baseline rate when the lisUSD price is equal to PEG,
+        - delta is the difference between the peg price and the lisUSD price,
+        - beta is the parameter that determines the volatility of the rate.
+        - duty is the final calculated duty, which will be set to Jug contract via Interaction contract.
+    *
  */
 contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessControlUpgradeable {
     address public interaction;
@@ -68,13 +81,15 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         interaction = _interaction;
         lisUSD = _lisUSD;
         oracle = IResilientOracle(_priceOracle);
-        priceDeviation = _priceDeviation;
 
         minDuty = 1e27;
         maxDuty = 1000000034836767751273470154;
 
         minPrice = 9e7;
         maxPrice = 11e7;
+
+        require(priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-price-deviation");
+        priceDeviation = _priceDeviation;
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(INTERACTION, _interaction);
@@ -165,6 +180,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      */
     function setPriceRange(uint256 _minPrice, uint256 _maxPrice) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_minPrice < PEG && _maxPrice > PEG, "AggMonetaryPolicy/invalid-price-range");
+        require(priceDeviation < (_maxPrice - _minPrice), "AggMonetaryPolicy/invalid-price-diff");
 
         minPrice = _minPrice;
         maxPrice = _maxPrice;
@@ -192,6 +208,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      */
     function setPriceDeviation(uint256 _priceDeviation) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(priceDeviation != _priceDeviation && _priceDeviation <= minPrice, "AggMonetaryPolicy/invalid-price-deviation");
+        require(priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/priceDeviation-is-too-large");
+
         priceDeviation = _priceDeviation;
 
         emit PriceDeviationUpdated(_priceDeviation);

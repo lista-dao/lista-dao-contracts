@@ -46,6 +46,8 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator = DynamicDutyCalculator(address(dynamicDutyCalculatorProxy));
     }
 
+    function setUp_jug(address vat) public returns(address _jug) {}
+
     function testRevert_initialize() public {
         vm.expectRevert("Initializable: contract is already initialized");
         dynamicDutyCalculator.initialize(address(interaction), address(lisUSD), address(oracle), priceDeviation, msg.sender);
