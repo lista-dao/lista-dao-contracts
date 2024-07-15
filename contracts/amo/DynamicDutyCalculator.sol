@@ -88,7 +88,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         minPrice = 9e7;
         maxPrice = 11e7;
 
-        require(priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-price-deviation");
+        require(_priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-price-deviation");
         priceDeviation = _priceDeviation;
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -208,7 +208,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      */
     function setPriceDeviation(uint256 _priceDeviation) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(priceDeviation != _priceDeviation && _priceDeviation <= minPrice, "AggMonetaryPolicy/invalid-price-deviation");
-        require(priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/priceDeviation-is-too-large");
+        require(_priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/priceDeviation-is-too-large");
 
         priceDeviation = _priceDeviation;
 
