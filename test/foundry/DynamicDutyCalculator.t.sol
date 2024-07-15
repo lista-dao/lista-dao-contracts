@@ -35,6 +35,16 @@ contract DynamicDutyCalculatorTest is Test {
 
         admin = msg.sender;
 
+        vm.expectRevert("AggMonetaryPolicy/invalid-price-deviation");
+        TransparentUpgradeableProxy __dynamicDutyCalculatorProxy = new TransparentUpgradeableProxy(
+            address(dynamicDutyCalculatorImpl),
+            proxyAdminOwner,
+            abi.encodeWithSignature(
+                "initialize(address,address,address,uint256,address)",
+                address(interaction), address(lisUSD), address(oracle), 20000000, msg.sender
+            )
+        );
+
         TransparentUpgradeableProxy dynamicDutyCalculatorProxy = new TransparentUpgradeableProxy(
             address(dynamicDutyCalculatorImpl),
             proxyAdminOwner,
@@ -45,8 +55,6 @@ contract DynamicDutyCalculatorTest is Test {
         );
         dynamicDutyCalculator = DynamicDutyCalculator(address(dynamicDutyCalculatorProxy));
     }
-
-    function setUp_jug(address vat) public returns(address _jug) {}
 
     function testRevert_initialize() public {
         vm.expectRevert("Initializable: contract is already initialized");
@@ -62,6 +70,10 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.DEFAULT_ADMIN_ROLE(), msg.sender), true);
         assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.INTERACTION(), address(interaction)), true);
         assertEq(dynamicDutyCalculator.getRoleAdmin(dynamicDutyCalculator.INTERACTION()), dynamicDutyCalculator.DEFAULT_ADMIN_ROLE());
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        dynamicDutyCalculator.initialize(address(interaction), address(lisUSD), address(oracle), 20000000, msg.sender);
+
    }
 
    function test_setCollateralParams() public {
@@ -524,6 +536,14 @@ contract DynamicDutyCalculatorTest is Test {
         vm.stopPrank();
 
         assertEq(dynamicDutyCalculator.priceDeviation(), _priceDeviation);
+   }
+
+   function testRevert_setPriceDeviation() public {
+        vm.startPrank(admin);
+        uint256 _priceDeviation = 20000000;
+        vm.expectRevert("AggMonetaryPolicy/priceDeviation-is-too-large");
+        dynamicDutyCalculator.setPriceDeviation(_priceDeviation);
+        vm.stopPrank();
    }
 
    function test_file() public {
