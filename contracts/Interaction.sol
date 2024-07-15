@@ -162,6 +162,10 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     function setCollateralDuty(address token, uint256 duty) public auth {
+        _setCollateralDuty(token, duty);
+    }
+
+    function _setCollateralDuty(address token, uint256 duty) private {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
         jug.drip(collateralType.ilk);
@@ -333,7 +337,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 currentDuty,) = jug.ilks(_ilk);
         uint256 duty = dutyCalculator.calculateDuty(token, currentDuty, true);
         if (duty != currentDuty) {
-            setCollateralDuty(token, duty);
+            _setCollateralDuty(token, duty);
         } else {
             jug.drip(_ilk);
         }

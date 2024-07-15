@@ -226,6 +226,8 @@ contract InteractionTest is Test {
         vm.mockCall(address(jug), abi.encodeWithSignature("wards(address)", address(interaction)), abi.encode(0x01));
         vm.mockCall(address(jug), abi.encodeWithSignature("file(bytes32,bytes32,uint256)", ilk, bytes32("duty"), newDuty), abi.encode(0x00));
 
+        vm.startPrank(user);
         interaction.drip(collateral);
+        vm.stopPrank();
     }
 }
