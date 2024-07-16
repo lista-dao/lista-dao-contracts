@@ -230,4 +230,52 @@ contract InteractionTest is Test {
         interaction.drip(collateral);
         vm.stopPrank();
     }
+
+    function test_getNextDuty() public {
+        GemJoin gemJoin = new GemJoin();
+        Clipper clipper = new Clipper();
+        vm.mockCall(address(vat), abi.encodeWithSelector(Vat.init.selector), abi.encode(0x00));
+        vm.mockCall(address(vat), abi.encodeWithSelector(Vat.rely.selector), abi.encode(0x00));
+        vm.mockCall(address(jug), abi.encodeWithSelector(Jug.init.selector), abi.encode(0x00));
+        vm.mockCall(
+            address(spotter),
+            abi.encodeWithSignature("file(bytes32,bytes32,uint256)", ilk, bytes32("mat"), mat),
+            abi.encode(0x00)
+        );
+
+        vm.mockCall(
+            collateral,
+            abi.encodeWithSignature("allowance(address,address)", address(interaction), address(gemJoin)),
+            abi.encode(0x00)
+        );
+        vm.mockCall(
+            collateral,
+            abi.encodeWithSignature("approve(address,uint256)", address(gemJoin), type(uint256).max),
+            abi.encode(0x01)
+        );
+
+        interaction.setCollateralType(collateral, address(gemJoin), ilk, address(clipper), mat);
+
+        DynamicDutyCalculator dutyCalculator = new DynamicDutyCalculator();
+
+        vm.mockCall(
+            address(dutyCalculator),
+            abi.encodeWithSignature("interaction()"),
+            abi.encode(address(interaction))
+        );
+
+        interaction.setDutyCalculator(address(dutyCalculator));
+        uint256 newDuty = 1000000004466999177996065553; // 15.1% APY
+
+        vm.mockCall(address(dutyCalculator), abi.encodeWithSelector(DynamicDutyCalculator.calculateDuty.selector), abi.encode(newDuty));
+
+	vm.record();
+	vm.recordLogs();
+	uint256 _duty = interaction.getNextDuty(collateral);
+        assertEq(newDuty, _duty);
+	Vm.Log[] memory entries = vm.getRecordedLogs();
+	assertEq(entries.length, 0);
+	(bytes32[] memory reads, bytes32[] memory writes) = vm.accesses(address(interaction));
+	assertEq(writes.length, 0);
+   }
 }
