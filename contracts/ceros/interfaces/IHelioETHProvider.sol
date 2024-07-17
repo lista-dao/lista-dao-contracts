@@ -30,6 +30,8 @@ interface IHelioETHProvider {
 
     event ChangeWithdrwalAmount(uint256 amount);
 
+    event FeeReceiverChanged(address feeReceiver);
+
     /**
      * Deposit
      */
@@ -42,7 +44,7 @@ interface IHelioETHProvider {
      */
 
     // claim
-    function claim(address recipient) external returns (uint256);
+    function claim() external returns (uint256);
 
     /**
      * Withdrawal
