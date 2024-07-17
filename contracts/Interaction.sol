@@ -569,6 +569,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             provider,
             collateral
         );
+        // after auction started, user's debt of the token becomes 0
+        takeSnapshot(token, user, 0);
 
         emit AuctionStarted(token, user, ink, collateralPrice(token));
         return auctionAmount;
