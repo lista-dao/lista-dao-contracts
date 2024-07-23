@@ -32,12 +32,12 @@ contract clisBNB is OwnableUpgradeable, NonTransferableERC20 {
     }
 
     function setName(string memory newName) external onlyOwner {
-        require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked(newName)), "Name: new name cannot be the same as the current name");
+        require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked(newName)), "new name cannot be the same as the current name");
         _name = newName;
     }
 
     function setSymbol(string memory newSymbol) external onlyOwner {
-        require(keccak256(abi.encodePacked(_symbol)) != keccak256(abi.encodePacked(newSymbol)), "Symbol: new symbol cannot be the same as the current symbol");
+        require(keccak256(abi.encodePacked(_symbol)) != keccak256(abi.encodePacked(newSymbol)), "new symbol cannot be the same as the current symbol");
         _symbol = newSymbol;
     }
 
