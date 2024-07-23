@@ -28,7 +28,7 @@ contract clisBNB is OwnableUpgradeable, NonTransferableERC20 {
 
     function initialize() external initializer {
         __Ownable_init();
-        __ERC20_init_unchained("Helio BNB", "hBNB");
+        __ERC20_init_unchained("Lista Collateral BNB", "clisBNB");
     }
 
     function setName(string memory newName) external onlyOwner {
