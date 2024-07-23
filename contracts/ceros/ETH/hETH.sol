@@ -28,7 +28,7 @@ contract clisETH is OwnableUpgradeable, NonTransferableERC20 {
 
     function initialize() external initializer {
         __Ownable_init();
-        __ERC20_init_unchained("Helio ETH", "hETH");
+        __ERC20_init_unchained("Lista Collateral ETH", "clisETH");
     }
 
     function setName(string memory newName) external onlyOwner {
