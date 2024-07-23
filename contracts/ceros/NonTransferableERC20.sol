@@ -13,8 +13,8 @@ IERC20Upgradeable
     mapping(address => uint256) internal _balances;
     mapping(address => mapping(address => uint256)) internal _allowances;
     uint256 private _totalSupply;
-    string private _name;
-    string private _symbol;
+    string internal _name;
+    string internal _symbol;
     /**
      * @dev Sets the values for {name} and {symbol}.
      *
