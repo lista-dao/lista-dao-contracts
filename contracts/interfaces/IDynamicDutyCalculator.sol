@@ -11,7 +11,7 @@ interface IDynamicDutyCalculator {
     event CollateralParamsUpdated(address indexed collateral, uint256 beta, uint256 rate0, bool enabled);
     event PriceRangeUpdated(uint256 minPrice, uint256 maxPrice);
     event DutyRangeUpdated(uint256 minDuty, uint256 maxDuty);
-    event PriceDeviationUpdated(uint256 priceDeviation);
+    event DeltaUpdated(uint256 newDelta);
     event File(bytes32 what, address addr);
 
     function interaction() external view returns (address);
