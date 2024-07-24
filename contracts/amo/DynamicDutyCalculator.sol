@@ -85,8 +85,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         minDuty = 1e27;
         maxDuty = 1000000034836767751273470154;
 
-        minPrice = 9e7;
-        maxPrice = 11e7;
+        minPrice = 9 * PEG / 10;
+        maxPrice = 11 * PEG / 10;
 
         require(_delta < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-delta");
         delta = _delta;
