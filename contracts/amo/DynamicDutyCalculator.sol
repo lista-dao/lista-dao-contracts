@@ -159,6 +159,9 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
         uint256 rate = calculateRate(price, ilk.beta, ilk.rate0);
         duty = rate + 1e27;
+
+        if (duty > maxDuty) return maxDuty;
+        if (duty < minDuty) return minDuty;
     }
 
     /**
