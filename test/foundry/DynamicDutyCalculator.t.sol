@@ -17,7 +17,7 @@ contract DynamicDutyCalculatorTest is Test {
     ResilientOracle oracle;
 
     address lisUSD;
-    uint256 priceDeviation = 200000;
+    uint256 delta = 200000;
 
     address public proxyAdminOwner = address(0x2A11AA);
 
@@ -35,7 +35,7 @@ contract DynamicDutyCalculatorTest is Test {
 
         admin = msg.sender;
 
-        vm.expectRevert("AggMonetaryPolicy/invalid-price-deviation");
+        vm.expectRevert("AggMonetaryPolicy/invalid-delta");
         TransparentUpgradeableProxy __dynamicDutyCalculatorProxy = new TransparentUpgradeableProxy(
             address(dynamicDutyCalculatorImpl),
             proxyAdminOwner,
@@ -50,7 +50,7 @@ contract DynamicDutyCalculatorTest is Test {
             proxyAdminOwner,
             abi.encodeWithSignature(
                 "initialize(address,address,address,uint256,address)",
-                address(interaction), address(lisUSD), address(oracle), priceDeviation, msg.sender
+                address(interaction), address(lisUSD), address(oracle), delta, msg.sender
             )
         );
         dynamicDutyCalculator = DynamicDutyCalculator(address(dynamicDutyCalculatorProxy));
@@ -58,14 +58,14 @@ contract DynamicDutyCalculatorTest is Test {
 
     function testRevert_initialize() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        dynamicDutyCalculator.initialize(address(interaction), address(lisUSD), address(oracle), priceDeviation, msg.sender);
+        dynamicDutyCalculator.initialize(address(interaction), address(lisUSD), address(oracle), delta, msg.sender);
 
         assertEq(dynamicDutyCalculator.interaction(), address(interaction));
         assertEq(dynamicDutyCalculator.minDuty(), 1e27);
         assertEq(dynamicDutyCalculator.maxDuty(), 1000000034836767751273470154);
         assertEq(dynamicDutyCalculator.minPrice(), 9e7);
         assertEq(dynamicDutyCalculator.maxPrice(), 11e7);
-        assertEq(dynamicDutyCalculator.priceDeviation(), priceDeviation);
+        assertEq(dynamicDutyCalculator.delta(), delta);
 
         assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.DEFAULT_ADMIN_ROLE(), msg.sender), true);
         assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.INTERACTION(), address(interaction)), true);
@@ -145,7 +145,7 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 99700000);
 
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 0);
         assertEq(_enabled, false);
@@ -163,7 +163,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_calculateDuty_0_997_normal() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -193,7 +193,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_calculateDuty_1_011_normal() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -235,7 +235,7 @@ contract DynamicDutyCalculatorTest is Test {
         vm.stopPrank();
         assertEq(duty, currentDuty); // return current duty as the collateral is disabled
 
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, false);
         vm.stopPrank();
@@ -260,7 +260,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
     function test_calculateDuty_0_999_to_0_899_return_maxDuty() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -307,7 +307,7 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_0_999_to_1_101_return_minDuty() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -355,7 +355,7 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_0_999_to_0_997() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -404,7 +404,7 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_0_999_to_1_001() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -454,7 +454,7 @@ contract DynamicDutyCalculatorTest is Test {
 
 
     function test_calculateDuty_0_999_to_1_002() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -503,7 +503,7 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_no_update_lastPrice() public {
-        assertEq(dynamicDutyCalculator.priceDeviation(), 200000);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
@@ -567,20 +567,20 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(dynamicDutyCalculator.maxDuty(), _maxDuty);
    }
 
-   function test_setPriceDeviation() public {
+   function test_setDelta() public {
         vm.startPrank(admin);
-        uint256 _priceDeviation = 100000;
-        dynamicDutyCalculator.setPriceDeviation(_priceDeviation);
+        uint256 _delta = 100000;
+        dynamicDutyCalculator.setDelta(_delta);
         vm.stopPrank();
 
-        assertEq(dynamicDutyCalculator.priceDeviation(), _priceDeviation);
+        assertEq(dynamicDutyCalculator.delta(), _delta);
    }
 
-   function testRevert_setPriceDeviation() public {
+   function testRevert_setDelta() public {
         vm.startPrank(admin);
-        uint256 _priceDeviation = 20000000;
-        vm.expectRevert("AggMonetaryPolicy/priceDeviation-is-too-large");
-        dynamicDutyCalculator.setPriceDeviation(_priceDeviation);
+        uint256 _delta = 20000000;
+        vm.expectRevert("AggMonetaryPolicy/delta-is-too-large");
+        dynamicDutyCalculator.setDelta(_delta);
         vm.stopPrank();
    }
 
