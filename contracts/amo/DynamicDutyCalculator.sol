@@ -16,14 +16,14 @@ import "../oracle/interfaces/IResilientOracle.sol";
     *
     * The calculation is based on the following formula:
     *
-    *   delta = PEG - lisUSD price
-    *   r = r0 * e^(delta / beta)
+    *   deviation = PEG - lisUSD price
+    *   r = r0 * e^(deviation / beta)
     *   duty = r + 1e27
     *
     * Where
         - r is the rate,
         - r0 is the baseline rate when the lisUSD price is equal to PEG,
-        - delta is the difference between the peg price and the lisUSD price,
+        - deviation is the difference between the peg price and the lisUSD price,
         - beta is the parameter that determines the volatility of the rate.
         - duty is the final calculated duty, which will be set to Jug contract via Interaction contract.
     *
@@ -37,8 +37,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     // lisUSD price oracle
     IResilientOracle oracle;
 
-    // the minimum price deviation required between two consecutive duty updates
-    uint256 public priceDeviation;
+    // the minimum price change required to update duty dynamically
+    uint256 public delta;
 
     // collateral address => Ilk
     mapping (address => Ilk) public ilks;
@@ -72,10 +72,10 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     /*
      * @param _interaction The address of the interaction contract.
      * @param _priceOracle The address of the lisUSD price oracle contract.
-     * @param _priceDeviation The minimum price deviation required between two consecutive duty updates.
+     * @param _delta The minimum price difference required to update duty.
      * @param _admin The address of the admin.
      */
-    function initialize(address _interaction, address _lisUSD, address _priceOracle, uint256 _priceDeviation, address _admin) external initializer {
+    function initialize(address _interaction, address _lisUSD, address _priceOracle, uint256 _delta, address _admin) external initializer {
         require(_interaction != address(0) && _lisUSD != address(0) &&  _priceOracle != address(0) && _admin != address(0), "AggMonetaryPolicy/invalid-address");
 
         interaction = _interaction;
@@ -85,11 +85,11 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         minDuty = 1e27;
         maxDuty = 1000000034836767751273470154;
 
-        minPrice = 9e7;
-        maxPrice = 11e7;
+        minPrice = 9 * PEG / 10;
+        maxPrice = 11 * PEG / 10;
 
-        require(_priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-price-deviation");
-        priceDeviation = _priceDeviation;
+        require(_delta < (maxPrice - minPrice), "AggMonetaryPolicy/invalid-delta");
+        delta = _delta;
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(INTERACTION, _interaction);
@@ -122,7 +122,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      *      Otherwise, calculate the duty based on the price.
      * @param  _collateral The collateral token address.
      * @param  _currentDuty The current duty for the collateral token.
-     * @param  _updateLastPrice If update the last price for the collateral token.
+     * @param  _updateLastPrice If update the last price for the collateral token or not.
      * @return duty The duty for the collateral token.
      */
     function calculateDuty(address _collateral, uint256 _currentDuty, bool _updateLastPrice) public onlyRole(INTERACTION) returns (uint256 duty) {
@@ -149,7 +149,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         }
 
         // return current duty if lastPrice - 0.002 <= price <= lastPrice + 0.002
-        if (price <= ilk.lastPrice + priceDeviation && price >= ilk.lastPrice - priceDeviation) {
+        if (price <= ilk.lastPrice + delta && price >= ilk.lastPrice - delta) {
             return _currentDuty;
         }
 
@@ -159,6 +159,9 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
         uint256 rate = calculateRate(price, ilk.beta, ilk.rate0);
         duty = rate + 1e27;
+
+        if (duty > maxDuty) return maxDuty;
+        if (duty < minDuty) return minDuty;
     }
 
     /**
@@ -168,8 +171,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      * @param rate0 The rate when the price is equal to PEG.
      */
     function calculateRate(uint256 price, uint256 beta, uint256 rate0) internal pure returns (uint256 rate) {
-        int256 delta = int256(PEG) - int256(price);
-        uint256 factor = exp(delta, int256(beta));
+        int256 deviation = int256(PEG) - int256(price);
+        uint256 factor = exp(deviation, int256(beta));
         rate = rate0 * factor / 1e18;
     }
 
@@ -180,7 +183,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      */
     function setPriceRange(uint256 _minPrice, uint256 _maxPrice) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_minPrice < PEG && _maxPrice > PEG, "AggMonetaryPolicy/invalid-price-range");
-        require(priceDeviation < (_maxPrice - _minPrice), "AggMonetaryPolicy/invalid-price-diff");
+        require(delta < (_maxPrice - _minPrice), "AggMonetaryPolicy/invalid-price-diff");
 
         minPrice = _minPrice;
         maxPrice = _maxPrice;
@@ -203,16 +206,16 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     }
 
     /**
-     * @dev Set the price deviation required between two consecutive duty updates.
-     * @param _priceDeviation The price deviation required between two consecutive duty updates.
+     * @dev Set the minimum price change required to update duty.
+     * @param _delta The minimum price change required to update duty dynamically.
      */
-    function setPriceDeviation(uint256 _priceDeviation) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(priceDeviation != _priceDeviation && _priceDeviation <= minPrice, "AggMonetaryPolicy/invalid-price-deviation");
-        require(_priceDeviation < (maxPrice - minPrice), "AggMonetaryPolicy/priceDeviation-is-too-large");
+    function setDelta(uint256 _delta) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(delta != _delta && _delta <= minPrice, "AggMonetaryPolicy/invalid-delta");
+        require(_delta < (maxPrice - minPrice), "AggMonetaryPolicy/delta-is-too-large");
 
-        priceDeviation = _priceDeviation;
+        delta = _delta;
 
-        emit PriceDeviationUpdated(_priceDeviation);
+        emit DeltaUpdated(_delta);
     }
 
     /**
@@ -248,18 +251,18 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
      * @dev Adaptor for `FixedMath0x._exp` method since it's designed for negative power only.
      *      if price > 1, use _exp directly
      *      if price < 1, e^power = 1 / e^(-power)
-     * @param delta  (peg price - lisUSD price)
+     * @param deviation  (peg price - lisUSD price)
      * @param beta  volatility parameter; initial value is 1e6
-     * @return e^(delta/beta)
+     * @return e^(deviation/beta)
      */
-    function exp(int256 delta, int256 beta) internal pure returns (uint256) {
-        if (delta < 0) {
-            int256 power = delta * FixedMath0x.FIXED_1 / beta;
+    function exp(int256 deviation, int256 beta) internal pure returns (uint256) {
+        if (deviation < 0) {
+            int256 power = deviation * FixedMath0x.FIXED_1 / beta;
             int256 _r = FixedMath0x._exp(power);
             return uint256(_r) * 1e18 / uint256(FixedMath0x.FIXED_1);
-        } else if (delta > 0 ) {
-            delta = -1 * delta;
-            int256 power = delta * FixedMath0x.FIXED_1 / beta;
+        } else if (deviation > 0 ) {
+            deviation = -1 * deviation;
+            int256 power = deviation * FixedMath0x.FIXED_1 / beta;
             int256 _r = FixedMath0x._exp(power);
             return uint256(FixedMath0x.FIXED_1) * 1e18 / uint256(_r);
         } else {
