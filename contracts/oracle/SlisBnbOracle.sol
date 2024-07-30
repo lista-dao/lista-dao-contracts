@@ -11,10 +11,8 @@ contract SlisBnbOracle is Initializable {
   AggregatorV3Interface internal priceFeed;
   // @dev Stake Manager Address
   address internal constant stakeManagerAddr = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
-  // @dev New price feed address
-  address internal constant bnbPriceFeedAddr = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE;
   // @dev resilient oracle address
-  address internal constant resilientOracleAddr = 0xf3afD82A4071f272F403dC176916141f44E6c750;
+  address constant public resilientOracleAddr = 0xf3afD82A4071f272F403dC176916141f44E6c750;
   // @dev *WBNB* token address
   address constant public TOKEN = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
 
