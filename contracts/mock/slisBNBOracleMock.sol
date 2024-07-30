@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ISnBnbStakeManager } from "../snbnb/interfaces/ISnBnbStakeManager.sol";
 import { IResilientOracle } from "../oracle/interfaces/IResilientOracle.sol";
 
-contract SlisBnbOracle is Initializable {
+contract SlisBnbOracleMock is Initializable {
 
   AggregatorV3Interface internal priceFeed;
   // @dev Stake Manager Address
