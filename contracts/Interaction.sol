@@ -301,6 +301,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     ) external nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
+        drip(token);
         if (helioProviders[token] != address(0)) {
             require(
                 msg.sender == helioProviders[token],
@@ -539,6 +540,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address keeper
     ) external returns (uint256) {
         dropRewards(token, user);
+        drip(token);
         CollateralType memory collateral = collaterals[token];
         (uint256 ink,) = vat.urns(collateral.ilk, user);
         IHelioProvider provider = IHelioProvider(helioProviders[token]);
