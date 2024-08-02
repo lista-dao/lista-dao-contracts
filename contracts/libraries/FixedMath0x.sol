@@ -144,7 +144,7 @@ library FixedMath0x {
         r += (z * (0x088888888888888888888888888888888 - y)) / 0x800000000000000000000000000000000; // add y^15 / 15 - y^16 / 16
     }
 
-    /// @dev Compute the natural exponent for a fixed-point number EXP_MIN_VAL <= `x` <= 1
+    /// @dev Compute the natural exponent for a fixed-point number EXP_MIN_VAL <= `x` <= 0
     function _exp(int256 x) internal pure returns (int256 r) {
         if (x < EXP_MIN_VAL) {
             // Saturate to zero below EXP_MIN_VAL.

@@ -105,7 +105,6 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
     function setCollateralParams(address collateral, uint256 beta, uint256 rate0, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(collateral != address(0), "AggMonetaryPolicy/invalid-address");
         require(beta > 3e5 && beta < 1e8, "AggMonetaryPolicy/invalid-beta");
-        require(rate0 >= 0, "AggMonetaryPolicy/invalid-rate0");
 
         ilks[collateral].beta = beta;
         ilks[collateral].rate0 = rate0;
@@ -229,6 +228,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         if (what == "interaction") {
             require(interaction != _addr, "AggMonetaryPolicy/interaction-already-set");
             interaction = _addr;
+            grantRole(INTERACTION, _addr);
         } else if (what == "lisUSD") {
             require(lisUSD != _addr, "AggMonetaryPolicy/lisUSD-already-set");
             lisUSD = _addr;

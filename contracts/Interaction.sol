@@ -232,6 +232,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
         drip(token);
+        poke(token);
         dropRewards(token, msg.sender);
 
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
@@ -264,6 +265,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         dropRewards(token, msg.sender);
         drip(token);
+        poke(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
 
@@ -301,6 +303,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     ) external nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
+
+        drip(token);
+        poke(token);
         if (helioProviders[token] != address(0)) {
             require(
                 msg.sender == helioProviders[token],
@@ -539,6 +544,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address keeper
     ) external returns (uint256) {
         dropRewards(token, user);
+        drip(token);
         CollateralType memory collateral = collaterals[token];
         (uint256 ink,) = vat.urns(collateral.ilk, user);
         IHelioProvider provider = IHelioProvider(helioProviders[token]);
