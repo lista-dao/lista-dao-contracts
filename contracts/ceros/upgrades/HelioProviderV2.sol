@@ -301,7 +301,10 @@ ReentrancyGuardUpgradeable
         emit ChangeLiquidationStrategy(strategy);
     }
     function changeGuardian(address newGuardian) external onlyOwner {
-        require(newGuardian != address(0) && _guardian != newGuardian, "guardian cannot be zero address");
+        require(
+            newGuardian != address(0) && _guardian != newGuardian,
+            "guardian cannot be zero address or same as the current one"
+        );
         address oldGuardian = _guardian;
         _guardian = newGuardian;
         emit ChangeGuardian(oldGuardian, newGuardian);
