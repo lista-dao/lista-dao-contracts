@@ -23,14 +23,19 @@ ReentrancyGuardUpgradeable
      */
     address public _operator;
     // Tokens
-    address public _certToken;
+    address public _certToken; // deprecated
     address public _ceToken;
-    ICertToken public _collateralToken; // (default hBNB)
+    ICertToken public _collateralToken; // (default clisBNB)
     IMasterVault public _masterVault;
     IDao public _dao;
     IBNBStakingPool public _pool;
     address public _proxy;
     address public _liquidationStrategy;
+    // account > delegation { delegateTo, amount }
+    mapping(address => Delegation) public _delegation;
+    // a multi-sig wallet which can pause the contract in case of emergency
+    address public _guardian;
+
     /**
      * Modifiers
      */
@@ -38,6 +43,13 @@ ReentrancyGuardUpgradeable
         require(
             msg.sender == owner() || msg.sender == _proxy,
             "AuctionProxy: not allowed"
+        );
+        _;
+    }
+    modifier onlyGuardian() {
+        require(
+            msg.sender == _guardian && _guardian != address(0),
+            "not guardian"
         );
         _;
     }
@@ -71,9 +83,62 @@ ReentrancyGuardUpgradeable
     {
         value = _masterVault.depositETH{value: msg.value}();
         // deposit ceToken as collateral
-        _provideCollateral(msg.sender, value);
+        _provideCollateral(msg.sender, msg.sender, value);
         emit Deposit(msg.sender, value);
         return value;
+    }
+    /**
+     * DEPOSIT
+     * @notice delegateTo will hold the collateralToken
+     */
+    function provide(address _delegateTo)
+    external
+    payable
+    override
+    whenNotPaused
+    nonReentrant
+    returns (uint256 value)
+    {
+        require(_delegateTo != address(0), "delegateTo cannot be zero address");
+        require(
+            _delegation[msg.sender].delegateTo == _delegateTo ||
+            _delegation[msg.sender].amount == 0, // first time, clear old delegatee
+            "delegatee is differ from the current one"
+        );
+        value = _masterVault.depositETH{value: msg.value}();
+        // deposit ceToken as collateral
+        _provideCollateral(msg.sender, _delegateTo, value);
+        // save delegatee's info
+        Delegation storage delegation = _delegation[msg.sender];
+        delegation.delegateTo = _delegateTo;
+        delegation.amount += value;
+
+        emit Deposit(msg.sender, value);
+        return value;
+    }
+
+    /**
+     * CHANGE DELEGATEE
+     * @notice By burning all the collateral tokens from the
+     *         old delegatee and minting the same amount to the new delegatee,
+     *         also replace delegateTo address by the new one to perform the change.
+     */
+    function changeDelegatee(address _newDelegateTo) external override {
+        require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
+        require(
+            _delegation[msg.sender].amount > 0 && _delegation[msg.sender].delegateTo != _newDelegateTo,
+            "delegatee must differ from the current one"
+        );
+        Delegation storage delegation = _delegation[msg.sender];
+        address oldDelegateTo = delegation.delegateTo;
+        // burn old delegatee's token
+        _collateralToken.burn(oldDelegateTo, delegation.amount);
+        // mint to new delegatee
+        _collateralToken.mint(_newDelegateTo, delegation.amount);
+        // change delegation info
+        delegation.delegateTo = _newDelegateTo;
+
+        emit ChangeDelegateTo(msg.sender, oldDelegateTo, _newDelegateTo);
     }
     /**
      * RELEASE
@@ -148,7 +213,7 @@ ReentrancyGuardUpgradeable
     nonReentrant
     {
         require(account != address(0));
-        _collateralToken.burn(account, value);
+        _burnCollateralToken(account, value);
     }
     function daoMint(address account, uint256 value)
     external
@@ -160,22 +225,45 @@ ReentrancyGuardUpgradeable
         require(account != address(0));
         _collateralToken.mint(account, value);
     }
-    function _provideCollateral(address account, uint256 amount) internal {
+    function _provideCollateral(address account, address collateralTokenHolder, uint256 amount) internal {
+        // all deposit data will be recorded on behalf of `account`
         _dao.deposit(account, address(_ceToken), amount);
-        _collateralToken.mint(account, amount);
+        // collateralTokenHolder can be account or delegateTo
+        _collateralToken.mint(collateralTokenHolder, amount);
     }
     function _withdrawCollateral(address account, uint256 amount) internal {
         _dao.withdraw(account, address(_ceToken), amount);
-        _collateralToken.burn(account, amount);
+        _burnCollateralToken(account, amount);
+    }
+    /**
+     * Burn collateral Token from both delegator and delegateTo
+     * @dev burns delegatee's collateralToken first, then delegator's
+     */
+    function _burnCollateralToken(address account, uint256 amount) internal {
+        if(_delegation[account].amount > 0) {
+            uint256 delegatedAmount = _delegation[account].amount;
+            uint256 delegateeBurn = amount > delegatedAmount ? delegatedAmount : amount;
+            // burn delegatee's token
+            _collateralToken.burn(_delegation[account].delegateTo, delegateeBurn);
+            // update delegated amount
+            _delegation[account].amount -= delegateeBurn;
+            // burn delegator's token
+            if (amount > delegateeBurn) {
+                _collateralToken.burn(account, amount - delegateeBurn);
+            }
+        } else {
+            // no delegation, only burn from account
+            _collateralToken.burn(account, amount);
+        }
     }
     /**
      * PAUSABLE FUNCTIONALITY
      */
-    function pause() external onlyOwner {
+    function pause() external onlyGuardian {
         _pause();
     }
-    function unPause() external onlyOwner {
-        _unpause();
+    function togglePause() external onlyOwner {
+        paused() ? _unpause() : _pause();
     }
     /**
      * UPDATING FUNCTIONALITY
@@ -211,5 +299,11 @@ ReentrancyGuardUpgradeable
     function changeLiquidationStrategy(address strategy) external onlyOwner {
         _liquidationStrategy = strategy;
         emit ChangeLiquidationStrategy(strategy);
+    }
+    function changeGuardian(address newGuardian) external onlyOwner {
+        require(newGuardian != address(0) && _guardian != newGuardian, "guardian cannot be zero address");
+        address oldGuardian = _guardian;
+        _guardian = newGuardian;
+        emit ChangeGuardian(oldGuardian, newGuardian);
     }
 }
