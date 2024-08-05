@@ -682,6 +682,7 @@ contract DynamicDutyCalculatorTest is Test {
 
         (address _interaction, address _lisUSD, address _oracle) = dynamicDutyCalculator.getContracts();
         assertEq(_interaction, address(0xAA));
+        assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.INTERACTION(), address(interaction)), false);
         assertEq(dynamicDutyCalculator.hasRole(dynamicDutyCalculator.INTERACTION(), _interaction), true);
         assertEq(_lisUSD, address(0xBB));
         assertEq(_oracle, address(0xCC));
