@@ -227,6 +227,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
         if (what == "interaction") {
             require(interaction != _addr, "AggMonetaryPolicy/interaction-already-set");
+            revokeRole(INTERACTION, interaction);
             interaction = _addr;
             grantRole(INTERACTION, _addr);
         } else if (what == "lisUSD") {
