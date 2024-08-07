@@ -23,7 +23,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
+import "./interfaces/IStakeLisUSDListaDistributor.sol";
 /*
    "Put rewards in the jar and close it".
    This contract lets you deposit HAYs from hay.sol and earn
@@ -71,6 +71,8 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
     mapping(address => uint) public operators;  // Operators of contract
 
     uint    public live;     // Active Flag
+
+    IStakeLisUSDListaDistributor public stakeLisUSDListaDistributor;
 
     // --- Events ---
     event Replenished(uint reward);
@@ -183,6 +185,11 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         live = 1;
         emit Uncage();
     }
+    function setListaDistributor(address distributor) external auth {
+        require(distributor != address(0), "Interaction/lista-distributor-zero-address");
+        require(address(stakeLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
+        stakeLisUSDListaDistributor = IStakeLisUSDListaDistributor(distributor);
+    }
 
     // --- User ---
     function join(uint256 wad) external update(msg.sender) nonReentrant {
@@ -193,6 +200,9 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         stakeTime[msg.sender] = block.timestamp + flashLoanDelay;
 
         IERC20Upgradeable(HAY).safeTransferFrom(msg.sender, address(this), wad);
+        // take snapshot for Lista Distribution
+        takeSnapshot(msg.sender, balanceOf[msg.sender]);
+
         emit Join(msg.sender, wad);
     }
     function exit(uint256 wad) external update(msg.sender) nonReentrant {
@@ -200,7 +210,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         require(block.timestamp > stakeTime[msg.sender], "Jar/flash-loan-delay");
 
         if (wad > 0) {
-            balanceOf[msg.sender] -= wad;        
+            balanceOf[msg.sender] -= wad;
             totalSupply -= wad;
             withdrawn[msg.sender] += wad;
         }
@@ -212,7 +222,9 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         } else {
             unstakeTime[msg.sender] = block.timestamp + exitDelay;
         }
-        
+        // take snapshot for Lista Distribution
+        takeSnapshot(msg.sender, balanceOf[msg.sender]);
+
         emit Exit(msg.sender, wad);
     }
     function redeemBatch(address[] memory accounts) external nonReentrant {
@@ -224,7 +236,7 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
         for (uint i = 0; i < accounts.length; i++) {
             if (block.timestamp < unstakeTime[accounts[i]] && unstakeTime[accounts[i]] != 0 && exitDelay != 0)
                 continue;
-            
+
             uint _amount = rewards[accounts[i]] + withdrawn[accounts[i]];
             if (_amount > 0) {
                 rewards[accounts[i]] = 0;
@@ -232,7 +244,29 @@ contract Jar is Initializable, ReentrancyGuardUpgradeable {
                 IERC20Upgradeable(HAY).safeTransfer(accounts[i], _amount);
             }
         }
-       
+
         emit Redeem(accounts);
+    }
+    /**
+     * @dev take snapshot of user's LisUSD staking amount
+     * @param user user address
+     * @param balance user's latest staked LisUSD amount
+     */
+    function takeSnapshot(address user, uint256 balance) private {
+        // ensure the distributor address is set
+        if (address(stakeLisUSDListaDistributor) != address(0)) {
+            stakeLisUSDListaDistributor.takeSnapshot(user, balance);
+        }
+    }
+    /**
+     * @dev synchronize user's LisUSD staking amount to the snapshot contract
+     * @notice this function can be called by anyone
+               it also act as an initialisation function of user's snapshot data
+     * @param user user address
+     */
+    function syncSnapshot(address user) external {
+        if (balanceOf[user] > 0) {
+            takeSnapshot(user, balanceOf[user]);
+        }
     }
 }
