@@ -25,10 +25,8 @@ contract SlisBnbOracle is Initializable {
    */
   function peek() public view returns (bytes32, bool) {
     // get BNB price from resilient oracle, 8 decimals
+    // in case price is zero, resilient oracle will revert
     uint256 price = IResilientOracle(resilientOracleAddr).peek(TOKEN);
-    if (price <= 0) {
-      return (0, false);
-    }
     return (bytes32(uint(price) * ISnBnbStakeManager(stakeManagerAddr).convertSnBnbToBnb(10**10)), true);
   }
 }
