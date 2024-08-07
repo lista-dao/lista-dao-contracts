@@ -5,141 +5,19 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import {IAuctionProxy} from "./interfaces/IAuctionProxy.sol";
 import {IERC3156FlashBorrower} from "./interfaces/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "./interfaces/IERC3156FlashLender.sol";
+import {IInteraction} from "./interfaces/IInteraction.sol";
 
 interface IDEX {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
+    struct ExactInputParams {
+        bytes path;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
 
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-    function addLiquidityETH(
-        address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    )
-        external
-        payable
-        returns (uint amountToken, uint amountETH, uint liquidity);
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETH(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountToken, uint amountETH);
-    function removeLiquidityWithPermit(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline,
-        bool approveMax,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETHWithPermit(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline,
-        bool approveMax,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint amountToken, uint amountETH);
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapExactETHForTokens(
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external payable returns (uint[] memory amounts);
-    function swapTokensForExactETH(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapExactTokensForETH(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapETHForExactTokens(
-        uint amountOut,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external payable returns (uint[] memory amounts);
-
-    function quote(
-        uint amountA,
-        uint reserveA,
-        uint reserveB
-    ) external pure returns (uint amountB);
-    function getAmountOut(
-        uint amountIn,
-        uint reserveIn,
-        uint reserveOut
-    ) external pure returns (uint amountOut);
-    function getAmountIn(
-        uint amountOut,
-        uint reserveIn,
-        uint reserveOut
-    ) external pure returns (uint amountIn);
-    function getAmountsOut(
-        uint amountIn,
-        address[] calldata path
-    ) external view returns (uint[] memory amounts);
-    function getAmountsIn(
-        uint amountOut,
-        address[] calldata path
-    ) external view returns (uint[] memory amounts);
+    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
 }
 
 contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
@@ -149,25 +27,25 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     }
 
     IERC3156FlashLender public lender;
-    IAuctionProxy public auction;
-    IDEX dex;
+    IInteraction public interaction;
+    IDEX public dex;
 
     // --- Init ---
     function initialize(
         IERC3156FlashLender lender_,
-        IAuctionProxy auction_,
+        IInteraction interaction_,
         IDEX dex_
     ) public initializer {
         __Ownable_init();
 
         require(
             address(lender_) != address(0) &&
-                address(auction_) != address(0) &&
-                address(dex_) != address(0),
+            address(interaction_) != address(0) &&
+            address(dex_) != address(0),
             "Invalid address provided"
         );
         lender = lender_;
-        auction = auction_;
+        interaction = interaction_;
         dex = dex_;
     }
 
@@ -201,31 +79,34 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             uint256 auctionId,
             address collateral,
             uint256 collateralAm,
-            uint256 maxPrice
-        ) = abi.decode(data, (Action, uint256, address, uint256, uint256));
+            uint256 maxPrice,
+            address collateralReal,
+            bytes memory path
+        ) = abi.decode(data, (Action, uint256, address, uint256, uint256, address, bytes));
         require(action == Action.NORMAL, "such action is not implemented");
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
         require(tokenBalance >= amount, "borrow amount not received");
 
-        auction.buyFromAuction(
+        uint256 before = IERC20(collateralReal).balanceOf(address(this));
+
+        interaction.buyFromAuction(
             collateral,
             auctionId,
             collateralAm,
             maxPrice,
             address(this)
         );
-        uint256 minOut = amount + fee;
 
-        address[] memory path = new address[](2);
-        path[0] = collateral;
-        path[1] = token;
-        dex.swapExactTokensForTokens(
-            collateralAm,
-            minOut,
-            path,
-            address(this),
-            block.timestamp + 300
-        );
+        uint256 amountIn = IERC20(collateralReal).balanceOf(address(this)) - before;
+        IERC20(collateralReal).approve(address(dex), amountIn);
+
+        dex.exactInput(IDEX.ExactInputParams({
+            path: path,
+            recipient: address(this),
+            amountIn: amountIn,
+            amountOutMinimum: 0
+        }));
+
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
@@ -236,7 +117,9 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         uint256 borrowAm,
         address collateral,
         uint256 collateralAm,
-        uint256 maxPrice
+        uint256 maxPrice,
+        address collateralReal,
+        bytes memory path
     ) public {
         require(borrowAm <= lender.maxFlashLoan(token));
         bytes memory data = abi.encode(
@@ -244,7 +127,9 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             auctionId,
             collateral,
             collateralAm,
-            maxPrice
+            maxPrice,
+            collateralReal,
+            path
         );
         uint256 _fee = lender.flashFee(token, borrowAm);
         uint256 _repayment = borrowAm + _fee;
@@ -253,9 +138,10 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             address(lender)
         );
         IERC20(token).approve(address(lender), _allowance + _repayment);
-        IERC20(token).approve(address(auction), _allowance + _repayment);
-        IERC20(collateral).approve(address(dex), collateralAm);
+        IERC20(token).approve(address(interaction), _allowance + _repayment);
 
+        uint256 before = IERC20(token).balanceOf(address(this));
         lender.flashLoan(this, token, borrowAm, data);
+        require(IERC20(token).balanceOf(address(this)) > before, "Flash loan failed");
     }
 }
