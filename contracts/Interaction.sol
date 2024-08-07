@@ -58,9 +58,15 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     mapping(address => uint) public tokensBlacklist;
     bool private _entered;
     IDynamicDutyCalculator public dutyCalculator;
+    uint256 public auctionWhitelistMode;
+
+    mapping(address => uint) public auctionWhitelist;
 
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
+    function enableAuctionWhitelist() external auth {auctionWhitelistMode = 1;}
+    function disableAuctionWhitelist() external auth {auctionWhitelistMode = 0;}
+
     function setWhitelistOperator(address usr) external auth {
         whitelistOperator = usr;
     }
@@ -71,6 +77,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function removeFromWhitelist(address[] memory usrs) external operatorOrWard {
         for(uint256 i = 0; i < usrs.length; i++)
             whitelist[usrs[i]] = 0;
+    }
+    function addToAuctionWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            auctionWhitelist[usrs[i]] = 1;
+    }
+    function removeFromAuctionWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            auctionWhitelist[usrs[i]] = 0;
     }
     function addToBlacklist(address[] memory tokens) external auth {
         for(uint256 i = 0; i < tokens.length; i++)
@@ -83,6 +97,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
             require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
+        _;
+    }
+    modifier auctionWhitelisted {
+        if (auctionWhitelistMode == 1)
+            require(auctionWhitelist[msg.sender] == 1, "Interaction/not-in-auction-whitelist");
         _;
     }
     modifier operatorOrWard {
@@ -542,7 +561,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address token,
         address user,
         address keeper
-    ) external returns (uint256) {
+    ) external auctionWhitelisted returns (uint256) {
         dropRewards(token, user);
         drip(token);
         CollateralType memory collateral = collaterals[token];
@@ -569,7 +588,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         uint256 collateralAmount,
         uint256 maxPrice,
         address receiverAddress
-    ) external {
+    ) external auctionWhitelisted {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
         uint256 leftover = AuctionProxy.buyFromAuction(
@@ -602,7 +621,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
-    function resetAuction(address token, uint256 auctionId, address keeper) external {
+    function resetAuction(address token, uint256 auctionId, address keeper) external auctionWhitelisted {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
     }
 
