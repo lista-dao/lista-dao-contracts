@@ -1,3 +1,4 @@
+pragma solidity ^0.8.10;
 interface BoundValidatorInterfaceTestnet {
   function validatePriceWithAnchorPrice(
     address asset,
