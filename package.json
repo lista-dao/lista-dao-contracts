@@ -15,9 +15,9 @@
     "@nomiclabs/hardhat-truffle5": "^2.0.5",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@pythnetwork/pyth-sdk-solidity": "^3.1.0",
     "@openzeppelin/contracts": "4.8.3",
-    "@openzeppelin/contracts-upgradeable": "4.8.3"
+    "@openzeppelin/contracts-upgradeable": "4.8.3",
+    "@pythnetwork/pyth-sdk-solidity": "^3.1.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
@@ -31,6 +31,7 @@
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.2.0",
     "@types/mocha": ">=9.1.0",
+    "decimal.js": "^10.4.3",
     "dotenv": "^16.4.1",
     "ethers": "^6.10.0",
     "hardhat": "^2.19.5",
@@ -39,10 +40,12 @@
     "hardhat-gas-reporter": "^1.0.10",
     "hardhat-spdx-license-identifier": "^2.2.0",
     "hardhat-storage-layout": "^0.1.7",
+    "math.js": "^1.1.46",
     "mocha": "^10.2.0",
     "solidity-coverage": "^0.8.6",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "typescript": "^5.4.2"
-  }
+  },
+  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
 }
