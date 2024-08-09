@@ -16,7 +16,7 @@ contract CerosETHRouterTest is Test {
         CerosETHRouter cerosETHRouterImpl = new CerosETHRouter();
     }
 
-    function test_changeReferral() {
+    function test_changeReferral() public {
 
     }
 }
