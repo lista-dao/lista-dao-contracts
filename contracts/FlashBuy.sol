@@ -30,7 +30,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     IInteraction public interaction;
     IDEX public dex;
 
-    uint256 constant public MAX_SLIPE = 10000;
+    uint256 constant public MAX_SLIPPAGE = 10000;
 
     // --- Init ---
     function initialize(
@@ -51,9 +51,9 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         dex = dex_;
     }
 
-    function transfer(address token) external onlyOwner {
+    function transfer(address token) external {
         bool success = IERC20(token).transfer(
-            msg.sender,
+            owner(),
             IERC20(token).balanceOf(address(this))
         );
         require(success, "Failed to transfer");
@@ -82,7 +82,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             address collateral,
             uint256 collateralAm,
             uint256 maxPrice,
-            uint256 slip,
+            uint256 slippage,
             address collateralReal,
             bytes memory path
         ) = abi.decode(data, (Action, uint256, address, uint256, uint256, uint256, address, bytes));
@@ -105,7 +105,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
 
         uint256 currentPrice = interaction.collateralPrice(collateral);
         uint256 amountOut = (amountIn * currentPrice) / 1e18;
-        uint256 amountOutMin = (amountOut * (MAX_SLIPE - slip)) / MAX_SLIPE;
+        uint256 amountOutMin = (amountOut * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE;
 
         dex.exactInput(IDEX.ExactInputParams({
             path: path,
@@ -125,7 +125,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         address collateral,
         uint256 collateralAm,
         uint256 maxPrice,
-        uint256 slip,
+        uint256 slippage,
         address collateralReal,
         bytes memory path
     ) public {
@@ -136,7 +136,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             collateral,
             collateralAm,
             maxPrice,
-            slip,
+            slippage,
             collateralReal,
             path
         );
