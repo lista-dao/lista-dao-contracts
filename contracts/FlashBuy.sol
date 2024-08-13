@@ -30,6 +30,8 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     IInteraction public interaction;
     IDEX public dex;
 
+    uint256 constant public MAX_SLIPE = 10000;
+
     // --- Init ---
     function initialize(
         IERC3156FlashLender lender_,
@@ -80,9 +82,10 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             address collateral,
             uint256 collateralAm,
             uint256 maxPrice,
+            uint256 slip,
             address collateralReal,
             bytes memory path
-        ) = abi.decode(data, (Action, uint256, address, uint256, uint256, address, bytes));
+        ) = abi.decode(data, (Action, uint256, address, uint256, uint256, uint256, address, bytes));
         require(action == Action.NORMAL, "such action is not implemented");
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
         require(tokenBalance >= amount, "borrow amount not received");
@@ -100,11 +103,15 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         uint256 amountIn = IERC20(collateralReal).balanceOf(address(this)) - before;
         IERC20(collateralReal).approve(address(dex), amountIn);
 
+        uint256 currentPrice = interaction.collateralPrice(collateral);
+        uint256 amountOut = (amountIn * currentPrice) / 1e18;
+        uint256 amountOutMin = (amountOut * (MAX_SLIPE - slip)) / MAX_SLIPE;
+
         dex.exactInput(IDEX.ExactInputParams({
             path: path,
             recipient: address(this),
             amountIn: amountIn,
-            amountOutMinimum: 0
+            amountOutMinimum: amountOutMin
         }));
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -118,6 +125,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         address collateral,
         uint256 collateralAm,
         uint256 maxPrice,
+        uint256 slip,
         address collateralReal,
         bytes memory path
     ) public {
@@ -128,11 +136,11 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             collateral,
             collateralAm,
             maxPrice,
+            slip,
             collateralReal,
             path
         );
-        uint256 _fee = lender.flashFee(token, borrowAm);
-        uint256 _repayment = borrowAm + _fee;
+        uint256 _repayment = borrowAm + lender.flashFee(token, borrowAm);
         uint256 _allowance = IERC20(token).allowance(
             address(this),
             address(lender)
