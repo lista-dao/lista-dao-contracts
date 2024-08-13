@@ -11,4 +11,5 @@ interface IInteraction {
         address receiverAddress
     ) external;
 
+    function collateralPrice(address token) external view returns (uint256);
 }
