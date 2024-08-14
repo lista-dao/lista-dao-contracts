@@ -33,8 +33,6 @@ interface IDao {
         uint256 dink
     ) external returns (uint256);
 
-    function dropRewards(address token, address usr) external;
-
     function setCollateralDuty(address token, uint256 duty) external;
 
     function jug() external view returns(JugLike);

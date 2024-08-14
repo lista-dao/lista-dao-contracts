@@ -32,8 +32,6 @@ contract Dao is IDao {
     return dink;
   }
 
-  function dropRewards(address token, address usr) external {}
-
   function setCollateralDuty(address token, uint256 duty) external {}
 
   function collaterals(address token) external view returns (GemJoinLike gem, bytes32 ilk, uint32 live, address clip) {}
