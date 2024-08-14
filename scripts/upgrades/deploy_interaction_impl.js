@@ -18,15 +18,15 @@ async function main() {
   })
 
   console.log('Validate if its upgradable...')
-  const InteractionV1 = await ethers.getContractFactory('InteractionV1', {
+  const OldInteraction = await ethers.getContractFactory('InteractionV2', {
     unsafeAllow: ['external-library-linking'],
     libraries: {
       AuctionProxy: auctionProxy,
     },
   });
-  await upgrades.forceImport(proxyAddress, InteractionV1, { kind: 'transparent' });
+  await upgrades.forceImport(proxyAddress, OldInteraction, { kind: 'transparent' });
   await upgrades.validateUpgrade(proxyAddress, Interaction, { unsafeAllow: ['external-library-linking'] })
-  console.log('Upgradability is validated successfully.')
+  console.log('Updatability is validated successfully.')
 
 
   console.log('Deploy Interaction...')
