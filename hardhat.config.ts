@@ -37,13 +37,13 @@ const config: HardhatUserConfig = {
       },
     },
     bsc: {
-      url: `https://bsc-dataseed.binance.org/`,
+      url: process.env.BSC_RPC || `https://bsc-dataseed.binance.org/`,
       chainId: 56,
       accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`]
     },
 
     bsc_testnet: {
-      url: `https://data-seed-prebsc-2-s3.binance.org:8545/`,
+      url: process.env.BSC_TESTNET_RPC || `https://data-seed-prebsc-2-s3.binance.org:8545/`,
       chainId: 97,
       accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`],
       gasPrice: 15000000000 // 15 gwei
@@ -75,6 +75,11 @@ const config: HardhatUserConfig = {
     typechain: {
         outDir: 'typechain',
     },
+
+    sourcify: {
+        enabled: true
+    }
+
 };
 
 export default config;
