@@ -94,7 +94,7 @@ ReentrancyGuardUpgradeable
         } else {
             certTokenAmount = amount;
         }
-        
+
         value = _vault.depositFor(msg.sender, certTokenAmount, BETHAmount);
 
         emit Deposit(msg.sender, certTokenAmount, BETHAmount);
@@ -202,5 +202,14 @@ ReentrancyGuardUpgradeable
     }
     function getMinStake() external view returns(uint256) {
         return _minStake;
+    }
+
+    /**
+     * @dev Change referral address, onlyOwner
+     * @param referral new address
+     */
+    function changeReferral(address referral) external onlyOwner {
+        require(referral != address(0) && referral != _referral, "invalid referral address");
+        _referral = referral;
     }
 }

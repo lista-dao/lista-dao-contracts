@@ -28,6 +28,8 @@ ReentrancyGuardUpgradeable
     IDao public _dao;
     address public _proxy;
     uint256 _minWithdrawalAmount;
+    address public _feeReceiver;
+
     using SafeERC20 for IERC20;
     /**
      * Modifiers
@@ -52,6 +54,7 @@ ReentrancyGuardUpgradeable
         address ceToken,
         address ceRouter,
         address daoAddress,
+        address feeReceiver,
         uint256 minAmount
     ) public initializer {
         __Ownable_init();
@@ -64,6 +67,7 @@ ReentrancyGuardUpgradeable
         _ceETHRouter = ICerosETHRouter(ceRouter);
         _dao = IDao(daoAddress);
         _minWithdrawalAmount = minAmount;
+        _feeReceiver = feeReceiver;
         IERC20(_ceToken).safeApprove(daoAddress, type(uint256).max);
         IERC20(_certToken).safeApprove(ceRouter, type(uint256).max);
     }
@@ -88,15 +92,15 @@ ReentrancyGuardUpgradeable
      * CLAIM
      */
     // claim in wBETH, if the balance is not enough, in ETH
-    function claim(address recipient)
+    function claim()
     external
     override
     nonReentrant
     onlyOperator
     returns (uint256 yields)
     {
-        yields = _ceETHRouter.claim(recipient);
-        emit Claim(recipient, yields);
+        yields = _ceETHRouter.claim(_feeReceiver);
+        emit Claim(_feeReceiver, yields);
         return yields;
     }
     /**
@@ -213,5 +217,12 @@ ReentrancyGuardUpgradeable
     function changeMinWithdrwalAmount(uint256 amount) external onlyOwner {
         _minWithdrawalAmount = amount;
         emit ChangeWithdrwalAmount(amount);
+    }
+    /// @dev only owner can change fee receiver address
+    /// @param feeReceiver new fee receiver address
+    function changeFeeReceiver(address feeReceiver) external onlyOwner {
+        require(feeReceiver != address(0) && _feeReceiver != feeReceiver , "feeReceiver must be non-zero or different from the current one");
+        _feeReceiver = feeReceiver;
+        emit FeeReceiverChanged(_feeReceiver);
     }
 }
