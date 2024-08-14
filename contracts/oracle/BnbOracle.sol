@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IResilientOracle } from "./interfaces/IResilientOracle.sol";
+import "./interfaces/AggregatorV3Interface.sol";
 
 contract BnbOracle is Initializable {
 
