@@ -16,6 +16,7 @@ import "./interfaces/SpotLike.sol";
 import "./interfaces/IRewards.sol";
 import "./interfaces/IAuctionProxy.sol";
 import "./interfaces/IBorrowLisUSDListaDistributor.sol";
+import "./interfaces/IDynamicDutyCalculator.sol";
 import "./ceros/interfaces/IHelioProvider.sol";
 import "./ceros/interfaces/IDao.sol";
 
@@ -56,11 +57,18 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     mapping(address => uint) public whitelist;
     mapping(address => uint) public tokensBlacklist;
     bool private _entered;
+    IDynamicDutyCalculator public dutyCalculator;
+    uint256 public auctionWhitelistMode;
+
+    mapping(address => uint) public auctionWhitelist;
 
     IBorrowLisUSDListaDistributor public borrowLisUSDListaDistributor;
 
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
+    function enableAuctionWhitelist() external auth {auctionWhitelistMode = 1;}
+    function disableAuctionWhitelist() external auth {auctionWhitelistMode = 0;}
+
     function setWhitelistOperator(address usr) external auth {
         whitelistOperator = usr;
     }
@@ -71,6 +79,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function removeFromWhitelist(address[] memory usrs) external operatorOrWard {
         for(uint256 i = 0; i < usrs.length; i++)
             whitelist[usrs[i]] = 0;
+    }
+    function addToAuctionWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            auctionWhitelist[usrs[i]] = 1;
+    }
+    function removeFromAuctionWhitelist(address[] memory usrs) external operatorOrWard {
+        for(uint256 i = 0; i < usrs.length; i++)
+            auctionWhitelist[usrs[i]] = 0;
     }
     function addToBlacklist(address[] memory tokens) external auth {
         for(uint256 i = 0; i < tokens.length; i++)
@@ -88,6 +104,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
             require(whitelist[participant] == 1, "Interaction/not-in-whitelist");
+        _;
+    }
+    modifier auctionWhitelisted {
+        if (auctionWhitelistMode == 1)
+            require(auctionWhitelist[msg.sender] == 1, "Interaction/not-in-auction-whitelist");
         _;
     }
     modifier operatorOrWard {
@@ -166,11 +187,15 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         emit CollateralEnabled(token, ilk);
     }
 
-    function setCollateralDuty(address token, uint data) external auth {
+    function setCollateralDuty(address token, uint256 duty) public auth {
+        _setCollateralDuty(token, duty);
+    }
+
+    function _setCollateralDuty(address token, uint256 duty) private {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
         jug.drip(collateralType.ilk);
-        jug.file(collateralType.ilk, "duty", data);
+        jug.file(collateralType.ilk, "duty", duty);
     }
 
     function setHelioProvider(address token, address helioProvider) external auth {
@@ -233,6 +258,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         require(collateralType.live == 1, "Interaction/inactive-collateral");
 
         drip(token);
+        poke(token);
 
         (, uint256 rate, , ,) = vat.ilks(collateralType.ilk);
         int256 dart = int256(hayAmount * RAY / rate);
@@ -262,6 +288,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
+        poke(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
         (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
 
@@ -329,6 +356,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     ) external nonReentrant returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
+
+        drip(token);
+        poke(token);
         if (helioProviders[token] != address(0)) {
             require(
                 msg.sender == helioProviders[token],
@@ -361,7 +391,14 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
-        jug.drip(collateralType.ilk);
+        bytes32 _ilk = collateralType.ilk;
+        (uint256 currentDuty,) = jug.ilks(_ilk);
+        uint256 duty = dutyCalculator.calculateDuty(token, currentDuty, true);
+        if (duty != currentDuty) {
+            _setCollateralDuty(token, duty);
+        } else {
+            jug.drip(_ilk);
+        }
     }
 
     function poke(address token) public {
@@ -505,40 +542,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return liquidationPriceForDebt(collateralType.ilk, ink, art);
     }
 
-    // Price of ceABNBc when user will be liquidated with additional amount of ceABNBc deposited/withdraw
-    function estimatedLiquidationPrice(address token, address usr, int256 amount) external view returns (uint256) {
-        CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
-
-        (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, usr);
-        require(amount >= - (int256(ink)), "Cannot withdraw more than current amount");
-        if (amount < 0) {
-            ink = uint256(int256(ink) + amount);
-        } else {
-            ink += uint256(amount);
-        }
-        return liquidationPriceForDebt(collateralType.ilk, ink, art);
-    }
-
-    // Price of ceABNBc when user will be liquidated with additional amount of HAY borrowed/payback
-    //positive amount mean HAYs are being borrowed. So art(debt) will increase
-    function estimatedLiquidationPriceHAY(address token, address usr, int256 amount) external view returns (uint256) {
-        CollateralType memory collateralType = collaterals[token];
-        _checkIsLive(collateralType.live);
-
-        (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, usr);
-        require(amount >= - (int256(art)), "Cannot withdraw more than current amount");
-        (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        (,uint256 mat) = spotter.ilks(collateralType.ilk);
-        uint256 backedDebt = FullMath.mulDiv(art, rate, 10 ** 36);
-        if (amount < 0) {
-            backedDebt = uint256(int256(backedDebt) + amount);
-        } else {
-            backedDebt += uint256(amount);
-        }
-        return FullMath.mulDiv(backedDebt, mat, ink) / 10 ** 9;
-    }
-
     // Returns borrow APR with 20 decimals.
     // I.e. 10% == 10 ethers
     function borrowApr(address token) public view returns (uint256) {
@@ -554,8 +557,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address token,
         address user,
         address keeper
-    ) external returns (uint256) {
+    ) external auctionWhitelisted returns (uint256) {
+
+        drip(token);
         poke(token);
+
         CollateralType memory collateral = collaterals[token];
         (uint256 ink,) = vat.urns(collateral.ilk, user);
         IHelioProvider provider = IHelioProvider(helioProviders[token]);
@@ -582,7 +588,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         uint256 collateralAmount,
         uint256 maxPrice,
         address receiverAddress
-    ) external {
+    ) external auctionWhitelisted {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
         uint256 leftover = AuctionProxy.buyFromAuction(
@@ -614,7 +620,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
-    function resetAuction(address token, uint256 auctionId, address keeper) external {
+    function resetAuction(address token, uint256 auctionId, address keeper) external auctionWhitelisted {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
     }
 
@@ -624,5 +630,25 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     function _checkIsLive(uint256 live) internal pure {
         require(live != 0, "Interaction/inactive collateral");
+    }
+
+    function setDutyCalculator(address _dutyCalculator) external auth {
+        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "Interaction/invalid-dutyCalculator-address");
+        dutyCalculator = IDynamicDutyCalculator(_dutyCalculator);
+        require(dutyCalculator.interaction() == address(this), "Interaction/invalid-dutyCalculator-interaction");
+    }
+
+    /**
+     * @dev Returns the next duty for the given collateral. This function is used by the frontend to display the next duty.
+     *      Can be accessed as a view from within the UX since no state changes and no events emitted.
+     * @param _collateral The address of the collateral
+     * @return duty The next duty
+     */
+    function getNextDuty(address _collateral) external returns (uint256 duty) {
+        CollateralType memory collateral = collaterals[_collateral];
+
+        (uint256 currentDuty,) = jug.ilks(collateral.ilk);
+
+        duty = dutyCalculator.calculateDuty(_collateral, currentDuty, false);
     }
 }
