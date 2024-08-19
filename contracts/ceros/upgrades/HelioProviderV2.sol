@@ -48,7 +48,7 @@ ReentrancyGuardUpgradeable
     }
     modifier onlyGuardian() {
         require(
-            msg.sender == _guardian && _guardian != address(0),
+            msg.sender == _guardian,
             "not guardian"
         );
         _;
@@ -123,7 +123,7 @@ ReentrancyGuardUpgradeable
      *         old delegatee and minting the same amount to the new delegatee,
      *         also replace delegateTo address by the new one to perform the change.
      */
-    function changeDelegatee(address _newDelegateTo) external override {
+    function changeDelegatee(address _newDelegateTo) external override whenNotPaused {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
         require(
             _delegation[msg.sender].amount > 0 && _delegation[msg.sender].delegateTo != _newDelegateTo,
