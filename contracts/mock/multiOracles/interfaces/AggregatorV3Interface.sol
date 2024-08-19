@@ -1,4 +1,4 @@
-pragma solidity 0.8.10;
+pragma solidity ^0.8.10;
 
 interface IMockSourceOracle {
   function latestAnswer() external view returns (int256);
