@@ -7,7 +7,7 @@ import "./interfaces/IResilientOracle.sol";
 contract FdUsdOracle is Initializable {
 
   IResilientOracle public resilientOracle;
-  address constant FDUSD_TOKEN_ADDR = 0x2170Ed0880ac9A755fd29B2688956BD959F933F8;
+  address constant FDUSD_TOKEN_ADDR = 0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -24,7 +24,7 @@ contract FdUsdOracle is Initializable {
   function peek() public view returns (bytes32, bool) {
     // get FDUSD price (8 decimals)
     uint256 price = resilientOracle.peek(FDUSD_TOKEN_ADDR);
-    // calculate wstETH/USD (18 decimals)
+    // returns in 18 decimals
     return (bytes32(uint(price) * 1e12), true);
   }
 }
