@@ -3,10 +3,13 @@ const {ethers, upgrades} = hre;
 
 // -------------------------------------------- //
 const contractName = '';
-const initializerArgs = [];
+const initializerArgs = [''];
 // -------------------------------------------- //
 
 async function main() {
+
+  console.log(`---------- deploying ${contractName} ----------`);
+
   // Deploy resilientOracle
   const Contract = await ethers.getContractFactory(contractName);
   const proxyContract = await upgrades.deployProxy(Contract, initializerArgs, { initializer: "initialize" });
@@ -18,7 +21,7 @@ async function main() {
 
   // verify contracts
   console.log(`---------- verifying ${contractName} ----------`)
-  await hre.run("verify:verify", { address: proxyContractImpl.target });
+  await hre.run("verify:verify", { address: proxyContract.target });
 }
 
 main()
