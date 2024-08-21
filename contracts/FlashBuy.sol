@@ -51,6 +51,12 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         dex = dex_;
     }
 
+    modifier auctionWhitelisted {
+        if (IInteraction(interaction).auctionWhitelistMode() == 1)
+            require(IInteraction(interaction).auctionWhitelist(msg.sender) == 1, "Interaction/not-in-auction-whitelist");
+        _;
+    }
+
     function transfer(address token) external {
         bool success = IERC20(token).transfer(
             owner(),
@@ -128,7 +134,7 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         uint256 slippage,
         address collateralReal,
         bytes memory path
-    ) public {
+    ) public auctionWhitelisted {
         require(borrowAm <= lender.maxFlashLoan(token));
         bytes memory data = abi.encode(
             Action.NORMAL,

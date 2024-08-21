@@ -12,4 +12,8 @@ interface IInteraction {
     ) external;
 
     function collateralPrice(address token) external view returns (uint256);
+
+    function auctionWhitelistMode() external view returns (uint256);
+
+    function auctionWhitelist(address account) external view returns (uint256);
 }
