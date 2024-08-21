@@ -3,9 +3,12 @@ pragma solidity ^0.8.6;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { JugLike } from "../../interfaces/JugLike.sol";
+import { GemJoinLike } from "../../interfaces/GemJoinLike.sol";
 import { IDao } from "../interfaces/IDao.sol";
 
 contract Dao is IDao {
+  JugLike public jug;
   mapping(address => mapping(address => uint256)) public deposits;
   mapping(address => mapping(address => uint256)) public withdraws;
 
@@ -29,5 +32,8 @@ contract Dao is IDao {
     return dink;
   }
 
-  function dropRewards(address token, address usr) external {}
+  function setCollateralDuty(address token, uint256 duty) external {}
+
+  function collaterals(address token) external view returns (GemJoinLike gem, bytes32 ilk, uint32 live, address clip) {}
+
 }
