@@ -25,8 +25,8 @@ async function main() {
   }
 
   // core parameters
-  const mat = '2000000000000000000000000000' // Liquidation Ratio
-  const line = '500000' + rad // Debt Ceiling
+  const mat = '1500000000000000000000000000' // Liquidation Ratio
+  const line = '5000000' + rad // Debt Ceiling
   const dust = '15' + rad // Debt Floor
   const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
@@ -91,7 +91,7 @@ async function main() {
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
 
-  await interaction.setCollateralDuty(tokenAddress, '1000000003734875566854894262'); //apr 12.5%
+  await interaction.setCollateralDuty(tokenAddress, '1000000003734875566854894262'); //apr 7%
   console.log("set duty...");
 
   await interaction.poke(tokenAddress, { gasLimit: 1000000 })
