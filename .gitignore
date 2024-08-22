@@ -15,3 +15,9 @@ artifacts
 
 # Ignore the temporary files
 *temp.js
+
+# foundry
+cache_forge
+forge-std
+lib/forge-std
+out/
