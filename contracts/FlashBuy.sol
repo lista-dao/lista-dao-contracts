@@ -93,8 +93,6 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             bytes memory path
         ) = abi.decode(data, (Action, uint256, address, uint256, uint256, uint256, address, bytes));
         require(action == Action.NORMAL, "such action is not implemented");
-        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-        require(tokenBalance >= amount, "borrow amount not received");
 
         uint256 before = IERC20(collateralReal).balanceOf(address(this));
 
