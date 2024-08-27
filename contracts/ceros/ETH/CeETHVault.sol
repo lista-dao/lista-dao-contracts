@@ -176,7 +176,6 @@ ReentrancyGuardUpgradeable
             userRequestIndex: userRequestIndex
         });
 
-
         emit RequestWithdraw(owner, recipient, amount - feeAmount);
         return amount - feeAmount;
     }
