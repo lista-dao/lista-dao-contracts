@@ -51,6 +51,8 @@ ReentrancyGuardUpgradeable
     uint256 public _startDistributeEthIndex; // if new ETH claimed from Unwrap, just distribute start at this index
     uint256 public _needEthAmount; // the total eth amount that need to be distributed to user
     uint256 public _nextBatchEthAmount; // the eth amount that need to be requested to Unwrap contract in next batch
+    uint256 public _claimedEthAmount; // the total eth amount that has been claimed from Unwrap contract
+    uint256 public _batchWithdrawBufferedAmount; // buffered eth amount for batch withdraw
     uint256 public _lastBatchWithdrawTime; // last time when batchWithdraw was invoked
 
     /**
@@ -213,12 +215,11 @@ ReentrancyGuardUpgradeable
     // @dev actual withdraw request to wBETH, should be called max once a day
     // @dev caller can query eth balance of vault to avoid unnecessary gas fee
     // @param bufferedEthAmount : buffered ETH amount for ETH/wBETH to cover exchange rate loss
-    function batchWithdraw(uint256 bufferedEthAmount)
+    function batchWithdraw()
         external
         nonReentrant
         onlyStrategist
     {
-        require(bufferedEthAmount <= 1e18, "too big buffer, > 1e18");
         require(_nextBatchEthAmount > 0, "no batch eth amount");
         require(block.timestamp - _lastBatchWithdrawTime >= 24 hours, "allow only once a day");
 
@@ -226,43 +227,25 @@ ReentrancyGuardUpgradeable
         _lastBatchWithdrawTime = block.timestamp;
         _nextBatchEthAmount = 0; // To prevent reentrancy
 
-        uint256 availableEthBalance = this.getTotalETHAmountInVault();
-        uint256 totalNeedAmount = batchEthAmount + bufferedEthAmount;
+        uint256 totalEthBalance = _certToken.balanceOf(address(this));
+        uint256 availableEthBalance;
+        if (totalEthBalance > _claimedEthAmount) {
+            availableEthBalance = totalEthBalance - _claimedEthAmount;
+        }
+
+        uint256 totalNeedAmount = batchEthAmount + _batchWithdrawBufferedAmount;
         if (totalNeedAmount > availableEthBalance) {
             uint256 requestEthAmount = totalNeedAmount - availableEthBalance;
-            uint256 wbethAmount = requestEthAmount * 1e18 / _BETH.exchangeRate();
-            uint256 wbethBalance = this.getTotalBETHAmountInVault();
-            if (wbethAmount > wbethBalance) {
-                wbethAmount = wbethBalance;
+            uint256 requestBethAmount = requestEthAmount * 1e18 / _BETH.exchangeRate();
+            uint256 totalBethBalance = _BETH.balanceOf(address(this));
+            if (requestBethAmount > totalBethBalance) {
+                uint256 estimatedArriveEthAmount = totalBethBalance * _BETH.exchangeRate() / 1e18;
+                require(estimatedArriveEthAmount >= requestEthAmount, "wbeth balance not enough");
+                requestBethAmount = totalBethBalance;
             }
 
-            _BETH.requestWithdrawEth(wbethAmount);
+            _BETH.requestWithdrawEth(requestBethAmount);
         }
-    }
-
-    // @dev actual withdraw request to wBETH, should be called max once a day
-    // @dev caller can query eth balance of vault to avoid unnecessary gas fee
-    // @param bufferedEthAmount : buffered ETH amount for ETH/wBETH to cover exchange rate loss
-    function batchWithdrawInAmount(uint256 amount)
-        external
-        nonReentrant
-        onlyStrategist
-    {
-        require(amount > 0 && amount <= _needEthAmount, "invalid amount");
-        require(_nextBatchEthAmount > 0, "no batch eth amount");
-        require(block.timestamp - _lastBatchWithdrawTime >= 24 hours, "allow only once a day");
-
-        uint256 batchEthAmount = _nextBatchEthAmount;
-        _lastBatchWithdrawTime = block.timestamp;
-        _nextBatchEthAmount = 0; // To prevent reentrancy
-
-        uint256 wbethAmount = amount * 1e18 / _BETH.exchangeRate();
-        uint256 wbethBalance = this.getTotalBETHAmountInVault();
-        if (wbethAmount > wbethBalance) {
-            wbethAmount = wbethBalance;
-        }
-
-        _BETH.requestWithdrawEth(wbethAmount);
     }
 
     // @dev claims the next available ETH withdraw batch from Unwrap contract with index
@@ -275,8 +258,13 @@ ReentrancyGuardUpgradeable
         onlyStrategist
         returns (uint256)
     {
-        uint256 claimedAmount = IUnwrapETH(_unwrapEthAddress).claimWithdraw(index);
-        return claimedAmount;
+        uint256 beforeEth = _certToken.balanceOf(address(this));
+        IUnwrapETH(_unwrapEthAddress).claimWithdraw(index);
+        uint256 afterEth = _certToken.balanceOf(address(this));
+
+        uint256 delta = afterEth - beforeEth; // afterEth always >= beforeEth
+        _claimedEthAmount += delta;
+        return delta;
     }
 
     // @dev distribute claimed ETH to users in FIFO order of _withdrawRequests
@@ -298,7 +286,7 @@ ReentrancyGuardUpgradeable
         require(maxNumRequests <= MAX_LOOP_NUM, "too big number > 100");
         require(_startDistributeEthIndex < _nextIndex, "no withdraw to distribute");
 
-        uint256 availableEthBalance = this.getTotalETHAmountInVault();
+        uint256 availableEthBalance = _certToken.balanceOf(address(this));
         require(_needEthAmount > 0 && availableEthBalance > 0, "no need or no available eth to distribute");
 
         for (reqCount = 0; reqCount < maxNumRequests
@@ -315,8 +303,8 @@ ReentrancyGuardUpgradeable
             delete _withdrawRequests[_startDistributeEthIndex];
 
             uint256[] storage userRequests = _userWithdrawRequests[recipient];
-            // correct user request index
             if (userRequests.length > 1) {
+                // correct user request index
                 userRequests[userReqIdx] = userRequests[userRequests.length - 1];
                 UserWithdrawRequest storage lastRequest = _withdrawRequests[userRequests[userRequests.length - 1]];
                 lastRequest.userRequestIndex = userReqIdx;
@@ -326,12 +314,30 @@ ReentrancyGuardUpgradeable
             availableEthBalance -= ethAmount;
             _needEthAmount -= ethAmount;
             _startDistributeEthIndex++;
+            if (_claimedEthAmount >= ethAmount) {
+                _claimedEthAmount -= ethAmount;
+            } else if (_claimedEthAmount > 0) {
+                _claimedEthAmount = 0;
+            }
 
             address referral = ICerosETHRouter(_router).getReferral();
             IERC20(_certToken).safeTransfer(referral, feeAmount);
             IERC20(_certToken).safeTransfer(recipient, usrAmount);
 
             emit Withdrawn(owner, recipient, usrAmount);
+        }
+
+        if (_claimedEthAmount > 0) {
+            if (_startDistributeEthIndex >= _nextIndex) {
+                // all withdrawals are distributed
+                _claimedEthAmount = 0;
+            } else if (_withdrawRequests[_startDistributeEthIndex].ethAmount > availableEthBalance) {
+                // not enough eth to distribute
+                _claimedEthAmount = 0;
+            } else if (_claimedEthAmount < _batchWithdrawBufferedAmount) {
+                // only batch withdraw buffered amount is left
+                _claimedEthAmount = 0;
+            }
         }
 
         return reqCount;
@@ -371,7 +377,8 @@ ReentrancyGuardUpgradeable
         view
         returns (UserWithdrawRequest[] memory)
     {
-        require(startIndex < _nextIndex, "wrong start Index");
+        require(startIndex < _nextIndex, "wrong start index, high");
+        require(startIndex >= _startDistributeEthIndex, "wrong start index, low");
         uint256 _length = _nextIndex - startIndex;
         if (_length > MAX_LOOP_NUM) {
             _length = MAX_LOOP_NUM;
@@ -458,6 +465,9 @@ ReentrancyGuardUpgradeable
     }
     function changeUnwrapEthAddress(address unwrapEthAddress) external onlyOwner {
         _unwrapEthAddress = unwrapEthAddress;
+    }
+    function changeBatchWithdrawBufferedAmount(uint256 bufferedAmount) external onlyOwner {
+        _batchWithdrawBufferedAmount = bufferedAmount;
     }
     function setStrategist(address strategist) external onlyOwner {
         _strategist = strategist;

@@ -84,6 +84,9 @@ contract CeETHVaultTest is Test {
 
         ceETHVault.changeUnwrapEthAddress(address(unwrapETH));
         assertEq(address(unwrapETH), ceETHVault.getUnwrapEthAddress());
+
+        ceETHVault.changeBatchWithdrawBufferedAmount(1e17);
+        assertEq(1e17, ceETHVault._batchWithdrawBufferedAmount());
     }
 
     function test_ethVault_setup() public {
@@ -182,7 +185,7 @@ contract CeETHVaultTest is Test {
     function test_ethVault_batchWithdraw_empty() public {
         vm.startPrank(strategyBot);
         vm.expectRevert("no batch eth amount");
-        ceETHVault.batchWithdraw(1e16);
+        ceETHVault.batchWithdraw();
         vm.stopPrank();
     }
 
@@ -191,7 +194,7 @@ contract CeETHVaultTest is Test {
 
         vm.startPrank(recipient0);
         vm.expectRevert("Router: not allowed");
-        ceETHVault.batchWithdraw(1e16);
+        ceETHVault.batchWithdraw();
         vm.stopPrank();
     }
 
@@ -214,7 +217,7 @@ contract CeETHVaultTest is Test {
         assertEq(0, beforeUnwrapRequests.length);
 
         vm.startPrank(strategyBot);
-        ceETHVault.batchWithdraw(1e17);
+        ceETHVault.batchWithdraw();
         vm.stopPrank();
 
         assertEq(0, ceETHVault._nextBatchEthAmount());
@@ -237,7 +240,7 @@ contract CeETHVaultTest is Test {
 
         vm.startPrank(strategyBot);
         vm.expectRevert("allow only once a day");
-        ceETHVault.batchWithdraw(1e16);
+        ceETHVault.batchWithdraw();
         vm.stopPrank();
     }
 
