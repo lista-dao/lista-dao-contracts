@@ -25,6 +25,6 @@ contract FdUsdOracle is Initializable {
     // get FDUSD price (8 decimals)
     uint256 price = resilientOracle.peek(FDUSD_TOKEN_ADDR);
     // returns in 18 decimals
-    return (bytes32(uint(price) * 1e12), true);
+    return (bytes32(uint(price) * 1e10), true);
   }
 }
