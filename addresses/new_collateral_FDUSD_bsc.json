@@ -6,8 +6,8 @@
   "gemJoinImplementation": "0x3e75d7edacc97645033eF8073D025069B0a0976D",
   "clipper": "0xFe288198707d65e84390b59a844705d5C989525E",
   "clipperImplementation": "0x9B878823cF06FAC1EdB02B44eADa8bB4274AB7EA",
-  "oracle": "0x908047528c0a4c9829875AFB6B35d94Aeb7AaA94",
-  "oracleImplementation": "0x464BfB803ADCF585a3fb683c8CCFE7E9908d5d57",
+  "oracle": "0xCF95095394A4838a8ed3478FeCF332dDA978EcD3",
+  "oracleImplementation": "0x1DbC9a4d61C05a085cc290EAd59D44dedE792072",
   "oracleInitializeArgs": [
     "0xf3afD82A4071f272F403dC176916141f44E6c750"
   ],
