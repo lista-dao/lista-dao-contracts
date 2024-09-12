@@ -32,6 +32,11 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
 
     uint256 constant public MAX_SLIPPAGE = 10000;
 
+    // added on 2024/09/12
+    address public revenuePool;
+
+    event RevenuePoolChanged(address indexed newAddress);
+
     // --- Init ---
     function initialize(
         IERC3156FlashLender lender_,
@@ -58,8 +63,10 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     }
 
     function transfer(address token) external {
+        require(revenuePool != address(0), "Revenue pool not set");
+
         bool success = IERC20(token).transfer(
-            owner(),
+            revenuePool,
             IERC20(token).balanceOf(address(this))
         );
         require(success, "Failed to transfer");
@@ -155,5 +162,13 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
         uint256 before = IERC20(token).balanceOf(address(this));
         lender.flashLoan(this, token, borrowAm, data);
         require(IERC20(token).balanceOf(address(this)) > before, "Flash loan failed");
+    }
+
+    function changeRevenuePool(address _revenuePool) external onlyOwner {
+        require(_revenuePool != address(0), "Invalid zero address");
+        require(_revenuePool != revenuePool, "Already set");
+
+        revenuePool = _revenuePool;
+        emit RevenuePoolChanged(_revenuePool);
     }
 }

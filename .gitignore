@@ -10,6 +10,11 @@ typechain-types
 cache
 artifacts
 
+# foundry
+cache_forge
+
+out
+
 .idea
 .DS_Store
 
