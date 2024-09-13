@@ -4,10 +4,12 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IERC3156FlashBorrower} from "./interfaces/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "./interfaces/IERC3156FlashLender.sol";
 import {IInteraction} from "./interfaces/IInteraction.sol";
+
 
 interface IDEX {
     struct ExactInputParams {
@@ -37,6 +39,8 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
 
     event RevenuePoolChanged(address indexed newAddress);
 
+    using SafeERC20 for IERC20;
+
     // --- Init ---
     function initialize(
         IERC3156FlashLender lender_,
@@ -65,11 +69,10 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
     function transfer(address token) external {
         require(revenuePool != address(0), "Revenue pool not set");
 
-        bool success = IERC20(token).transfer(
+        IERC20(token).safeTransfer(
             revenuePool,
             IERC20(token).balanceOf(address(this))
         );
-        require(success, "Failed to transfer");
     }
 
     /// @dev ERC-3156 Flash loan callback
