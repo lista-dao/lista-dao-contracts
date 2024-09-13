@@ -77,6 +77,18 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_setCollateralParams() public {
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(99000000)) // returns $0.99
+        );
+
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
+
         vm.startPrank(admin);
         bool enabled = true;
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, enabled);
@@ -87,7 +99,7 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(_beta, beta);
         assertEq(_rate0, rate0);
         assertEq(_enabled, enabled);
-        assertEq(_lastPrice, 0);
+        assertEq(_lastPrice, 99000000);
    }
 
    function testRevert_setCollateralParams() public {
@@ -106,6 +118,11 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_calculateDuty_0_950() public {
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -168,42 +185,58 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function test_calculateDuty_0_997_normal() public {
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         assertEq(dynamicDutyCalculator.delta(), 200000);
         vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
             abi.encode(uint256(99700000)) // returns $0.997
         );
+
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+        vm.stopPrank();
         assertEq(oracle.peek(lisUSD), 99700000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        (bool _enabled, uint256 _lastPrice, uint _rate0, uint _beta) = dynamicDutyCalculator.ilks(collateral);
+        assertEq(_lastPrice, 99700000);
         assertEq(_enabled, true);
 
         vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000491133928966627332924;
+
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(99910000)) // returns $0.9991
+        );
+        assertEq(oracle.peek(lisUSD), 99910000);
+
+        uint256 currentDuty = 1000000004466999177996065553;
         bool updateLastPrice = true;
         uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
-        // 4466999177996065553 = 3309234382829741600 * factor
-        // factor = e^(delta/sigma) = e^(300000/1e6) = e^0.3 = 1.3498588075760031786787655593
-        // 3309234382829741600 * 1.3498588075760031786787655593 = 4466999177996065553
-        assertEq(duty, 1000000004466999177996065553);
+        // 3620879160445386386 = 3309234382829741600 * factor
+        // factor = e^(delta/beta) = e^(90000/1e6) = e^0.09 = 1.09417428371
+        // 3309234382829741600 * 1.09417428371 = 3620879160445386386
+        assertEq(duty, 1000000003620879160445386386);
         assertLe(duty, dynamicDutyCalculator.maxDuty());
         assertGe(duty, dynamicDutyCalculator.minDuty());
         (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 99700000);
+        assertEq(_lastPrice, 99910000);
    }
 
    function test_calculateDuty_1_011_normal() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -211,29 +244,51 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 101100000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+        vm.stopPrank();
+
+        (bool _enabled, uint256 _lastPrice, uint _rate0, uint _beta) = dynamicDutyCalculator.ilks(collateral);
+        assertEq(_lastPrice, 101100000);
         assertEq(_enabled, true);
 
         vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        uint256 currentDuty = 1000000001101548435223481549; // 3.5% APY
         bool updateLastPrice = true;
+
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(103100000)) // returns $1.031
+        );
         uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
-        // 1101548435223481549 = 3309234382829741600 * factor
-        // factor = e^(delta/sigma) = e^(-1100000/1e6) = e^(-1.1) = 0.33287108369
-        // 3309234382829741600 * 0.33287108369 = 1101548435223481549
-        assertEq(duty, 1000000001101548435223481549); // 3.5% APY
+        // 149078369479817384 = 3309234382829741600 * factor
+        // factor = e^(delta/beta) = e^(-3100000/1e6) = e^(-3.1) = 0.04504920239
+        // 3309234382829741600 * 0.04504920239 = 149078369479817384
+        assertEq(duty, 1000000000149078369479817384);
         assertLe(duty, dynamicDutyCalculator.maxDuty());
         assertGe(duty, dynamicDutyCalculator.minDuty());
 
         (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 101100000);
+        assertEq(_lastPrice, 103100000);
    }
 
    function test_calculateDuty_1_011_disabled() public {
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(101100000)) // returns $1.011
+        );
+        assertEq(oracle.peek(lisUSD), 101100000);
+        (bool _enabled, uint256 _lastPrice, uint _rate0, uint _beta) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 0);
         assertEq(_enabled, false);
 
@@ -250,15 +305,9 @@ contract DynamicDutyCalculatorTest is Test {
         vm.startPrank(admin);
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, false);
         vm.stopPrank();
-        vm.mockCall(
-            address(oracle),
-            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
-            abi.encode(uint256(101100000)) // returns $1.011
-        );
-        assertEq(oracle.peek(lisUSD), 101100000);
 
         (_enabled, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        assertEq(_lastPrice, 101100000);
         assertEq(_enabled, false);
 
         vm.startPrank(address(interaction));
@@ -269,14 +318,10 @@ contract DynamicDutyCalculatorTest is Test {
         assertLe(duty, dynamicDutyCalculator.maxDuty());
         assertGe(duty, dynamicDutyCalculator.minDuty());
         (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        assertEq(_lastPrice, 101100000);
    }
 
     function test_calculateDuty_0_999_to_0_899_return_maxDuty() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -284,24 +329,20 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 99900000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
 
-        vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
 
-        // 3657269600999444680 = 3309234382829741600 * factor
-        // factor = e^(delta/sigma) = e^(100000/1e6) = e^0.1 = 1.10517091808
-        // 3309234382829741600 * 1.10517091808 = 3657269600999444680
-        assertEq(duty, 1000000003657269600999444680); // 12.2% APY
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
 
         vm.mockCall(
             address(oracle),
@@ -310,8 +351,9 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 89900000);
 
+        uint256 duty = 1000000004466999177996065553; // 15.1% APY
         vm.startPrank(address(interaction));
-        duty = dynamicDutyCalculator.calculateDuty(collateral, duty, updateLastPrice);
+        duty = dynamicDutyCalculator.calculateDuty(collateral, duty, true);
         vm.stopPrank();
 
         // price: 0.999 -> 0.899
@@ -324,35 +366,29 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_0_999_to_1_101_return_minDuty() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
             abi.encode(uint256(99900000)) // returns $0.999
         );
+
         assertEq(oracle.peek(lisUSD), 99900000);
-
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
-
-        vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
 
-        // 3657269600999444680 = 3309234382829741600 * factor
-        // factor = e^(delta/sigma) = e^(100000/1e6) = e^0.1 = 1.10517091808
-        // 3309234382829741600 * 1.10517091808 = 3657269600999444680
-        assertEq(duty, 1000000003657269600999444680); // 12.2% APY
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
+
+        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        bool updateLastPrice = true;
 
         vm.mockCall(
             address(oracle),
@@ -362,7 +398,7 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(oracle.peek(lisUSD), 110100000);
 
         vm.startPrank(address(interaction));
-        duty = dynamicDutyCalculator.calculateDuty(collateral, duty, updateLastPrice);
+        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
         // price: 0.999 -> 1.101
@@ -372,39 +408,31 @@ contract DynamicDutyCalculatorTest is Test {
         assertGe(duty, dynamicDutyCalculator.minDuty());
         (,_lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 110100000);
-
     }
 
     function test_calculateDuty_0_999_to_0_997() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
             abi.encode(uint256(99900000)) // returns $0.999
         );
         assertEq(oracle.peek(lisUSD), 99900000);
-
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
-
-
-        vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
 
-        // lastPrice: 0 -> 0.999
-        // APY: 15.1% -> 12.2%
-        assertEq(duty, 1000000003657269600999444680);
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
+
+        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        bool updateLastPrice = true;
 
         vm.mockCall(
             address(oracle),
@@ -414,14 +442,13 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(oracle.peek(lisUSD), 99700000);
 
         vm.startPrank(address(interaction));
-        currentDuty = duty; // 12.2% APY
         uint256 dutyAfter = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
         // price: 0.999 -> 0.997
         // lastPrice: 0.999 -> 0.999
         // APY: 12.2% -> 12.2%
-        assertEq(dutyAfter, duty); // duty should be the same as the change in price is within the delta
+        assertEq(dutyAfter, currentDuty); // duty should be the same as the change in price is within the delta
         assertLe(dutyAfter, dynamicDutyCalculator.maxDuty());
         assertGe(dutyAfter, dynamicDutyCalculator.minDuty());
         (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
@@ -429,10 +456,11 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_0_999_to_1_001() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -440,24 +468,17 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 99900000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
-
-
-        vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
 
-        // lastPrice: 0 -> 0.999
-        // APY: 15.1% -> 12.2%
-        assertEq(duty, 1000000003657269600999444680);
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
+
+        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        bool updateLastPrice = true;
 
         vm.mockCall(
             address(oracle),
@@ -467,14 +488,13 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(oracle.peek(lisUSD), 100100000);
 
         vm.startPrank(address(interaction));
-        currentDuty = duty; // 12.2% APY
         uint256 dutyAfter = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
         // price: 0.999 -> 1.001
         // lastPrice: 0.999 -> 0.999
         // APY: 12.2% -> 12.2%
-        assertEq(dutyAfter, duty); // duty should be the same as the price change is within the delta
+        assertEq(dutyAfter, currentDuty); // duty should be the same as the price change is within the delta
         assertLe(dutyAfter, dynamicDutyCalculator.maxDuty());
         assertGe(dutyAfter, dynamicDutyCalculator.minDuty());
         (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
@@ -483,10 +503,11 @@ contract DynamicDutyCalculatorTest is Test {
 
 
     function test_calculateDuty_0_999_to_1_002() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -494,25 +515,17 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 99900000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
-
-
-        vm.startPrank(address(interaction));
-        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
-        bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
         vm.stopPrank();
 
-        // lastPrice: 0 -> 0.999
-        // APY: 15.1% -> 12.2%
-        assertEq(duty, 1000000003657269600999444680);
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
         assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
 
+        uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
+        bool updateLastPrice = true;
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -521,7 +534,6 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(oracle.peek(lisUSD), 100200000);
 
         vm.startPrank(address(interaction));
-        currentDuty = duty; // 12.2% APY
         uint256 dutyAfter = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
@@ -535,37 +547,30 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(_lastPrice, 100200000);
     }
 
-
     function test_calculateDuty_1_099_to_0_901_return_maxDuty() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
             abi.encode(uint256(109900000)) // returns $1.099
         );
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+        vm.stopPrank();
         assertEq(oracle.peek(lisUSD), 109900000);
 
         (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        assertEq(_lastPrice, 109900000);
         assertEq(_enabled, true);
 
-
-        vm.startPrank(address(interaction));
         uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
         bool updateLastPrice = true;
-        uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
-        vm.stopPrank();
-
-        // lastPrice: 0 -> 1.099
-        // APY: 15.1% -> 0.000_005 %
-        assertEq(duty, 1000000000000166039783007844);
-        assertLe(duty, dynamicDutyCalculator.maxDuty());
-        assertGe(duty, dynamicDutyCalculator.minDuty());
-        (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 109900000);
 
         vm.mockCall(
             address(oracle),
@@ -575,7 +580,6 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(oracle.peek(lisUSD), 90100000);
 
         vm.startPrank(address(interaction));
-        currentDuty = duty; // 0.000_005 %
         uint256 dutyAfter = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
         vm.stopPrank();
 
@@ -590,10 +594,11 @@ contract DynamicDutyCalculatorTest is Test {
     }
 
     function test_calculateDuty_no_update_lastPrice() public {
-        assertEq(dynamicDutyCalculator.delta(), 200000);
-        vm.startPrank(admin);
-        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
-        vm.stopPrank();
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
         vm.mockCall(
             address(oracle),
             abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
@@ -601,32 +606,36 @@ contract DynamicDutyCalculatorTest is Test {
         );
         assertEq(oracle.peek(lisUSD), 99900000);
 
-        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
-        assertEq(_enabled, true);
+        assertEq(dynamicDutyCalculator.delta(), 200000);
+        vm.startPrank(admin);
+        dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
+        vm.stopPrank();
 
+        (bool _enabled, uint256 _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
+        assertEq(_lastPrice, 99900000);
+        assertEq(_enabled, true);
 
         vm.startPrank(address(interaction));
         uint256 currentDuty = 1000000004466999177996065553; // 15.1% APY
         bool updateLastPrice = false;
 
-	vm.record();
-	vm.recordLogs();
+	    vm.record();
+	    vm.recordLogs();
         uint256 duty = dynamicDutyCalculator.calculateDuty(collateral, currentDuty, updateLastPrice);
-	Vm.Log[] memory entries = vm.getRecordedLogs();
-	assertEq(entries.length, 0);
-	(bytes32[] memory reads, bytes32[] memory writes) = vm.accesses(address(dynamicDutyCalculator));
-	assertEq(writes.length, 0);
+	    Vm.Log[] memory entries = vm.getRecordedLogs();
+	    assertEq(entries.length, 0);
+	    (bytes32[] memory reads, bytes32[] memory writes) = vm.accesses(address(dynamicDutyCalculator));
+	    assertEq(writes.length, 0);
 
         vm.stopPrank();
 
         // lastPrice: 0 -> 0.999
         // APY: 15.1% -> 12.2%
-        assertEq(duty, 1000000003657269600999444680);
+        assertEq(duty, currentDuty);
         assertLe(duty, dynamicDutyCalculator.maxDuty());
         assertGe(duty, dynamicDutyCalculator.minDuty());
         (, _lastPrice,,) = dynamicDutyCalculator.ilks(collateral);
-        assertEq(_lastPrice, 0);
+        assertEq(_lastPrice, 99900000);
     }
 
    function test_setPriceRange() public {
