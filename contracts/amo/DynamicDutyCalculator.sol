@@ -9,6 +9,8 @@ import "../interfaces/JugLike.sol";
 import "../libraries/FixedMath0x.sol";
 import "../oracle/interfaces/IResilientOracle.sol";
 
+import {IDao} from "../ceros/interfaces/IDao.sol";
+
 /**
     * @title DynamicDutyCalculator
     * @author Lista
@@ -109,6 +111,15 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         ilks[collateral].beta = beta;
         ilks[collateral].rate0 = rate0;
         ilks[collateral].enabled = enabled;
+
+        uint256 price = oracle.peek(lisUSD);
+        ilks[collateral].lastPrice = price;
+
+        uint256 duty = calculateRate(price, beta, rate0) + 1e27;
+        if (duty > maxDuty) duty = maxDuty;
+        if (duty < minDuty) duty = minDuty;
+
+        IDao(interaction).setCollateralDuty(collateral, duty);
 
         emit CollateralParamsUpdated(collateral, beta, rate0, enabled);
     }
