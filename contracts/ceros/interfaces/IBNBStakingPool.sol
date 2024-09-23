@@ -11,4 +11,7 @@ interface IBNBStakingPool {
     function getMinUnstake() external view returns (uint256);
 
     function getPendingUnstakesOf(address claimer) external view returns (uint256);
+
+    // ListaStakeManager, minimum amount of BNB required for a withdrawal
+    function minBnb() external view returns (uint256);
 }
