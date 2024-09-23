@@ -36,6 +36,9 @@ ReentrancyGuardUpgradeable
     // a multi-sig wallet which can pause the contract in case of emergency
     address public _guardian;
 
+    // added on 2021-09-23
+    bool public _useStakeManagerPool;
+
     /**
      * Modifiers
      */
@@ -152,7 +155,13 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         require(recipient != address(0));
-        uint256 minumumUnstake = _pool.getMinUnstake();
+        uint256 minumumUnstake = 0;
+        if (_useStakeManagerPool) {
+            minumumUnstake = _pool.minBnb();
+        } else {
+            minumumUnstake = _pool.getMinUnstake();
+        }
+
         require(
             amount >= minumumUnstake,
             "value must be greater than min unstake amount"
@@ -292,9 +301,10 @@ ReentrancyGuardUpgradeable
         _masterVault = IMasterVault(masterVault);
         emit ChangeMasterVault(masterVault);
     }
-    function changeBNBStakingPool(address pool) external onlyOwner {
+    function changeBNBStakingPool(address pool, bool useStakeManagerPool) external onlyOwner {
         _pool = IBNBStakingPool(pool);
-        emit ChangeBNBStakingPool(pool);
+        _useStakeManagerPool = useStakeManagerPool;
+        emit ChangeBNBStakingPool(pool, useStakeManagerPool);
     }
     function changeLiquidationStrategy(address strategy) external onlyOwner {
         _liquidationStrategy = strategy;
