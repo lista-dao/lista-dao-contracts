@@ -40,7 +40,7 @@ interface IHelioProviderV2 {
 
     event ChangeMasterVault(address masterVault);
 
-    event ChangeBNBStakingPool(address pool);
+    event ChangeBNBStakingPool(address pool, bool useStakeManagerPool);
 
     event ChangeLiquidationStrategy(address strategy);
 
