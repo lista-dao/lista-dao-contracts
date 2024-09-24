@@ -36,4 +36,8 @@ contract Dao is IDao {
 
   function collaterals(address token) external view returns (GemJoinLike gem, bytes32 ilk, uint32 live, address clip) {}
 
+  function locked(address token, address usr) public view returns (uint256) {
+    return 0;
+  }
+
 }

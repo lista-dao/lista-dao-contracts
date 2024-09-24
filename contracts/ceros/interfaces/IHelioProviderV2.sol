@@ -54,7 +54,7 @@ interface IHelioProviderV2 {
     // in BNB
     function provide() external payable returns (uint256);
     function provide(address _delegateTo) external payable returns (uint256);
-    function changeDelegatee(address _delegateTo) external;
+    function delegateAllTo(address _newDelegateTo) external;
 
     // in aBNBc
     // function provideInABNBc(uint256 amount) external returns (uint256);
