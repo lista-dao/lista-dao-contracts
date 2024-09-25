@@ -36,6 +36,9 @@ ReentrancyGuardUpgradeable
     // a multi-sig wallet which can pause the contract in case of emergency
     address public _guardian;
 
+    // added on 2021-09-23
+    bool public _useStakeManagerPool;
+
     /**
      * Modifiers
      */
@@ -118,28 +121,45 @@ ReentrancyGuardUpgradeable
     }
 
     /**
-     * CHANGE DELEGATEE
-     * @notice By burning all the collateral tokens from the
-     *         old delegatee and minting the same amount to the new delegatee,
-     *         also replace delegateTo address by the new one to perform the change.
+     * @notice Delegate all clisBNB to a new delegatee or self
+               new delegatee can be self or anyone else, but not zero address
+     * @param _newDelegateTo address of the new delegatee
      */
-    function changeDelegatee(address _newDelegateTo) external override whenNotPaused {
+    function delegateAllTo(address _newDelegateTo) external override whenNotPaused {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
-        require(
-            _delegation[msg.sender].amount > 0 && _delegation[msg.sender].delegateTo != _newDelegateTo,
-            "delegatee must differ from the current one"
-        );
+        // get user total deposit
+        uint256 totalLocked = _dao.locked(_ceToken, msg.sender);
+
         Delegation storage delegation = _delegation[msg.sender];
         address oldDelegateTo = delegation.delegateTo;
-        // burn old delegatee's token
-        _collateralToken.burn(oldDelegateTo, delegation.amount);
-        // mint to new delegatee
-        _collateralToken.mint(_newDelegateTo, delegation.amount);
-        // change delegation info
-        delegation.delegateTo = _newDelegateTo;
+
+        // Step 1. burn all tokens
+        if (delegation.amount > 0) {
+            // burn delegatee's token
+            _collateralToken.burn(oldDelegateTo, delegation.amount);
+            // burn self's token
+            _collateralToken.burn(msg.sender, totalLocked - delegation.amount);
+        } else {
+            _collateralToken.burn(msg.sender, totalLocked);
+        }
+
+        // Step 2. save new delegatee and mint all tokens to delegatee
+        if (_newDelegateTo == msg.sender) {
+            // mint all to self
+            _collateralToken.mint(msg.sender, totalLocked);
+            // remove delegatee
+            delete _delegation[msg.sender];
+        } else {
+            // mint all to new delegatee
+            _collateralToken.mint(_newDelegateTo, totalLocked);
+            // save delegatee's info
+            delegation.delegateTo = _newDelegateTo;
+            delegation.amount = totalLocked;
+        }
 
         emit ChangeDelegateTo(msg.sender, oldDelegateTo, _newDelegateTo);
     }
+
     /**
      * RELEASE
      */
@@ -152,7 +172,13 @@ ReentrancyGuardUpgradeable
     returns (uint256 realAmount)
     {
         require(recipient != address(0));
-        uint256 minumumUnstake = _pool.getMinUnstake();
+        uint256 minumumUnstake = 0;
+        if (_useStakeManagerPool) {
+            minumumUnstake = _pool.minBnb();
+        } else {
+            minumumUnstake = _pool.getMinUnstake();
+        }
+
         require(
             amount >= minumumUnstake,
             "value must be greater than min unstake amount"
@@ -292,9 +318,10 @@ ReentrancyGuardUpgradeable
         _masterVault = IMasterVault(masterVault);
         emit ChangeMasterVault(masterVault);
     }
-    function changeBNBStakingPool(address pool) external onlyOwner {
+    function changeBNBStakingPool(address pool, bool useStakeManagerPool) external onlyOwner {
         _pool = IBNBStakingPool(pool);
-        emit ChangeBNBStakingPool(pool);
+        _useStakeManagerPool = useStakeManagerPool;
+        emit ChangeBNBStakingPool(pool, useStakeManagerPool);
     }
     function changeLiquidationStrategy(address strategy) external onlyOwner {
         _liquidationStrategy = strategy;

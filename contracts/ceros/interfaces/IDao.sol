@@ -39,4 +39,5 @@ interface IDao {
 
     function collaterals(address token) external view returns (GemJoinLike, bytes32, uint32, address);
 
+    function locked(address token, address usr) external view returns (uint256);
 }
