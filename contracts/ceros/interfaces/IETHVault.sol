@@ -20,10 +20,16 @@ interface IETHVault {
         address indexed recipient,
         uint256 value
     );
+    event RequestWithdraw(
+        address indexed owner,
+        address indexed recipient,
+        uint256 value
+    );
     event RouterChanged(address router);
     event SetStrategist(address strategist);
     event Rebalanced(uint256 amount);
     event WithdrawalFeeChanged(uint256 amount);
+    event BufferedEthAmountChanged(uint256 amount);
     /**
      * Methods
      */

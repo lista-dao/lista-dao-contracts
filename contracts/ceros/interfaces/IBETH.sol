@@ -8,6 +8,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IBETH is IERC20 {
     function deposit(uint256 amount, address referral) external;
-    
+
     function exchangeRate() external view returns (uint256);
+
+    /**
+     * @dev Function to withdraw wBETH for eth
+     * @param wbethAmount Amount of wETH to withdraw
+     */
+    function requestWithdrawEth(uint256 wbethAmount) external;
 }

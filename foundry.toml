@@ -1,0 +1,11 @@
+[profile.default]
+src = 'contracts'
+out = 'out'
+libs = ['node_modules', 'lib']
+test = 'test'
+cache_path  = 'cache_forge'
+# optimizer = true
+# optimizer_runs = 20_000
+
+[profile.ci]
+verbosity = 4
