@@ -249,7 +249,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
 
-        takeSnapshot(token, msg.sender, art);
+        takeSnapshot(token, msg.sender, FullMath.mulDiv(art, rate, RAY));
 
         emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
@@ -287,7 +287,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        takeSnapshot(token, msg.sender, userDebt);
+        takeSnapshot(token, msg.sender, FullMath.mulDiv(userDebt, rate, RAY));
 
         emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
         return dart;
@@ -317,7 +317,10 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
         // sync user debt only if it is greater than 0
         if (userDebt > 0) {
-            takeSnapshot(token, user, userDebt);
+            CollateralType memory collateralType = collaterals[token];
+            _checkIsLive(collateralType.live);
+            (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
+            takeSnapshot(token, user, FullMath.mulDiv(userDebt, rate, RAY));
         }
     }
 
