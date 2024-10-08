@@ -64,8 +64,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     IBorrowLisUSDListaDistributor public borrowLisUSDListaDistributor;
 
-    bool public useDistributorRouter;
-
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
     function enableAuctionWhitelist() external auth {auctionWhitelistMode = 1;}
@@ -98,12 +96,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         for(uint256 i = 0; i < tokens.length; i++)
             tokensBlacklist[tokens[i]] = 0;
     }
-    function setListaDistributor(address distributor, bool useRouter) external auth {
+    function setListaDistributor(address distributor) external auth {
         require(distributor != address(0), "Interaction/lista-distributor-zero-address");
         require(address(borrowLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
 
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
-        useDistributorRouter = useRouter;
     }
     modifier whitelisted(address participant) {
         if (whitelistMode == 1)
@@ -337,12 +334,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         uint256 ink, uint256 art,
         bool inkUpdated, bool artUpdated
     ) private {
-        if (useDistributorRouter) {
-            borrowLisUSDListaDistributor.takeSnapshot(token, user, ink, art, inkUpdated, artUpdated);
-        } else if (address(borrowLisUSDListaDistributor) != address(0)) {
-            // ensure the distributor address is set
-            borrowLisUSDListaDistributor.takeSnapshot(token, user, art);
-        }
+        // ensure the distributor address is set
+        // to switch from original function takeSnapshot(address,address,uint256)
+        // call setListaDistributor with router address first before upgrade this contract
+        // the router contract is compatible with `takeSnapshot(address,address,uint256)`
+        borrowLisUSDListaDistributor.takeSnapshot(token, user, ink, art, inkUpdated, artUpdated);
     }
 
     /**
