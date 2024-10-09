@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@chainlink/contracts": "^0.4.1",
+    "@nomicfoundation/hardhat-foundry": "^1.1.2",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-truffle5": "^2.0.5",
