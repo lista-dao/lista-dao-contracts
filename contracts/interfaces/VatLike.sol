@@ -43,4 +43,6 @@ interface VatLike {
     function cage() external;
     
     function uncage() external;
+
+    function debt() external view returns (uint256);
 }
