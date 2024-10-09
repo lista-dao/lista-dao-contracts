@@ -5,7 +5,7 @@ library hMath {
 
     uint256 constant ONE = 10 ** 27;
 
-    function rpow(uint x, uint n, uint b) internal pure returns (uint z) {
+    function rpow(uint256 x, uint256 n, uint256 b) public pure returns (uint256 z) {
         assembly {
             switch x case 0 {switch n case 0 {z := b} default {z := 0}}
             default {
@@ -26,6 +26,14 @@ library hMath {
                     }
                 }
             }
+        }
+    }
+
+    function rmul(uint x, uint y) public pure returns (uint z) {
+        unchecked {
+            z = x * y;
+            require(y == 0 || z / y == x);
+            z = z / hMath.ONE;
         }
     }
 }
