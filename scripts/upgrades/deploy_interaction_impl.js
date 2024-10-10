@@ -18,7 +18,7 @@ async function main() {
   })
 
   console.log('Validate if its upgradable...')
-  const OldInteraction = await ethers.getContractFactory('InteractionV2', {
+  const OldInteraction = await ethers.getContractFactory('InteractionV3', {
     unsafeAllow: ['external-library-linking'],
     libraries: {
       AuctionProxy: auctionProxy,
