@@ -35,6 +35,8 @@ interface IDao {
 
     function setCollateralDuty(address token, uint256 duty) external;
 
+    function setHelioProvider(address token, address helioProvider) external;
+
     function jug() external view returns(JugLike);
 
     function collaterals(address token) external view returns (GemJoinLike, bytes32, uint32, address);
