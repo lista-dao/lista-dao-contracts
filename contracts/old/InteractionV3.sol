@@ -151,6 +151,25 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         hay.safeApprove(hayJoin_, type(uint256).max);
     }
 
+    function setCores(address vat_, address spot_, address hayJoin_,
+        address jug_) public auth {
+        // Reset previous approval
+        hay.safeApprove(address(hayJoin), 0);
+
+        vat = VatLike(vat_);
+        spotter = SpotLike(spot_);
+        hayJoin = HayJoinLike(hayJoin_);
+        jug = JugLike(jug_);
+
+        vat.hope(hayJoin_);
+
+        hay.safeApprove(hayJoin_, type(uint256).max);
+    }
+
+    function setHayApprove() public auth {
+        hay.safeApprove(address(hayJoin), type(uint256).max);
+    }
+
     function setCollateralType(
         address token,
         address gemJoin,
@@ -190,6 +209,17 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.deny(gemJoin);
         IERC20Upgradeable(token).safeApprove(gemJoin, 0);
         emit CollateralDisabled(token, collaterals[token].ilk);
+    }
+
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
     }
 
     function deposit(
@@ -245,7 +275,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
 
-        takeSnapshot(token, msg.sender, FullMath.mulDiv(art, rate, RAY));
+        takeSnapshot(token, msg.sender, art);
 
         emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
@@ -284,7 +314,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        takeSnapshot(token, msg.sender, FullMath.mulDiv(userDebt, rate, RAY));
+        takeSnapshot(token, msg.sender, userDebt);
 
         emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
         return dart;
@@ -314,10 +344,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         (, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
         // sync user debt only if it is greater than 0
         if (userDebt > 0) {
-            CollateralType memory collateralType = collaterals[token];
-            _checkIsLive(collateralType.live);
-            (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
-            takeSnapshot(token, user, FullMath.mulDiv(userDebt, rate, RAY));
+            takeSnapshot(token, user, userDebt);
         }
     }
 
@@ -585,12 +612,20 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         return ClipperLike(collaterals[token].clip).getStatus(auctionId);
     }
 
+    function upchostClipper(address token) external {
+        ClipperLike(collaterals[token].clip).upchost();
+    }
+
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
         return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
     function resetAuction(address token, uint256 auctionId, address keeper) external auctionWhitelisted {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
+    }
+
+    function totalPegLiquidity() external view returns (uint256) {
+        return IERC20Upgradeable(hay).totalSupply();
     }
 
     function _checkIsLive(uint256 live) internal pure {
