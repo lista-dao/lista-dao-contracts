@@ -219,6 +219,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         deposits[token] += dink;
 
+        (uint256 ink,) = vat.urns(collateralType.ilk, participant);
+        takeSnapshot(token, msg.sender, ink, 0, true, false);
+
         emit Deposit(participant, token, dink, locked(token, participant));
         return dink;
     }
@@ -245,7 +248,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
 
-        takeSnapshot(token, msg.sender, FullMath.mulDiv(art, rate, RAY));
+        takeSnapshot(token, msg.sender, 0, FullMath.mulDiv(art, rate, RAY), false, true);
 
         emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
@@ -284,7 +287,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        takeSnapshot(token, msg.sender, FullMath.mulDiv(userDebt, rate, RAY));
+        takeSnapshot(token, msg.sender, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
 
         emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
         return dart;
@@ -294,12 +297,21 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
      * @dev take snapshot of user's debt
      * @param token collateral token address
      * @param user user address
+     * @param ink user's deposit
+     * @param art user's debit
+     * @param inkUpdated should updated
+     * @param artUpdated should updated
      */
-    function takeSnapshot(address token, address user, uint256 amount) private {
+    function takeSnapshot(
+        address token, address user,
+        uint256 ink, uint256 art,
+        bool inkUpdated, bool artUpdated
+    ) private {
         // ensure the distributor address is set
-        if (address(borrowLisUSDListaDistributor) != address(0)) {
-            borrowLisUSDListaDistributor.takeSnapshot(token, user, amount);
-        }
+        // to switch from original function takeSnapshot(address,address,uint256)
+        // call setListaDistributor with router address first before upgrade this contract
+        // the router contract is compatible with `takeSnapshot(address,address,uint256)`
+        borrowLisUSDListaDistributor.takeSnapshot(token, user, ink, art, inkUpdated, artUpdated);
     }
 
     /**
@@ -311,13 +323,18 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
      */
     function syncSnapshot(address token, address user) external {
         // check user debt is 0?
-        (, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
+        (uint256 ink, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
         // sync user debt only if it is greater than 0
         if (userDebt > 0) {
             CollateralType memory collateralType = collaterals[token];
             _checkIsLive(collateralType.live);
             (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
-            takeSnapshot(token, user, FullMath.mulDiv(userDebt, rate, RAY));
+
+            takeSnapshot(token, user, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
+        }
+
+        if (ink > 0) {
+            takeSnapshot(token, user, ink, 0, true, false);
         }
     }
 
@@ -355,6 +372,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
         deposits[token] -= dink;
+
+        (uint256 ink,) = vat.urns(collateralType.ilk, participant);
+        takeSnapshot(token, msg.sender, ink, 0, true, false);
 
         emit Withdraw(participant, dink);
         return dink;
@@ -548,8 +568,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             provider,
             collateral
         );
-        // after auction started, user's debt of the token becomes 0
-        takeSnapshot(token, user, 0);
+        // after auction started, user's collateral/debt of the token becomes 0
+        takeSnapshot(token, user, 0, 0, true, true);
 
         emit AuctionStarted(token, user, ink, collateralPrice(token));
         return auctionAmount;
