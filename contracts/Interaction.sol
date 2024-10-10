@@ -151,25 +151,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         hay.safeApprove(hayJoin_, type(uint256).max);
     }
 
-    function setCores(address vat_, address spot_, address hayJoin_,
-        address jug_) public auth {
-        // Reset previous approval
-        hay.safeApprove(address(hayJoin), 0);
-
-        vat = VatLike(vat_);
-        spotter = SpotLike(spot_);
-        hayJoin = HayJoinLike(hayJoin_);
-        jug = JugLike(jug_);
-
-        vat.hope(hayJoin_);
-
-        hay.safeApprove(hayJoin_, type(uint256).max);
-    }
-
-    function setHayApprove() public auth {
-        hay.safeApprove(address(hayJoin), type(uint256).max);
-    }
-
     function setCollateralType(
         address token,
         address gemJoin,
@@ -209,17 +190,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.deny(gemJoin);
         IERC20Upgradeable(token).safeApprove(gemJoin, 0);
         emit CollateralDisabled(token, collaterals[token].ilk);
-    }
-
-    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(source, 32))
-        }
     }
 
     function deposit(
@@ -615,20 +585,12 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return ClipperLike(collaterals[token].clip).getStatus(auctionId);
     }
 
-    function upchostClipper(address token) external {
-        ClipperLike(collaterals[token].clip).upchost();
-    }
-
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
         return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
 
     function resetAuction(address token, uint256 auctionId, address keeper) external auctionWhitelisted {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
-    }
-
-    function totalPegLiquidity() external view returns (uint256) {
-        return IERC20Upgradeable(hay).totalSupply();
     }
 
     function _checkIsLive(uint256 live) internal pure {
