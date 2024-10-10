@@ -4,29 +4,29 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./hMath.sol";
-import "./oracle/libraries/FullMath.sol";
-import "./interfaces/VatLike.sol";
-import "./interfaces/HayJoinLike.sol";
-import "./interfaces/GemJoinLike.sol";
-import "./interfaces/JugLike.sol";
-import "./interfaces/DogLike.sol";
-import "./interfaces/PipLike.sol";
-import "./interfaces/SpotLike.sol";
-import "./interfaces/IRewards.sol";
-import "./interfaces/IAuctionProxy.sol";
-import "./interfaces/IBorrowLisUSDListaDistributor.sol";
-import "./interfaces/IDynamicDutyCalculator.sol";
-import "./ceros/interfaces/IHelioProvider.sol";
-import "./ceros/interfaces/IDao.sol";
+import "../hMath.sol";
+import "../oracle/libraries/FullMath.sol";
+import "../interfaces/VatLike.sol";
+import "../interfaces/HayJoinLike.sol";
+import "../interfaces/GemJoinLike.sol";
+import "../interfaces/JugLike.sol";
+import "../interfaces/DogLike.sol";
+import "../interfaces/PipLike.sol";
+import "../interfaces/SpotLike.sol";
+import "../interfaces/IRewards.sol";
+import "../interfaces/IAuctionProxy.sol";
+import "../interfaces/IBorrowLisUSDListaDistributor.sol";
+import "../interfaces/IDynamicDutyCalculator.sol";
+import "../ceros/interfaces/IHelioProvider.sol";
+import "../ceros/interfaces/IDao.sol";
 
-import "./libraries/AuctionProxy.sol";
+import "../libraries/AuctionProxy.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
+contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -99,7 +99,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function setListaDistributor(address distributor) external auth {
         require(distributor != address(0), "Interaction/lista-distributor-zero-address");
         require(address(borrowLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
-
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
