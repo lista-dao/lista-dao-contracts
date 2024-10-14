@@ -14,10 +14,10 @@ import "../interfaces/IHelioProviderV2.sol";
 import "../interfaces/IBNBStakingPool.sol";
 import "../interfaces/ICertToken.sol";
 import "../../masterVault/interfaces/IMasterVault.sol";
-import {BaseClisTokenProvider} from "./BaseClisTokenProvider.sol";
+import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
 
 
-contract ClisFDUSDProvider is BaseClisTokenProvider {
+contract FDUSDLpProvider is BaseLpTokenProvider {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -26,14 +26,18 @@ contract ClisFDUSDProvider is BaseClisTokenProvider {
 
     function initialize(
         address collateralToken,
-        address ceToken,
+        address certToken,
         address daoAddress
     ) public initializer {
+        require(collateralToken != address(0), "collateralToken is the zero address");
+        require(certToken != address(0), "certToken is the zero address");
+        require(daoAddress != address(0), "daoAddress is the zero address");
+
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
-        _certToken = ceToken;
+        _certToken = certToken;
         _collateralToken = ICertToken(collateralToken);
         _dao = IDao(daoAddress);
 
