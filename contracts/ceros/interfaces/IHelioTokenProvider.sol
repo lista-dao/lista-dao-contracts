@@ -15,7 +15,7 @@ interface IHelioTokenProvider {
     /**
      * Events
      */
-    event Deposit(address indexed account, uint256 amount);
+    event Deposit(address indexed account, uint256 amount, uint256 collateralAmount);
     event Claim(address indexed recipient, uint256 amount);
     event Withdrawal(address indexed owner, address indexed recipient, uint256 amount);
     event Liquidation(address indexed recipient, uint256 amount);

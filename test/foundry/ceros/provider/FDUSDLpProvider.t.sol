@@ -7,15 +7,16 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "../../../../contracts/interfaces/VatLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
-import "../../../../contracts/ceros/provider/ClisFDUSDProvider.sol";
+import "../../../../contracts/ceros/provider/FDUSDLpProvider.sol";
 
 
-contract ClisFDUSDProviderTest is Test {
+contract FDUSDLpProviderTest is Test {
     address admin = address(0x1A11AA);
     address manager = address(0x2A11AA);
     address user = address(0x3A11AA);
     address recipient = address(0x4A11AA);
     address delegateTo = address(0x5A11AA);
+    address delegateTo1 = address(0x6A11AA);
     address proxyAdminOwner = 0x8d388136d578dCD791D081c6042284CED6d9B0c6;
 
     address sender;
@@ -32,7 +33,7 @@ contract ClisFDUSDProviderTest is Test {
 
     ClisToken clisFDUSD;
 
-    ClisFDUSDProvider clisFDUSDProvider;
+    FDUSDLpProvider fdusdLpProvider;
 
     function setUp() public {
         sender = msg.sender;
@@ -54,23 +55,23 @@ contract ClisFDUSDProviderTest is Test {
         clisFDUSD.transferOwnership(admin);
 
         TransparentUpgradeableProxy providerProxy = new TransparentUpgradeableProxy(
-            address(new ClisFDUSDProvider()),
+            address(new FDUSDLpProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
                 "initialize(address,address,address)",
                 address(clisFDUSD), address(FDUSD), address(interaction)
             )
         );
-        clisFDUSDProvider = ClisFDUSDProvider(address(providerProxy));
-        clisFDUSDProvider.changeProxy(address(interaction));
-        clisFDUSDProvider.transferOwnership(admin);
+        fdusdLpProvider = FDUSDLpProvider(address(providerProxy));
+        fdusdLpProvider.changeProxy(address(interaction));
+        fdusdLpProvider.transferOwnership(admin);
 
         vm.startPrank(admin);
-        clisFDUSD.addMinter(address(clisFDUSDProvider));
+        clisFDUSD.addMinter(address(fdusdLpProvider));
         vm.stopPrank();
 
         vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(clisFDUSDProvider));
+        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider));
         vm.stopPrank();
 
         (, bytes32 ilk, ,) = interaction.collaterals(address(FDUSD));
@@ -78,19 +79,19 @@ contract ClisFDUSDProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(admin, clisFDUSDProvider.owner());
-        assertEq(address(interaction), clisFDUSDProvider._proxy());
+        assertEq(admin, fdusdLpProvider.owner());
+        assertEq(address(interaction), fdusdLpProvider._proxy());
 
         assertEq(admin, clisFDUSD.owner());
-        assertEq(true, clisFDUSD._minters(address(clisFDUSDProvider)));
+        assertEq(true, clisFDUSD._minters(address(fdusdLpProvider)));
     }
 
     function test_provide() public {
         deal(address(FDUSD), user, 123e18);
 
         vm.startPrank(user);
-        FDUSD.approve(address(clisFDUSDProvider), 121e18);
-        uint256 actual = clisFDUSDProvider.provide(121e18);
+        FDUSD.approve(address(fdusdLpProvider), 121e18);
+        uint256 actual = fdusdLpProvider.provide(121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -105,14 +106,74 @@ contract ClisFDUSDProviderTest is Test {
         deal(address(FDUSD), user, 123e18);
 
         vm.startPrank(user);
-        FDUSD.approve(address(clisFDUSDProvider), 121e18);
-        uint256 actual = clisFDUSDProvider.provide(121e18, delegateTo);
+        FDUSD.approve(address(fdusdLpProvider), 121e18);
+        uint256 actual = fdusdLpProvider.provide(121e18, delegateTo);
         vm.stopPrank();
 
         assertEq(121e18, actual);
         assertEq(2e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
+
+        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        assertEq(121e18, amount);
+        assertEq(delegateTo, actualTo);
+
+        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
+        assertEq(121e18, deposit);
+    }
+
+    function test_delegateAllTo_new() public {
+        test_provide();
+
+        vm.startPrank(user);
+        fdusdLpProvider.delegateAllTo(delegateTo);
+        vm.stopPrank();
+
+        assertEq(0, clisFDUSD.balanceOf(user));
+        assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
+
+        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        assertEq(121e18, amount);
+        assertEq(delegateTo, actualTo);
+
+        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
+        assertEq(121e18, deposit);
+    }
+
+    function test_delegateAllTo_change() public {
+        test_provide_delegate();
+
+        vm.startPrank(user);
+        fdusdLpProvider.delegateAllTo(delegateTo1);
+        vm.stopPrank();
+
+        assertEq(0, clisFDUSD.balanceOf(user));
+        assertEq(0, clisFDUSD.balanceOf(delegateTo));
+        assertEq(121e18, clisFDUSD.balanceOf(delegateTo1));
+
+        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        assertEq(121e18, amount);
+        assertEq(delegateTo1, actualTo);
+
+
+        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
+        assertEq(121e18, deposit);
+    }
+
+    function test_delegateAllTo_toSelf() public {
+        test_provide_delegate();
+
+        vm.startPrank(user);
+        fdusdLpProvider.delegateAllTo(user);
+        vm.stopPrank();
+
+        assertEq(121e18, clisFDUSD.balanceOf(user));
+        assertEq(0, clisFDUSD.balanceOf(delegateTo));
+
+        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        assertEq(0, amount);
+        assertEq(address(0), actualTo);
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(121e18, deposit);
@@ -122,9 +183,9 @@ contract ClisFDUSDProviderTest is Test {
         deal(address(FDUSD), user, 21e18);
 
         vm.startPrank(user);
-        FDUSD.approve(address(clisFDUSDProvider), 121e18);
+        FDUSD.approve(address(fdusdLpProvider), 121e18);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        uint256 actual = clisFDUSDProvider.provide(121e18);
+        uint256 actual = fdusdLpProvider.provide(121e18);
         vm.stopPrank();
     }
 
@@ -132,7 +193,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide();
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(user, 121e18);
+        uint256 actual = fdusdLpProvider.release(user, 121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -147,7 +208,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide_delegate();
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(user, 121e18);
+        uint256 actual = fdusdLpProvider.release(user, 121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -163,7 +224,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide();
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(recipient, 121e18);
+        uint256 actual = fdusdLpProvider.release(recipient, 121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -179,7 +240,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide();
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(user, 21e18);
+        uint256 actual = fdusdLpProvider.release(user, 21e18);
         vm.stopPrank();
 
         assertEq(21e18, actual);
@@ -194,13 +255,17 @@ contract ClisFDUSDProviderTest is Test {
         test_provide_delegate();
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(user, 21e18);
+        uint256 actual = fdusdLpProvider.release(user, 21e18);
         vm.stopPrank();
 
         assertEq(21e18, actual);
         assertEq(23e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(100e18, clisFDUSD.balanceOf(delegateTo));
+
+        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        assertEq(100e18, amount);
+        assertEq(delegateTo, actualTo);
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(100e18, deposit);
@@ -211,7 +276,7 @@ contract ClisFDUSDProviderTest is Test {
         deal(address(clisFDUSD), user, 10e18);
 
         vm.startPrank(user);
-        uint256 actual = clisFDUSDProvider.release(user, 121e18);
+        uint256 actual = fdusdLpProvider.release(user, 121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -227,8 +292,8 @@ contract ClisFDUSDProviderTest is Test {
         deal(address(FDUSD), delegateTo, 123e18);
 
         vm.startPrank(delegateTo);
-        FDUSD.approve(address(clisFDUSDProvider), 121e18);
-        clisFDUSDProvider.provide(121e18);
+        FDUSD.approve(address(fdusdLpProvider), 121e18);
+        fdusdLpProvider.provide(121e18);
         vm.stopPrank();
 
         assertEq(2e18, FDUSD.balanceOf(delegateTo));
@@ -237,7 +302,7 @@ contract ClisFDUSDProviderTest is Test {
         (uint256 delegateToDeposit, ) = vat.urns(fdusdIlk, delegateTo);
         assertEq(121e18, delegateToDeposit);
 
-        // clear delegateTo collateral tokens, make it like old user
+        // clear delegateTo collateral tokens, make it like an old user
         deal(address(clisFDUSD), delegateTo, 0);
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
 
@@ -245,8 +310,8 @@ contract ClisFDUSDProviderTest is Test {
         deal(address(FDUSD), user, 345e18);
 
         vm.startPrank(user);
-        FDUSD.approve(address(clisFDUSDProvider), 345e18);
-        clisFDUSDProvider.provide(345e18, delegateTo);
+        FDUSD.approve(address(fdusdLpProvider), 345e18);
+        fdusdLpProvider.provide(345e18, delegateTo);
         vm.stopPrank();
 
         assertEq(0, FDUSD.balanceOf(user));
@@ -258,7 +323,7 @@ contract ClisFDUSDProviderTest is Test {
 
         // user withdraw partially
         vm.startPrank(user);
-        clisFDUSDProvider.release(user, 11e18);
+        fdusdLpProvider.release(user, 11e18);
         vm.stopPrank();
 
         assertEq(11e18, FDUSD.balanceOf(user));
@@ -270,7 +335,7 @@ contract ClisFDUSDProviderTest is Test {
 
         // delegateTo release should not burn delegatedAmount
         vm.startPrank(delegateTo);
-        uint256 actual = clisFDUSDProvider.release(delegateTo, 121e18);
+        uint256 actual = fdusdLpProvider.release(delegateTo, 121e18);
         vm.stopPrank();
 
         assertEq(121e18, actual);
@@ -285,7 +350,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide();
 
         vm.startPrank(address(interaction));
-        clisFDUSDProvider.daoBurn(user, 121e18);
+        fdusdLpProvider.daoBurn(user, 121e18);
         vm.stopPrank();
 
         assertEq(0, clisFDUSD.balanceOf(user));
@@ -295,7 +360,7 @@ contract ClisFDUSDProviderTest is Test {
         test_provide_delegate();
 
         vm.startPrank(address(interaction));
-        clisFDUSDProvider.daoBurn(user, 121e18);
+        fdusdLpProvider.daoBurn(user, 121e18);
         vm.stopPrank();
 
         assertEq(0, clisFDUSD.balanceOf(user));

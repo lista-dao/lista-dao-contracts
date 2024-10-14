@@ -18,7 +18,7 @@ import "../interfaces/IHelioTokenProvider.sol";
 import "../../masterVault/interfaces/IMasterVault.sol";
 
 
-abstract contract BaseClisTokenProvider is IHelioTokenProvider,
+abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     Initializable,
     OwnableUpgradeable,
     PausableUpgradeable,
@@ -67,9 +67,10 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
 
         IERC20(_certToken).safeTransferFrom(msg.sender, address(this), amount);
         // deposit ceToken as collateral
-        _provideCollateral(msg.sender, msg.sender, amount);
-        emit Deposit(msg.sender, amount);
-        return amount;
+        uint256 collateralAmount = _provideCollateral(msg.sender, msg.sender, amount);
+
+        emit Deposit(msg.sender, amount, collateralAmount);
+        return collateralAmount;
     }
 
     function _provide(uint256 amount, address delegateTo) internal returns (uint256) {
@@ -82,20 +83,33 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
         );
 
         IERC20(_certToken).safeTransferFrom(msg.sender, address(this), amount);
-        _provideCollateral(msg.sender, delegateTo, amount);
+        uint256 collateralAmount = _provideCollateral(msg.sender, delegateTo, amount);
 
         Delegation storage delegation = _delegation[msg.sender];
         delegation.delegateTo = delegateTo;
-        delegation.amount += amount;
-        _delegatedAmount[delegateTo] += amount;
+        delegation.amount += collateralAmount;
+        _delegatedAmount[delegateTo] += collateralAmount;
+
+        emit Deposit(msg.sender, amount, collateralAmount);
+        return collateralAmount;
+    }
+
+    function _provideCollateral(address account, address holder, uint256 amount)
+        virtual
+        internal
+        returns (uint256)
+    {
+        // all deposit data will be recorded on behalf of `account`
+        _dao.deposit(account, _certToken, amount);
+        // collateralTokenHolder can be account or delegateTo
+        _collateralToken.mint(holder, amount);
         return amount;
     }
 
     function _delegateAllTo(address newDelegateTo) internal {
         require(newDelegateTo != address(0), "delegateTo cannot be zero address");
         // get user total deposit
-        uint256 totalLocked = _dao.locked(_certToken, msg.sender);
-
+        uint256 totalLocked = _getAvailableLocked(msg.sender);
         Delegation storage currentDelegation = _delegation[msg.sender];
         address currentDelegateTo = currentDelegation.delegateTo;
 
@@ -130,6 +144,15 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
         emit ChangeDelegateTo(msg.sender, currentDelegateTo, newDelegateTo);
     }
 
+    function _getAvailableLocked(address account)
+        virtual
+        internal
+        view
+        returns (uint256)
+    {
+        return _dao.locked(_certToken, account);
+    }
+
     /**
      * RELEASE
      */
@@ -141,13 +164,6 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
         IERC20(_certToken).safeTransfer(recipient, amount);
         emit Withdrawal(msg.sender, recipient, amount);
         return amount;
-    }
-
-    function _provideCollateral(address account, address delegateTo, uint256 amount) internal {
-        // all deposit data will be recorded on behalf of `account`
-        _dao.deposit(account, _certToken, amount);
-        // collateralTokenHolder can be account or delegateTo
-        _collateralToken.mint(delegateTo, amount);
     }
 
     function _withdrawCollateral(address account, uint256 amount) internal {
@@ -177,7 +193,7 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
      * Burn collateral Token from both delegator and delegateTo
      * @dev burns delegatee's collateralToken first, then delegator's
      */
-    function _burnCollateral(address account, uint256 amount) internal {
+    function _burnCollateral(address account, uint256 amount) virtual internal {
         if(_delegation[account].amount > 0) {
             uint256 delegatedAmount = _delegation[account].amount;
             uint256 delegateeBurn = amount > delegatedAmount ? delegatedAmount : amount;
@@ -195,6 +211,13 @@ abstract contract BaseClisTokenProvider is IHelioTokenProvider,
         }
     }
 
+    /**
+     * @dev to make sure existing users who do not have enough collateralToken can still burn
+     * only the available amount excluding delegated part will be burned
+     *
+     * @param account collateral token holder
+     * @param amount amount to burn
+     */
     function _safeBurnCollateral(address account, uint256 amount) virtual internal {
         uint256 availableBalance = _collateralToken.balanceOf(account) - _delegatedAmount[account];
         if (amount <= availableBalance) {
