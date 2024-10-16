@@ -27,11 +27,15 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
     function initialize(
         address collateralToken,
         address certToken,
-        address daoAddress
+        address daoAddress,
+        address proxy,
+        address guardian
     ) public initializer {
         require(collateralToken != address(0), "collateralToken is the zero address");
         require(certToken != address(0), "certToken is the zero address");
         require(daoAddress != address(0), "daoAddress is the zero address");
+        require(proxy != address(0), "proxy is the zero address");
+        require(guardian != address(0), "guardian is the zero address");
 
         __Ownable_init();
         __Pausable_init();
@@ -40,6 +44,8 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
         _certToken = certToken;
         _collateralToken = ICertToken(collateralToken);
         _dao = IDao(daoAddress);
+        _proxy = proxy;
+        _guardian = guardian;
 
         IERC20(_certToken).approve(daoAddress, type(uint256).max);
     }

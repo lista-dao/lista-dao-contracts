@@ -24,7 +24,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     uint128 public constant _RATE_DENOMINATOR = 1e18;
 
-    uint128 public _depositCollateralReserveRate;
+    uint128 public _userCollateralRate;
 
     address public _collateralReserveAddress;
 
@@ -41,13 +41,17 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         address certToken,
         address daoAddress,
         address collateralReserveAddress,
-        uint128 depositCollateralReserveRate
+        address proxy,
+        address guardian,
+        uint128 userCollateralRate
     ) public initializer {
         require(collateralToken != address(0), "collateralToken is the zero address");
         require(certToken != address(0), "certToken is the zero address");
         require(daoAddress != address(0), "daoAddress is the zero address");
         require(collateralReserveAddress != address(0), "collateralReserveAddress is the zero address");
-        require(depositCollateralReserveRate <= 1e18, "too big rate number");
+        require(proxy != address(0), "proxy is the zero address");
+        require(guardian != address(0), "guardian is the zero address");
+        require(userCollateralRate <= 1e18, "too big rate number");
 
         __Ownable_init();
         __Pausable_init();
@@ -57,7 +61,9 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         _collateralToken = ICertToken(collateralToken);
         _dao = IDao(daoAddress);
         _collateralReserveAddress = collateralReserveAddress;
-        _depositCollateralReserveRate = depositCollateralReserveRate;
+        _proxy = proxy;
+        _guardian = guardian;
+        _userCollateralRate = userCollateralRate;
 
         IERC20(_certToken).approve(daoAddress, type(uint256).max);
     }
@@ -107,7 +113,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         // collateralTokenHolder can be account or delegateTo
         _dao.deposit(account, _certToken, amount);
 
-        uint256 holderCollateralAmount = amount * _depositCollateralReserveRate / _RATE_DENOMINATOR;
+        uint256 holderCollateralAmount = amount * _userCollateralRate / _RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {
             _collateralToken.mint(holder, holderCollateralAmount);
         }
@@ -174,7 +180,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         internal
         override
     {
-        uint256 userPart = amount * _depositCollateralReserveRate / _RATE_DENOMINATOR;
+        uint256 userPart = amount * _userCollateralRate / _RATE_DENOMINATOR;
         uint256 reservePart = amount - userPart;
         uint256 userTotalReserved = _userReservedAmount[account];
 
@@ -250,7 +256,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         onlyProxy
         nonReentrant
     {
-        uint256 holderCollateralAmount = amount * _depositCollateralReserveRate / _RATE_DENOMINATOR;
+        uint256 holderCollateralAmount = amount * _userCollateralRate / _RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {
             _daoMint(account, amount);
         }
