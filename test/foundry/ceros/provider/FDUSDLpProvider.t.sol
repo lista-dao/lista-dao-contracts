@@ -58,12 +58,11 @@ contract FDUSDLpProviderTest is Test {
             address(new FDUSDLpProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
-                "initialize(address,address,address)",
-                address(clisFDUSD), address(FDUSD), address(interaction)
+                "initialize(address,address,address,address,address)",
+                address(clisFDUSD), address(FDUSD), address(interaction), address(interaction), admin
             )
         );
         fdusdLpProvider = FDUSDLpProvider(address(providerProxy));
-        fdusdLpProvider.changeProxy(address(interaction));
         fdusdLpProvider.transferOwnership(admin);
 
         vm.startPrank(admin);
