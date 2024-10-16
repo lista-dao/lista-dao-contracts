@@ -50,14 +50,13 @@ contract SlisBNBLpProviderTest is Test {
             address(new SlisBNBLpProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
-                "initialize(address,address,address,address,uint128)",
-                address(clisBnb), address(slisBnb), address(interaction), reserveAddress, 9e17
+                "initialize(address,address,address,address,address,address,uint128)",
+                address(clisBnb), address(slisBnb), address(interaction), reserveAddress, address(interaction), address(admin), 9e17
             )
         );
         slisBNBLpProvider = SlisBNBLpProvider(address(providerProxy));
-        slisBNBLpProvider.changeProxy(address(interaction));
+//        slisBNBLpProvider.changeProxy(address(interaction));
         slisBNBLpProvider.transferOwnership(admin);
-
 
         vm.startPrank(address(0x702115D6d3Bbb37F407aae4dEcf9d09980e28ebc));
         clisBnb.changeMinter(address(slisBNBLpProvider));
