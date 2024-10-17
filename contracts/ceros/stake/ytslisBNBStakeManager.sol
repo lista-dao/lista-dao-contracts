@@ -247,10 +247,8 @@ contract ytslisBNBStakeManager is
         (uint256 userPart, uint256 reservedPart) = _burnCollateral(msg.sender, _certAmount);
 
         balanceOf[msg.sender] -= _certAmount;
-        userCollateral[msg.sender] -= userPart;
-        // userReservedCollateral updated in _burnCollateral
-
         IERC20(certToken).safeTransfer(_recipient, _certAmount);
+
         emit Unstaked(msg.sender, _certAmount, userPart, reservedPart);
         return _certAmount;
     }
@@ -271,11 +269,32 @@ contract ytslisBNBStakeManager is
         uint256 userPart = collAmount * userCollateralRate / RATE_DENOMINATOR;
         uint256 reservePart = collAmount - userPart;
         uint256 userTotalReserved = userReservedCollateral[_account];
-        if (reservePart > 0) {
-            if (userCertBalance == _certAmount) {
-                // burn all when withdraw all cert
+        Delegation storage delegation = delegation[_account];
+        if (userCertBalance == _certAmount) {
+            // burn all when withdraw all cert
+            if (userTotalReserved > 0) {
                 collateralToken.burn(collateralReserveAddress, userTotalReserved);
                 userReservedCollateral[_account] = 0;
+            }
+
+            uint256 delegatedAmount = delegation.amount;
+            if (delegatedAmount > 0) {
+                collateralToken.burn(delegation.delegateTo, delegatedAmount);
+                delegation.amount = 0;
+            }
+
+            uint256 currentCollateral = userCollateral[_account];
+            uint256 userBurn = currentCollateral - delegatedAmount;
+            if (userBurn > 0) {
+                collateralToken.burn(_account, userBurn);
+            }
+
+            userCollateral[_account] = 0;
+            return (currentCollateral, userTotalReserved);
+        }
+
+        if (reservePart > 0) {
+            if (userCertBalance == _certAmount) {
             } else if (reservePart <= userTotalReserved) {
                 collateralToken.burn(collateralReserveAddress, reservePart);
                 userReservedCollateral[_account] -= reservePart;
@@ -285,7 +304,6 @@ contract ytslisBNBStakeManager is
             }
         }
 
-        Delegation storage delegation = delegation[_account];
         if (delegation.amount > 0) {
             uint256 delegatedAmount = delegation.amount;
             uint256 delegateeBurn = userPart > delegatedAmount ? delegatedAmount : userPart;
@@ -296,9 +314,11 @@ contract ytslisBNBStakeManager is
             if (userPart > delegateeBurn) {
                 collateralToken.burn(_account, userPart - delegateeBurn);
             }
+            userCollateral[_account] -= userPart;
         } else {
             // no delegation, only burn from account
             collateralToken.burn(_account, userPart);
+            userCollateral[_account] -= userPart;
         }
 
         return (userPart, reservePart);
