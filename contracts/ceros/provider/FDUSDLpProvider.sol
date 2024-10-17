@@ -25,138 +25,143 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
     }
 
     function initialize(
-        address collateralToken,
-        address certToken,
-        address daoAddress,
-        address proxy,
-        address guardian
+        address _admin,
+        address _manager,
+        address _pauser,
+        address _collateralToken,
+        address _certToken,
+        address _daoAddress
     ) public initializer {
-        require(collateralToken != address(0), "collateralToken is the zero address");
-        require(certToken != address(0), "certToken is the zero address");
-        require(daoAddress != address(0), "daoAddress is the zero address");
-        require(proxy != address(0), "proxy is the zero address");
-        require(guardian != address(0), "guardian is the zero address");
+        require(_admin != address(0), "admin is the zero address");
+        require(_manager != address(0), "manager is the zero address");
+        require(_pauser != address(0), "pauser is the zero address");
+        require(_collateralToken != address(0), "collateralToken is the zero address");
+        require(_certToken != address(0), "certToken is the zero address");
+        require(_daoAddress != address(0), "daoAddress is the zero address");
 
-        __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(MANAGER, _manager);
+        _grantRole(PAUSER, _pauser);
 
-        _certToken = certToken;
-        _collateralToken = ICertToken(collateralToken);
-        _dao = IDao(daoAddress);
-        _proxy = proxy;
-        _guardian = guardian;
+        certToken = _certToken;
+        collateralToken = ICertToken(_collateralToken);
+        dao = IDao(_daoAddress);
 
-        IERC20(_certToken).approve(daoAddress, type(uint256).max);
+        IERC20(certToken).approve(_daoAddress, type(uint256).max);
     }
 
     /**
     * DEPOSIT
     * deposit given amount of certToken to provider
     * given amount collateral token will be mint to caller's address
-    * @param amount amount to deposit
+    * @param _amount amount to deposit
     */
-    function provide(uint256 amount)
+    function provide(uint256 _amount)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _provide(amount);
+        return _provide(_amount);
     }
 
     /**
     * deposit given amount of certToken to provider
     * given amount collateral token will be mint to delegateTo
-    * @param amount amount to deposit
-    * @param delegateTo target address of collateral tokens
+    * @param _amount amount to deposit
+    * @param _delegateTo target address of collateral tokens
     */
-    function provide(uint256 amount, address delegateTo)
+    function provide(uint256 _amount, address _delegateTo)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _provide(amount, delegateTo);
+        return _provide(_amount, _delegateTo);
     }
 
     /**
     * delegate all collateral tokens to given address
-    * @param newDelegateTo new target address of collateral tokens
+    * @param _newDelegateTo new target address of collateral tokens
     */
-    function delegateAllTo(address newDelegateTo)
+    function delegateAllTo(address _newDelegateTo)
         external
         override
         whenNotPaused
         nonReentrant
     {
-        _delegateAllTo(newDelegateTo);
+        _delegateAllTo(_newDelegateTo);
     }
 
     /**
      * RELEASE
      * withdraw given amount of certToken to recipient address
      * given amount collateral token will be burned from caller's address
-     * @param recipient recipient address
-     * @param amount amount to release
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to release
      */
-    function release(address recipient, uint256 amount)
+    function release(address _recipient, uint256 _amount)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _release(recipient, amount);
+        return _release(_recipient, _amount);
     }
 
     /**
      * DAO FUNCTIONALITY
      * transfer given amount of certToken to recipient
      * called by AuctionProxy.buyFromAuction
-     * @param recipient recipient address
-     * @param amount amount to liquidate
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to liquidate
      */
-    function liquidation(address recipient, uint256 amount)
+    function liquidation(address _recipient, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        _liquidation(recipient, amount);
+        _liquidation(_recipient, _amount);
     }
 
     /**
      * burn given amount of collateral token from account
      * called by AuctionProxy.startAuction
-     * @param account collateral token holder
-     * @param amount amount to burn
+     *
+     * @param _account collateral token holder
+     * @param _amount amount to burn
      */
-    function daoBurn(address account, uint256 amount)
+    function daoBurn(address _account, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        _daoBurn(account, amount);
+        _daoBurn(_account, _amount);
     }
 
     /**
      * mint given amount of collateral token to account
-     * @param account collateral token receiver
-     * @param amount amount to mint
+     * @param _account collateral token receiver
+     * @param _amount amount to mint
      */
-    function daoMint(address account, uint256 amount)
+    function daoMint(address _account, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        _daoMint(account, amount);
+        _daoMint(_account, _amount);
     }
 }

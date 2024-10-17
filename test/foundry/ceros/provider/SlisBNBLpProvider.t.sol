@@ -37,6 +37,11 @@ contract SlisBNBLpProviderTest is Test {
 
     SlisBNBLpProvider slisBNBLpProvider;
 
+    uint128 exchangeRate = 1023e15;
+    uint128 exchangeRate1 = 1031e15;
+    uint128 userCollateralRate = 95e16;
+    uint128 userCollateralRate1 = 90e16;
+
     function setUp() public {
         sender = msg.sender;
         mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
@@ -50,13 +55,13 @@ contract SlisBNBLpProviderTest is Test {
             address(new SlisBNBLpProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
-                "initialize(address,address,address,address,address,address,uint128)",
-                address(clisBnb), address(slisBnb), address(interaction), reserveAddress, address(interaction), address(admin), 9e17
+                "initialize(address,address,address,address,address,address,address,uint128,uint128)",
+                admin, address(interaction), manager,
+                address(clisBnb), address(slisBnb), address(interaction), reserveAddress,
+                exchangeRate, userCollateralRate
             )
         );
         slisBNBLpProvider = SlisBNBLpProvider(address(providerProxy));
-//        slisBNBLpProvider.changeProxy(address(interaction));
-        slisBNBLpProvider.transferOwnership(admin);
 
         vm.startPrank(address(0x702115D6d3Bbb37F407aae4dEcf9d09980e28ebc));
         clisBnb.changeMinter(address(slisBNBLpProvider));
@@ -71,9 +76,7 @@ contract SlisBNBLpProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(admin, slisBNBLpProvider.owner());
-        assertEq(address(interaction), slisBNBLpProvider._proxy());
-
+        assertEq(true, slisBNBLpProvider.hasRole(keccak256("MANAGER"), address(interaction)));
         assertEq(address(slisBNBLpProvider), clisBnb.getMinter());
     }
 
@@ -85,13 +88,15 @@ contract SlisBNBLpProviderTest is Test {
         uint256 actual = slisBNBLpProvider.provide(121e18);
         vm.stopPrank();
 
-        uint256 userExpect = 121e18 * 9e17 / 1e18;
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
 
         assertEq(userExpect, actual);
         assertEq(2e18, slisBnb.balanceOf(user));
         assertEq(userExpect, clisBnb.balanceOf(user));
-        assertEq(121e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(121e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(121e18, deposit);
@@ -105,84 +110,20 @@ contract SlisBNBLpProviderTest is Test {
         uint256 actual = slisBNBLpProvider.provide(121e18, delegateTo);
         vm.stopPrank();
 
-        uint256 userExpect = 121e18 * 9e17 / 1e18;
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
 
         assertEq(userExpect, actual);
         assertEq(2e18, slisBnb.balanceOf(user));
-        assertEq(userExpect, clisBnb.balanceOf(delegateTo));
-        assertEq(121e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(121e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
-
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
-        assertEq(userExpect, amount);
-        assertEq(delegateTo, actualTo);
-
-        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
-        assertEq(121e18, deposit);
-    }
-
-    function test_delegateAllTo_new() public {
-        test_provide();
-
-        vm.startPrank(user);
-        slisBNBLpProvider.delegateAllTo(delegateTo);
-        vm.stopPrank();
-
-        uint256 userExpect = 121e18 * 9e17 / 1e18;
-        assertEq(2e18, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(userExpect, clisBnb.balanceOf(delegateTo));
-        assertEq(121e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(121e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
 
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
         assertEq(userExpect, amount);
         assertEq(delegateTo, actualTo);
-
-        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
-        assertEq(121e18, deposit);
-    }
-
-    function test_delegateAllTo_change() public {
-        test_provide_delegate();
-
-        vm.startPrank(user);
-        slisBNBLpProvider.delegateAllTo(delegateTo1);
-        vm.stopPrank();
-
-        uint256 userExpect = 121e18 * 9e17 / 1e18;
-
-        assertEq(0, clisBnb.balanceOf(user));
-        assertEq(0, clisBnb.balanceOf(delegateTo));
-        assertEq(userExpect, clisBnb.balanceOf(delegateTo1));
-        assertEq(121e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(121e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
-
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
-        assertEq(userExpect, amount);
-        assertEq(delegateTo1, actualTo);
-
-        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
-        assertEq(121e18, deposit);
-    }
-
-    function test_delegateAllTo_toSelf() public {
-        test_provide_delegate();
-
-        vm.startPrank(user);
-        slisBNBLpProvider.delegateAllTo(user);
-        vm.stopPrank();
-
-        uint256 userExpect = 121e18 * 9e17 / 1e18;
-
-        assertEq(0, clisBnb.balanceOf(delegateTo));
-        assertEq(userExpect, clisBnb.balanceOf(user));
-        assertEq(121e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(121e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
-
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
-        assertEq(0, amount);
-        assertEq(address(0), actualTo);
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(121e18, deposit);
@@ -198,6 +139,80 @@ contract SlisBNBLpProviderTest is Test {
         vm.stopPrank();
     }
 
+    function test_delegateAllTo_new() public {
+        test_provide();
+
+        vm.startPrank(user);
+        slisBNBLpProvider.delegateAllTo(delegateTo);
+        vm.stopPrank();
+
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(2e18, slisBnb.balanceOf(user));
+        assertEq(0, clisBnb.balanceOf(user));
+        assertEq(userExpect, clisBnb.balanceOf(delegateTo));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
+
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
+        assertEq(userExpect, amount);
+        assertEq(delegateTo, actualTo);
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(121e18, deposit);
+    }
+
+    function test_delegateAllTo_change() public {
+        test_provide_delegate();
+
+        vm.startPrank(user);
+        slisBNBLpProvider.delegateAllTo(delegateTo1);
+        vm.stopPrank();
+
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(0, clisBnb.balanceOf(user));
+        assertEq(0, clisBnb.balanceOf(delegateTo));
+        assertEq(userExpect, clisBnb.balanceOf(delegateTo1));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
+
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
+        assertEq(userExpect, amount);
+        assertEq(delegateTo1, actualTo);
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(121e18, deposit);
+    }
+
+    function test_delegateAllTo_toSelf() public {
+        test_provide_delegate();
+
+        vm.startPrank(user);
+        slisBNBLpProvider.delegateAllTo(user);
+        vm.stopPrank();
+
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(0, clisBnb.balanceOf(delegateTo));
+        assertEq(userExpect, clisBnb.balanceOf(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
+
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
+        assertEq(0, amount);
+        assertEq(address(0), actualTo);
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(121e18, deposit);
+    }
+
     function test_release_full() public {
         test_provide();
 
@@ -209,7 +224,8 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(123e18, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(reserveAddress));
-        assertEq(0, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(0, slisBNBLpProvider.userCollateral(user));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(user));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(0, deposit);
@@ -227,9 +243,10 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(delegateTo));
         assertEq(0, clisBnb.balanceOf(reserveAddress));
-        assertEq(0, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(0, slisBNBLpProvider.userCollateral(user));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(user));
 
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
         assertEq(delegateTo, actualTo);
         assertEq(0, amount);
 
@@ -249,7 +266,8 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(121e18, slisBnb.balanceOf(recipient));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(reserveAddress));
-        assertEq(0, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(0, slisBNBLpProvider.userCollateral(user));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(user));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(0, deposit);
@@ -262,12 +280,15 @@ contract SlisBNBLpProviderTest is Test {
         uint256 actual = slisBNBLpProvider.release(user, 21e18);
         vm.stopPrank();
 
-        uint256 userExpect = 100e18 * 9e17 / 1e18;
+        uint256 allCollateral = 100e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+
         assertEq(21e18, actual);
         assertEq(23e18, slisBnb.balanceOf(user));
         assertEq(userExpect, clisBnb.balanceOf(user));
-        assertEq(100e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(100e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(100e18, deposit);
@@ -280,15 +301,18 @@ contract SlisBNBLpProviderTest is Test {
         uint256 actual = slisBNBLpProvider.release(user, 21e18);
         vm.stopPrank();
 
-        uint256 userExpect = 100e18 * 9e17 / 1e18;
+        uint256 allCollateral = 100e18 * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+
         assertEq(21e18, actual);
         assertEq(23e18, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(userExpect, clisBnb.balanceOf(delegateTo));
-        assertEq(100e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(100e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
 
-        (address actualTo, uint256 amount) = slisBNBLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = slisBNBLpProvider.delegation(user);
         assertEq(delegateTo, actualTo);
         assertEq(userExpect, amount);
 
@@ -299,18 +323,21 @@ contract SlisBNBLpProviderTest is Test {
     function test_release_delegatee_mixed() public {
         // set up delegateTo's tokens
         deal(address(slisBnb), delegateTo, 123e18);
-        console.log("part 0 ok");
 
         vm.startPrank(delegateTo);
         slisBnb.approve(address(slisBNBLpProvider), 121e18);
         slisBNBLpProvider.provide(121e18);
         vm.stopPrank();
 
-        uint256 delegateExpect = 121e18 * 9e17 / 1e18;
-        uint256 delegateReserve = 121e18 - delegateExpect;
+        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
+        uint256 delegateExpect = allCollateral * userCollateralRate / 1e18;
+        uint256 delegateReserve = allCollateral - delegateExpect;
+
         assertEq(2e18, slisBnb.balanceOf(delegateTo));
         assertEq(delegateExpect, clisBnb.balanceOf(delegateTo));
-        assertEq(delegateReserve, slisBNBLpProvider._userReservedAmount(delegateTo));
+        assertEq(delegateExpect, slisBNBLpProvider.userCollateral(delegateTo));
+        assertEq(delegateReserve, slisBNBLpProvider.userReservedCollateral(delegateTo));
+
         (uint256 delegateToDeposit, ) = vat.urns(slisBNBIlk, delegateTo);
         assertEq(121e18, delegateToDeposit);
 
@@ -326,12 +353,15 @@ contract SlisBNBLpProviderTest is Test {
         slisBNBLpProvider.provide(345e18, delegateTo);
         vm.stopPrank();
 
-        uint256 userExpect = 345e18 * 9e17 / 1e18;
+        uint256 userAllCollateral = uint256(345e18) * exchangeRate / 1e18;
+        uint256 userExpect = userAllCollateral * userCollateralRate / 1e18;
+
         assertEq(0, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(userExpect, clisBnb.balanceOf(delegateTo));
-//        assertEq(345e18 - userExpect, clisBnb.balanceOf(reserveAddress));
-        assertEq(345e18 - userExpect, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
+        assertEq(userAllCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
+        assertEq(userAllCollateral - userExpect + delegateReserve, clisBnb.balanceOf(reserveAddress));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(345e18, deposit);
@@ -342,12 +372,14 @@ contract SlisBNBLpProviderTest is Test {
         slisBNBLpProvider.release(user, 11e18);
         vm.stopPrank();
 
-        uint256 userExpect1 = (345e18 - 11e18) * 9e17 / 1e18;
+        uint256 userAllCollateral1 = uint256(345e18 - 11e18) * exchangeRate / 1e18;
+        uint256 userExpect1 = userAllCollateral1 * userCollateralRate / 1e18;
+
         assertEq(11e18, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(userExpect1, clisBnb.balanceOf(delegateTo));
-//        assertEq(345e18 - 11e18 - userExpect1, clisBnb.balanceOf(reserveAddress));
-        assertEq(345e18 - 11e18 - userExpect1, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(userAllCollateral1 - userExpect1, slisBNBLpProvider.userReservedCollateral(user));
+        assertEq(userAllCollateral1 - userExpect1 + delegateReserve, clisBnb.balanceOf(reserveAddress));
 
         (uint256 deposit1, ) = vat.urns(slisBNBIlk, user);
         assertEq(345e18 - 11e18, deposit1);
@@ -374,7 +406,8 @@ contract SlisBNBLpProviderTest is Test {
 
         assertEq(2e18, slisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(user));
-        assertEq(0, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(0, slisBNBLpProvider.userCollateral(user));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(user));
     }
 
     function test_daoBurn_delegated() public {
@@ -386,6 +419,49 @@ contract SlisBNBLpProviderTest is Test {
 
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(0, clisBnb.balanceOf(delegateTo));
-        assertEq(0, slisBNBLpProvider._userReservedAmount(user));
+        assertEq(0, slisBNBLpProvider.userCollateral(user));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(user));
+    }
+
+    function test_isUserCollateralSynced_true() public {
+        test_provide();
+
+        bool actual = slisBNBLpProvider.isUserCollateralSynced(user);
+        assertEq(true, actual);
+    }
+
+    function test_isUserCollateralSynced_false() public {
+        test_provide();
+
+        vm.startPrank(admin);
+        slisBNBLpProvider.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        bool actual = slisBNBLpProvider.isUserCollateralSynced(user);
+        assertEq(false, actual);
+        assertEq(exchangeRate1, slisBNBLpProvider.exchangeRate());
+    }
+
+    function test_syncUserCollateral() public {
+        test_provide();
+
+        vm.startPrank(admin);
+        slisBNBLpProvider.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        vm.startPrank(manager);
+        slisBNBLpProvider.syncUserCollateral(user);
+        vm.stopPrank();
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(121e18, deposit);
+
+        uint256 allCollateral = 121e18 * exchangeRate1 / 1e18;
+        uint256 expect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(expect, clisBnb.balanceOf(user));
+        assertEq(expect, slisBNBLpProvider.userCollateral(user));
+        assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - expect, slisBNBLpProvider.userReservedCollateral(user));
     }
 }

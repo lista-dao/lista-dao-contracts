@@ -21,14 +21,21 @@ import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
 contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     using SafeERC20 for IERC20;
+    // cert token to collateral token exchange rate
+    uint128 public exchangeRate;
 
-    uint128 public constant _RATE_DENOMINATOR = 1e18;
+    uint128 public userCollateralRate;
 
-    uint128 public _userCollateralRate;
+    address public collateralReserveAddress;
 
-    address public _collateralReserveAddress;
+    mapping(address => uint256) public userReservedCollateral;
 
-    mapping(address => uint256) public _userReservedAmount;
+    /**
+     * Events
+     */
+    event SyncUserCollateral(address account, uint256 userColl, uint256 reservedColl);
+    event ChangeExchangeRate(uint128 rate);
+    event ChangeUserCollateralRate(uint128 rate);
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -37,91 +44,100 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     function initialize(
-        address collateralToken,
-        address certToken,
-        address daoAddress,
-        address collateralReserveAddress,
-        address proxy,
-        address guardian,
-        uint128 userCollateralRate
+        address _admin,
+        address _manager,
+        address _pauser,
+        address _collateralToken,
+        address _certToken,
+        address _daoAddress,
+        address _collateralReserveAddress,
+        uint128 _exchangeRate,
+        uint128 _userCollateralRate
     ) public initializer {
-        require(collateralToken != address(0), "collateralToken is the zero address");
-        require(certToken != address(0), "certToken is the zero address");
-        require(daoAddress != address(0), "daoAddress is the zero address");
-        require(collateralReserveAddress != address(0), "collateralReserveAddress is the zero address");
-        require(proxy != address(0), "proxy is the zero address");
-        require(guardian != address(0), "guardian is the zero address");
-        require(userCollateralRate <= 1e18, "too big rate number");
+        require(_admin != address(0), "admin is the zero address");
+        require(_manager != address(0), "manager is the zero address");
+        require(_pauser != address(0), "pauser is the zero address");
+        require(_collateralToken != address(0), "collateralToken is the zero address");
+        require(_certToken != address(0), "certToken is the zero address");
+        require(_daoAddress != address(0), "daoAddress is the zero address");
+        require(_collateralReserveAddress != address(0), "collateralReserveAddress is the zero address");
+        require(_exchangeRate > 0, "exchangeRate invalid");
+        require(_userCollateralRate <= 1e18, "too big rate number");
 
-        __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(MANAGER, _manager);
+        _grantRole(PAUSER, _pauser);
 
-        _certToken = certToken;
-        _collateralToken = ICertToken(collateralToken);
-        _dao = IDao(daoAddress);
-        _collateralReserveAddress = collateralReserveAddress;
-        _proxy = proxy;
-        _guardian = guardian;
-        _userCollateralRate = userCollateralRate;
+        certToken = _certToken;
+        collateralToken = ICertToken(_collateralToken);
+        dao = IDao(_daoAddress);
+        collateralReserveAddress = _collateralReserveAddress;
+        exchangeRate = _exchangeRate;
+        userCollateralRate = _userCollateralRate;
 
-        IERC20(_certToken).approve(daoAddress, type(uint256).max);
+        IERC20(_certToken).approve(_daoAddress, type(uint256).max);
     }
 
     /**
     * DEPOSIT
     * deposit given amount of certToken to provider
     * given amount collateral token will be mint to caller's address
-    * @param amount amount to deposit
+    * @param _amount amount to deposit
     */
-    function provide(uint256 amount)
+    function provide(uint256 _amount)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _provide(amount);
+        return _provide(_amount);
     }
 
     /**
     * deposit given amount of certToken to provider
     * given amount collateral token will be mint to delegateTo
-    * @param amount amount to deposit
-    * @param delegateTo target address of collateral tokens
+    * @param _amount amount to deposit
+    * @param _delegateTo target address of collateral tokens
     */
-    function provide(uint256 amount, address delegateTo)
+    function provide(uint256 _amount, address _delegateTo)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _provide(amount, delegateTo);
+        return _provide(_amount, _delegateTo);
     }
 
     /**
      * @dev deposit certToken to dao, mint collateral tokens to delegateTo according to rate
      *
+     * @param _account account who deposit certToken
+     * @param _holder collateral token holder
+     * @param _amount cert token amount to deposit
      */
-    function _provideCollateral(address account, address holder, uint256 amount)
+    function _provideCollateral(address _account, address _holder, uint256 _amount)
         internal
         override
         returns (uint256)
     {
-        // all deposit data will be recorded on behalf of `account`
+        // all deposit data will be recorded on behalf of `_account`
         // collateralTokenHolder can be account or delegateTo
-        _dao.deposit(account, _certToken, amount);
-
-        uint256 holderCollateralAmount = amount * _userCollateralRate / _RATE_DENOMINATOR;
+        dao.deposit(_account, certToken, _amount);
+        uint256 totalCollateralAmount = _amount * exchangeRate / RATE_DENOMINATOR;
+        uint256 holderCollateralAmount = totalCollateralAmount * userCollateralRate / RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {
-            _collateralToken.mint(holder, holderCollateralAmount);
+            collateralToken.mint(_holder, holderCollateralAmount);
+            userCollateral[_account] += holderCollateralAmount;
         }
 
-        uint256 reservedCollateralAmount = amount - holderCollateralAmount;
+        uint256 reservedCollateralAmount = totalCollateralAmount - holderCollateralAmount;
         if (reservedCollateralAmount > 0) {
-            _collateralToken.mint(_collateralReserveAddress, reservedCollateralAmount);
-            _userReservedAmount[account] += reservedCollateralAmount;
+            collateralToken.mint(collateralReserveAddress, reservedCollateralAmount);
+            userReservedCollateral[_account] += reservedCollateralAmount;
         }
 
         return holderCollateralAmount;
@@ -129,29 +145,15 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     /**
     * delegate all collateral tokens to given address
-    * @param newDelegateTo new target address of collateral tokens
+    * @param _newDelegateTo new target address of collateral tokens
     */
-    function delegateAllTo(address newDelegateTo)
+    function delegateAllTo(address _newDelegateTo)
         external
         override
         whenNotPaused
         nonReentrant
     {
-        _delegateAllTo(newDelegateTo);
-    }
-
-    /**
-    * total locked amount excluding user's reserved amount
-    *
-    * @param account deposit user address
-    */
-    function _getAvailableLocked(address account)
-        internal
-        override
-        view
-        returns (uint256)
-    {
-        return _dao.locked(_certToken, account) - _userReservedAmount[account];
+        _delegateAllTo(_newDelegateTo);
     }
 
     /**
@@ -159,112 +161,210 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
      * withdraw given amount of certToken to recipient address
      * given amount collateral token will be burned from caller's address
      *
-     * @param recipient recipient address
-     * @param amount amount to release
+     * @param _recipient recipient address
+     * @param _amount amount to release
      */
-    function release(address recipient, uint256 amount)
+    function release(address _recipient, uint256 _amount)
         external
         override
         whenNotPaused
         nonReentrant
         returns (uint256)
     {
-        return _release(recipient, amount);
+        return _release(_recipient, _amount);
     }
 
     /**
      * Burn collateral Token from both delegator and delegateTo
      * @dev burns delegatee's collateralToken first, then delegator's
      */
-    function _burnCollateral(address account, uint256 amount)
+    function _burnCollateral(address _account, uint256 _amount)
         internal
         override
     {
-        uint256 userPart = amount * _userCollateralRate / _RATE_DENOMINATOR;
-        uint256 reservePart = amount - userPart;
-        uint256 userTotalReserved = _userReservedAmount[account];
+        uint256 userCertBalance = dao.locked(certToken, _account);
+        uint256 totalCollateralAmount = _amount * exchangeRate / RATE_DENOMINATOR;
+        uint256 userPart = totalCollateralAmount * userCollateralRate / RATE_DENOMINATOR;
+        uint256 reservePart = totalCollateralAmount - userPart;
+        uint256 userTotalReserved = userReservedCollateral[_account];
 
         if (reservePart > 0) {
-            if (reservePart <= userTotalReserved) {
-                _collateralToken.burn(_collateralReserveAddress, reservePart);
-                _userReservedAmount[account] -= reservePart;
+            if (userCertBalance == _amount) {
+                // burn all when withdraw all cert
+                collateralToken.burn(collateralReserveAddress, userTotalReserved);
+                userReservedCollateral[_account] = 0;
+            } else if (reservePart <= userTotalReserved) {
+                collateralToken.burn(collateralReserveAddress, reservePart);
+                userReservedCollateral[_account] -= reservePart;
             } else if (userTotalReserved > 0) {
-                _collateralToken.burn(_collateralReserveAddress, userTotalReserved);
-                _userReservedAmount[account] = 0;
+                collateralToken.burn(collateralReserveAddress, userTotalReserved);
+                userReservedCollateral[_account] = 0;
             }
         }
 
-        if(_delegation[account].amount > 0) {
-            uint256 delegatedAmount = _delegation[account].amount;
+        if(delegation[_account].amount > 0) {
+            uint256 delegatedAmount = delegation[_account].amount;
             uint256 delegateeBurn = userPart > delegatedAmount ? delegatedAmount : userPart;
             // burn delegatee's token, update delegated amount
-            _collateralToken.burn(_delegation[account].delegateTo, delegateeBurn);
-            _delegation[account].amount -= delegateeBurn;
-            _delegatedAmount[_delegation[account].delegateTo] -= delegateeBurn;
+            collateralToken.burn(delegation[_account].delegateTo, delegateeBurn);
+            delegation[_account].amount -= delegateeBurn;
+            delegatedCollateral[delegation[_account].delegateTo] -= delegateeBurn;
             // burn delegator's token
             if (userPart > delegateeBurn) {
-                _safeBurnCollateral(account, userPart - delegateeBurn);
+                _safeBurnCollateral(_account, userPart - delegateeBurn);
             }
         } else {
             // no delegation, only burn from account
-            _safeBurnCollateral(account, userPart);
+            _safeBurnCollateral(_account, userPart);
         }
+
+        if (userCollateral[_account] >= userPart) {
+            userCollateral[_account] -= userPart;
+        } else {
+            userCollateral[_account] = 0;
+        }
+    }
+
+    function syncUserCollateral(address _account) external {
+        uint256 totalCertBalance = dao.locked(certToken, _account);
+        uint256 userTotalCollateral = totalCertBalance * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
+        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
+        uint256 userPart = userCollateral[_account];
+        uint256 reservedPart = userReservedCollateral[_account];
+
+        require(userPart != expectedUserPart || reservedPart != expectedReservedPart, "already synced");
+
+        // reserved part
+        if (expectedReservedPart > reservedPart) {
+            uint256 mintAmount = expectedReservedPart - reservedPart;
+            collateralToken.mint(collateralReserveAddress, mintAmount);
+            userReservedCollateral[_account] += mintAmount;
+        } else if (expectedReservedPart < reservedPart) {
+            uint256 burnAmount = reservedPart - expectedReservedPart;
+            collateralToken.burn(collateralReserveAddress, burnAmount);
+            userReservedCollateral[_account] -= burnAmount;
+        }
+
+        // user part
+        Delegation storage delegation = delegation[_account];
+        if (delegation.delegateTo != address(0)) {
+            if (expectedUserPart > userPart) {
+                uint256 mintAmount = expectedUserPart - userPart;
+                collateralToken.mint(delegation.delegateTo, mintAmount);
+                delegation.amount += mintAmount;
+                userCollateral[_account] += mintAmount;
+            } else if (expectedUserPart < userPart) {
+                uint256 burnAmount = userPart - expectedUserPart;
+                if (burnAmount <= delegation.amount) {
+                    collateralToken.burn(delegation.delegateTo, burnAmount);
+                    delegation.amount -= burnAmount;
+                    userCollateral[_account] -= burnAmount;
+                } else {
+                    collateralToken.burn(delegation.delegateTo, delegation.amount);
+                    collateralToken.burn(_account, burnAmount - delegation.amount);
+
+                    delegation.amount = 0;
+                    userCollateral[_account] -= delegation.amount;
+                }
+            }
+        } else {
+            if (expectedUserPart > userPart) {
+                uint256 mintAmount = expectedUserPart - userPart;
+                collateralToken.mint(_account, mintAmount);
+                userCollateral[_account] += mintAmount;
+            } else if (expectedUserPart < userPart) {
+                uint256 burnAmount = userPart - expectedUserPart;
+                collateralToken.burn(_account, burnAmount);
+                userCollateral[_account] -= burnAmount;
+            }
+        }
+
+        emit SyncUserCollateral(_account, userCollateral[_account], userReservedCollateral[_account]);
+    }
+
+    /**
+     * check if user collateral is synced with certToken balance
+     *
+     * @param _account collateral token owner
+     */
+    function isUserCollateralSynced(address _account) external view returns (bool) {
+        uint256 totalCertBalance = dao.locked(certToken, _account);
+        uint256 userTotalCollateral = totalCertBalance * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
+        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
+
+        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
     }
 
     /**
      * DAO FUNCTIONALITY
      * transfer given amount of certToken to recipient
      * called by AuctionProxy.buyFromAuction
-     * @param recipient recipient address
-     * @param amount amount to liquidate
+     * @param _recipient recipient address
+     * @param _amount amount to liquidate
      */
-    function liquidation(address recipient, uint256 amount)
+    function liquidation(address _recipient, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        _liquidation(recipient, amount);
+        _liquidation(_recipient, _amount);
     }
 
     /**
      * burn given amount of collateral token from account
      * called by AuctionProxy.startAuction
-     * @param account collateral token holder
-     * @param amount amount to burn
+     * @param _account collateral token holder
+     * @param _amount amount to burn
      */
-    function daoBurn(address account, uint256 amount)
+    function daoBurn(address _account, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        _daoBurn(account, amount);
+        _daoBurn(_account, _amount);
     }
 
     /**
      * mint given amount of collateral token to account
-     * @param account collateral token receiver
-     * @param amount amount to mint
+     * @param _account collateral token receiver
+     * @param _amount amount to mint
      */
-    function daoMint(address account, uint256 amount)
+    function daoMint(address _account, uint256 _amount)
         external
         override
-        whenNotPaused
-        onlyProxy
         nonReentrant
+        whenNotPaused
+        onlyRole(MANAGER)
     {
-        uint256 holderCollateralAmount = amount * _userCollateralRate / _RATE_DENOMINATOR;
+        uint256 holderCollateralAmount = _amount * userCollateralRate / RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {
-            _daoMint(account, amount);
+            _daoMint(_account, _amount);
         }
 
-        uint256 reservedCollateralAmount = amount - holderCollateralAmount;
+        uint256 reservedCollateralAmount = _amount - holderCollateralAmount;
         if (reservedCollateralAmount > 0) {
-            _daoMint(_collateralReserveAddress, reservedCollateralAmount);
-            _userReservedAmount[account] += reservedCollateralAmount;
+            _daoMint(collateralReserveAddress, reservedCollateralAmount);
+            userReservedCollateral[_account] += reservedCollateralAmount;
         }
+    }
+
+    function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_exchangeRate > 0, "exchangeRate invalid");
+
+        exchangeRate = _exchangeRate;
+        emit ChangeExchangeRate(exchangeRate);
+    }
+
+    function changeUserCollateralRate(uint128 _userCollateralRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_userCollateralRate > 0 && _userCollateralRate <= 1e18, "userCollateralRate invalid");
+
+        userCollateralRate = _userCollateralRate;
+        emit ChangeUserCollateralRate(userCollateralRate);
     }
 }
