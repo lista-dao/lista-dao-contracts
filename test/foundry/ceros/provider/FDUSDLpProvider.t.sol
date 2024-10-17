@@ -77,7 +77,7 @@ contract FDUSDLpProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(true, fdusdLpProvider.hasRole(keccak256("MANAGER"), address(interaction)));
+        assertEq(true, fdusdLpProvider.hasRole(keccak256("PROXY"), address(interaction)));
 
         assertEq(admin, clisFDUSD.owner());
         assertEq(true, clisFDUSD._minters(address(fdusdLpProvider)));
