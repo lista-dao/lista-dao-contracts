@@ -58,12 +58,11 @@ contract FDUSDLpProviderTest is Test {
             address(new FDUSDLpProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
-                "initialize(address,address,address,address,address)",
-                address(clisFDUSD), address(FDUSD), address(interaction), address(interaction), admin
+                "initialize(address,address,address,address,address,address)",
+                admin, address(interaction), manager, address(clisFDUSD), address(FDUSD), address(interaction)
             )
         );
         fdusdLpProvider = FDUSDLpProvider(address(providerProxy));
-        fdusdLpProvider.transferOwnership(admin);
 
         vm.startPrank(admin);
         clisFDUSD.addMinter(address(fdusdLpProvider));
@@ -78,8 +77,7 @@ contract FDUSDLpProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(admin, fdusdLpProvider.owner());
-        assertEq(address(interaction), fdusdLpProvider._proxy());
+        assertEq(true, fdusdLpProvider.hasRole(keccak256("MANAGER"), address(interaction)));
 
         assertEq(admin, clisFDUSD.owner());
         assertEq(true, clisFDUSD._minters(address(fdusdLpProvider)));
@@ -96,6 +94,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(121e18, actual);
         assertEq(2e18, FDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(user));
+        assertEq(121e18, fdusdLpProvider.userCollateral(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(121e18, deposit);
@@ -113,8 +112,9 @@ contract FDUSDLpProviderTest is Test {
         assertEq(2e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
+        assertEq(121e18, fdusdLpProvider.userCollateral(user));
 
-        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
         assertEq(delegateTo, actualTo);
 
@@ -131,8 +131,9 @@ contract FDUSDLpProviderTest is Test {
 
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
+        assertEq(121e18, fdusdLpProvider.userCollateral(user));
 
-        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
         assertEq(delegateTo, actualTo);
 
@@ -150,8 +151,9 @@ contract FDUSDLpProviderTest is Test {
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo1));
+        assertEq(121e18, fdusdLpProvider.userCollateral(user));
 
-        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
         assertEq(delegateTo1, actualTo);
 
@@ -169,8 +171,9 @@ contract FDUSDLpProviderTest is Test {
 
         assertEq(121e18, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
+        assertEq(121e18, fdusdLpProvider.userCollateral(user));
 
-        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(0, amount);
         assertEq(address(0), actualTo);
 
@@ -198,6 +201,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(121e18, actual);
         assertEq(123e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
+        assertEq(0, fdusdLpProvider.userCollateral(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(0, deposit);
@@ -214,6 +218,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(123e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
+        assertEq(0, fdusdLpProvider.userCollateral(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(0, deposit);
@@ -262,7 +267,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(100e18, clisFDUSD.balanceOf(delegateTo));
 
-        (address actualTo, uint256 amount) = fdusdLpProvider._delegation(user);
+        (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(100e18, amount);
         assertEq(delegateTo, actualTo);
 
@@ -353,6 +358,7 @@ contract FDUSDLpProviderTest is Test {
         vm.stopPrank();
 
         assertEq(0, clisFDUSD.balanceOf(user));
+        assertEq(0, fdusdLpProvider.userCollateral(user));
     }
 
     function test_daoBurn_delegated() public {
