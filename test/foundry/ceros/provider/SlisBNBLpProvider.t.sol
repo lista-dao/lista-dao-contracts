@@ -76,7 +76,7 @@ contract SlisBNBLpProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(true, slisBNBLpProvider.hasRole(keccak256("MANAGER"), address(interaction)));
+        assertEq(true, slisBNBLpProvider.hasRole(keccak256("PROXY"), address(interaction)));
         assertEq(address(slisBNBLpProvider), clisBnb.getMinter());
     }
 

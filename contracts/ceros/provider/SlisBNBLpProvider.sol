@@ -45,7 +45,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     function initialize(
         address _admin,
-        address _manager,
+        address _proxy,
         address _pauser,
         address _collateralToken,
         address _certToken,
@@ -55,7 +55,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         uint128 _userCollateralRate
     ) public initializer {
         require(_admin != address(0), "admin is the zero address");
-        require(_manager != address(0), "manager is the zero address");
+        require(_proxy != address(0), "proxy is the zero address");
         require(_pauser != address(0), "pauser is the zero address");
         require(_collateralToken != address(0), "collateralToken is the zero address");
         require(_certToken != address(0), "certToken is the zero address");
@@ -67,7 +67,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         __Pausable_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MANAGER, _manager);
+        _grantRole(PROXY, _proxy);
         _grantRole(PAUSER, _pauser);
 
         certToken = _certToken;
@@ -309,7 +309,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         override
         nonReentrant
         whenNotPaused
-        onlyRole(MANAGER)
+        onlyRole(PROXY)
     {
         _liquidation(_recipient, _amount);
     }
@@ -325,7 +325,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         override
         nonReentrant
         whenNotPaused
-        onlyRole(MANAGER)
+        onlyRole(PROXY)
     {
         _daoBurn(_account, _amount);
     }
@@ -340,7 +340,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         override
         nonReentrant
         whenNotPaused
-        onlyRole(MANAGER)
+        onlyRole(PROXY)
     {
         uint256 holderCollateralAmount = _amount * userCollateralRate / RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {

@@ -31,6 +31,8 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     bytes32 public constant MANAGER = keccak256("MANAGER");
     // pause role
     bytes32 public constant PAUSER = keccak256("PAUSER");
+    // proxy role
+    bytes32 public constant PROXY = keccak256("PROXY");
 
     /**
      * Variables
