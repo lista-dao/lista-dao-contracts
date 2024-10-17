@@ -107,6 +107,8 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
         // get user total deposit
         uint256 userCollateral = userCollateral[msg.sender];
+        require(userCollateral > 0, "zero deposit amount");
+
         Delegation storage currentDelegation = delegation[msg.sender];
         address currentDelegateTo = currentDelegation.delegateTo;
 
