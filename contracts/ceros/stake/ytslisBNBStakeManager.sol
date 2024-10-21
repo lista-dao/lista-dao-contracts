@@ -114,6 +114,7 @@ contract ytslisBNBStakeManager is
         require(_certAmount > 0, "zero stake amount");
 
         IERC20(certToken).safeTransferFrom(msg.sender, address(this), _certAmount);
+        _syncCollateral(msg.sender);
         (uint256 userPart, uint256 reservedPart) = _provideCollateral(msg.sender, msg.sender, _certAmount);
         balanceOf[msg.sender] += _certAmount;
         userCollateral[msg.sender] += userPart;
@@ -141,6 +142,7 @@ contract ytslisBNBStakeManager is
         require(_delegateTo != address(0), "delegateTo cannot be a zero address");
 
         IERC20(certToken).safeTransferFrom(msg.sender, address(this), _certAmount);
+        _syncCollateral(msg.sender);
         (uint256 userPart, uint256 reservedPart) = _provideCollateral(msg.sender, _delegateTo, _certAmount);
 
         balanceOf[msg.sender] += _certAmount;
@@ -183,6 +185,8 @@ contract ytslisBNBStakeManager is
         nonReentrant
     {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
+        _syncCollateral(msg.sender);
+
         // get user total collaterals
         uint256 totalCollateral = userCollateral[msg.sender];
         require(totalCollateral > 0, "zero collateral to delegate");
@@ -244,6 +248,7 @@ contract ytslisBNBStakeManager is
         require(_recipient != address(0), "recipient cannot be a zero address");
         require(balanceOf[msg.sender] >= _certAmount, "insufficient balance");
 
+        _syncCollateral(msg.sender);
         (uint256 userPart, uint256 reservedPart) = _burnCollateral(msg.sender, _certAmount);
 
         balanceOf[msg.sender] -= _certAmount;
@@ -325,13 +330,27 @@ contract ytslisBNBStakeManager is
     }
 
     function syncUserCollateral(address _account) external {
+        bool synced = _syncCollateral(_account);
+        require(synced, "already synced");
+    }
+
+    function isUserCollateralSynced(address _account) external view returns (bool) {
+        uint256 userTotalCollateral = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
+        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
+
+        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
+    }
+
+    function _syncCollateral(address _account) internal returns (bool){
         uint256 userTotalCollateral = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
         uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
         uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
         uint256 userPart = userCollateral[_account];
         uint256 reservedPart = userReservedCollateral[_account];
-
-        require(userPart != expectedUserPart || reservedPart != expectedReservedPart, "already synced");
+        if (userPart == expectedUserPart && reservedPart == expectedReservedPart) {
+            return false;
+        }
 
         // reserved part
         if (expectedReservedPart > reservedPart) {
@@ -379,14 +398,7 @@ contract ytslisBNBStakeManager is
         }
 
         emit SyncUserCollateral(_account, userCollateral[_account], userReservedCollateral[_account]);
-    }
-
-    function isUserCollateralSynced(address _account) external view returns (bool) {
-        uint256 userTotalCollateral = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
-        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
-        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
-
-        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
+        return true;
     }
 
     /**
