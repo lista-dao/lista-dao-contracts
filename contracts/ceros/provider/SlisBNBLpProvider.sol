@@ -124,6 +124,8 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         override
         returns (uint256)
     {
+        // do sync before balance modified
+        _syncCollateral(_account);
         // all deposit data will be recorded on behalf of `_account`
         // collateralTokenHolder can be account or delegateTo
         dao.deposit(_account, certToken, _amount);
@@ -153,6 +155,9 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         whenNotPaused
         nonReentrant
     {
+        require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
+
+        _syncCollateral(msg.sender);
         _delegateAllTo(_newDelegateTo);
     }
 
@@ -172,6 +177,14 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         returns (uint256)
     {
         return _release(_recipient, _amount);
+    }
+
+    function _withdrawCollateral(address _account, uint256 _amount) internal override {
+        // do sync before balance modified
+        _syncCollateral(_account);
+
+        dao.withdraw(_account, address(certToken), _amount);
+        _burnCollateral(_account, _amount);
     }
 
     /**
@@ -226,6 +239,25 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     function syncUserCollateral(address _account) external {
+        bool synced = _syncCollateral(_account);
+        require(synced, "already synced");
+    }
+
+    /**
+     * check if user collateral is synced with certToken balance
+     *
+     * @param _account collateral token owner
+     */
+    function isUserCollateralSynced(address _account) external view returns (bool) {
+        uint256 totalCertBalance = dao.locked(certToken, _account);
+        uint256 userTotalCollateral = totalCertBalance * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
+        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
+
+        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
+    }
+
+    function _syncCollateral(address _account) internal returns (bool) {
         uint256 totalCertBalance = dao.locked(certToken, _account);
         uint256 userTotalCollateral = totalCertBalance * exchangeRate / RATE_DENOMINATOR;
         uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
@@ -233,7 +265,9 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         uint256 userPart = userCollateral[_account];
         uint256 reservedPart = userReservedCollateral[_account];
 
-        require(userPart != expectedUserPart || reservedPart != expectedReservedPart, "already synced");
+        if (userPart == expectedUserPart && reservedPart == expectedReservedPart) {
+            return false;
+        }
 
         // reserved part
         if (expectedReservedPart > reservedPart) {
@@ -281,20 +315,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         }
 
         emit SyncUserCollateral(_account, userCollateral[_account], userReservedCollateral[_account]);
-    }
-
-    /**
-     * check if user collateral is synced with certToken balance
-     *
-     * @param _account collateral token owner
-     */
-    function isUserCollateralSynced(address _account) external view returns (bool) {
-        uint256 totalCertBalance = dao.locked(certToken, _account);
-        uint256 userTotalCollateral = totalCertBalance * exchangeRate / RATE_DENOMINATOR;
-        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
-        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
-
-        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
+        return true;
     }
 
     /**

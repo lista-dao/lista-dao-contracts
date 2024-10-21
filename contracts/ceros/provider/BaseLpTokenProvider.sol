@@ -158,7 +158,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         return _amount;
     }
 
-    function _withdrawCollateral(address _account, uint256 _amount) internal {
+    function _withdrawCollateral(address _account, uint256 _amount) virtual internal {
         dao.withdraw(_account, address(certToken), _amount);
         _burnCollateral(_account, _amount);
     }
