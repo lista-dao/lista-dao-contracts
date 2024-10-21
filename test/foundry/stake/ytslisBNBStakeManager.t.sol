@@ -238,6 +238,80 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(exchangeRate1, stakeManager.exchangeRate());
     }
 
+    function test_syncCollateral_stake() public {
+        test_stake();
+
+        vm.startPrank(admin);
+        stakeManager.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        deal(address(slisBNB), user0, 123e18);
+        vm.startPrank(user0);
+        IERC20(slisBNB).safeApprove(address(stakeManager), 123e18);
+        stakeManager.stake(123e18);
+        vm.stopPrank();
+
+        uint256 allCollateral = 246e18 * exchangeRate1 / 1e18;
+        uint256 expect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(0, slisBNB.balanceOf(user0));
+        assertEq(246e18, slisBNB.balanceOf(address(stakeManager)));
+        assertEq(246e18, stakeManager.balanceOf(user0));
+
+        assertEq(expect, clisBnb.balanceOf(user0));
+        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+    }
+
+    function test_syncCollateral_unstake() public {
+        test_stake();
+
+        vm.startPrank(admin);
+        stakeManager.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        vm.startPrank(user0);
+        uint256 actual = stakeManager.unstake(523e17);
+        vm.stopPrank();
+
+        uint256 allCollateral = (123e18 - 523e17) * exchangeRate1 / 1e18;
+        uint256 expect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(523e17, actual);
+        assertEq(523e17, slisBNB.balanceOf(user0));
+        assertEq(123e18 - 523e17, stakeManager.balanceOf(user0));
+        assertEq(123e18 - 523e17, slisBNB.balanceOf(address(stakeManager)));
+
+        assertEq(expect, clisBnb.balanceOf(user0));
+        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+    }
+
+    function test_syncCollateral_delegateAllTo() public {
+        test_stake();
+
+        vm.startPrank(admin);
+        stakeManager.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        vm.startPrank(user0);
+        stakeManager.delegateAllTo(delegateTo);
+        vm.stopPrank();
+
+        uint256 allCollateral = 123e18 * exchangeRate1 / 1e18;
+        uint256 expect = allCollateral * userCollateralRate / 1e18;
+
+        assertEq(0, slisBNB.balanceOf(user0));
+        assertEq(0, clisBnb.balanceOf(user0));
+        assertEq(123e18, stakeManager.balanceOf(user0));
+
+        assertEq(expect, clisBnb.balanceOf(delegateTo));
+        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+    }
+
     function test_syncUserCollateral() public {
         test_stake();
 
