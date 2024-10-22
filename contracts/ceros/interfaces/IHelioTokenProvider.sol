@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.10;
 
-
 interface IHelioTokenProvider {
 
     /**
@@ -20,7 +19,7 @@ interface IHelioTokenProvider {
     event Withdrawal(address indexed owner, address indexed recipient, uint256 amount);
     event Liquidation(address indexed recipient, uint256 amount);
 
-    event ChangeCertToken(address ceToken);
+    event ChangeCeToken(address ceToken);
     event ChangeCollateralToken(address collateralToken);
     event ChangeDao(address dao);
     event ChangeProxy(address auctionProxy);

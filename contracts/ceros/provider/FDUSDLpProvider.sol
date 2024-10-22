@@ -7,13 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/IVault.sol";
-import "../interfaces/IDex.sol";
-import "../interfaces/IDao.sol";
-import "../interfaces/IHelioProviderV2.sol";
-import "../interfaces/IBNBStakingPool.sol";
-import "../interfaces/ICertToken.sol";
-import "../../masterVault/interfaces/IMasterVault.sol";
+import {IDao} from "../interfaces/IDao.sol";
+import {ICertToken} from "../interfaces/ICertToken.sol";
 import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
 
 
@@ -29,14 +24,14 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
         address _proxy,
         address _pauser,
         address _collateralToken,
-        address _certToken,
+        address _ceToken,
         address _daoAddress
     ) public initializer {
         require(_admin != address(0), "admin is the zero address");
         require(_proxy != address(0), "proxy is the zero address");
         require(_pauser != address(0), "pauser is the zero address");
         require(_collateralToken != address(0), "collateralToken is the zero address");
-        require(_certToken != address(0), "certToken is the zero address");
+        require(_ceToken != address(0), "ceToken is the zero address");
         require(_daoAddress != address(0), "daoAddress is the zero address");
 
         __Pausable_init();
@@ -45,16 +40,16 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
         _grantRole(PROXY, _proxy);
         _grantRole(PAUSER, _pauser);
 
-        certToken = _certToken;
+        ceToken = _ceToken;
         collateralToken = ICertToken(_collateralToken);
         dao = IDao(_daoAddress);
 
-        IERC20(certToken).approve(_daoAddress, type(uint256).max);
+        IERC20(ceToken).approve(_daoAddress, type(uint256).max);
     }
 
     /**
     * DEPOSIT
-    * deposit given amount of certToken to provider
+    * deposit given amount of ceToken to provider
     * given amount collateral token will be mint to caller's address
     * @param _amount amount to deposit
     */
@@ -69,7 +64,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
     }
 
     /**
-    * deposit given amount of certToken to provider
+    * deposit given amount of ceToken to provider
     * given amount collateral token will be mint to delegateTo
     * @param _amount amount to deposit
     * @param _delegateTo target address of collateral tokens
@@ -99,7 +94,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
 
     /**
      * RELEASE
-     * withdraw given amount of certToken to recipient address
+     * withdraw given amount of ceToken to recipient address
      * given amount collateral token will be burned from caller's address
      *
      * @param _recipient recipient address
@@ -117,7 +112,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
 
     /**
      * DAO FUNCTIONALITY
-     * transfer given amount of certToken to recipient
+     * transfer given amount of ceToken to recipient
      * called by AuctionProxy.buyFromAuction
      *
      * @param _recipient recipient address
