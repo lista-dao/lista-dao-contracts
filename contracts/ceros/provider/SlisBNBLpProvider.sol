@@ -295,7 +295,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
                     collateralToken.burn(_account, burnAmount - delegation.amount);
 
                     delegation.amount = 0;
-                    userCollateral[_account] -= delegation.amount;
+                    userCollateral[_account] -= burnAmount;
                 }
             }
         } else {
