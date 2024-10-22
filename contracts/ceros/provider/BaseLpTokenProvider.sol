@@ -5,17 +5,14 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "../interfaces/IVault.sol";
-import "../interfaces/IDex.sol";
-import "../interfaces/IDao.sol";
-import "../interfaces/IHelioProviderV2.sol";
-import "../interfaces/IBNBStakingPool.sol";
-import "../interfaces/ICertToken.sol";
-import "../interfaces/IHelioTokenProvider.sol";
-import "../../masterVault/interfaces/IMasterVault.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+import {IVault} from "../interfaces/IVault.sol";
+import {IDao} from "../interfaces/IDao.sol";
+import {IHelioProviderV2} from "../interfaces/IHelioProviderV2.sol";
+import {ICertToken} from "../interfaces/ICertToken.sol";
+import {IHelioTokenProvider} from "../interfaces/IHelioTokenProvider.sol";
 
 
 abstract contract BaseLpTokenProvider is IHelioTokenProvider,
@@ -38,7 +35,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
      * Variables
      */
     // Tokens
-    address public certToken; // original token, e.g FDUSD
+    address public ceToken; // original token, e.g FDUSD
     ICertToken public collateralToken; // (clisXXX, e.g clisFDUSD)
     IDao public dao;
     // account > delegation { delegateTo, amount }
@@ -54,7 +51,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     function _provide(uint256 _amount) internal returns (uint256) {
         require(_amount > 0, "zero deposit amount");
 
-        IERC20(certToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(ceToken).safeTransferFrom(msg.sender, address(this), _amount);
         // deposit ceToken as collateral
         uint256 collateralAmount = _provideCollateral(msg.sender, msg.sender, _amount);
 
@@ -71,7 +68,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
             "delegateTo is differ from the current one"
         );
 
-        IERC20(certToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(ceToken).safeTransferFrom(msg.sender, address(this), _amount);
         uint256 userCollateral = _provideCollateral(msg.sender, _delegateTo, _amount);
 
         Delegation storage delegation = delegation[msg.sender];
@@ -84,12 +81,12 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     }
 
     /**
-     * @dev deposit certToken to dao, mint collateral tokens to delegateTo
-     * by default cert token to collateral token rate is 1:1
+     * @dev deposit ceToken to dao, mint collateral tokens to delegateTo
+     * by default ceToken to collateral token rate is 1:1
      *
-     * @param _account account who deposit certToken
+     * @param _account account who deposit ceToken
      * @param _holder collateral token holder
-     * @param _amount cert token amount to deposit
+     * @param _amount ceToken amount to deposit
      */
     function _provideCollateral(address _account, address _holder, uint256 _amount)
         virtual
@@ -97,7 +94,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         returns (uint256)
     {
         // all deposit data will be recorded on behalf of `account`
-        dao.deposit(_account, certToken, _amount);
+        dao.deposit(_account, ceToken, _amount);
         // collateralTokenHolder can be account or delegateTo
         collateralToken.mint(_holder, _amount);
         userCollateral[_account] += _amount;
@@ -153,23 +150,23 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         require(_amount > 0, "zero withdrawal amount");
 
         _withdrawCollateral(msg.sender, _amount);
-        IERC20(certToken).safeTransfer(_recipient, _amount);
+        IERC20(ceToken).safeTransfer(_recipient, _amount);
         emit Withdrawal(msg.sender, _recipient, _amount);
         return _amount;
     }
 
     function _withdrawCollateral(address _account, uint256 _amount) virtual internal {
-        dao.withdraw(_account, address(certToken), _amount);
+        dao.withdraw(_account, address(ceToken), _amount);
         _burnCollateral(_account, _amount);
     }
 
     /**
      * Burn collateral Token from both delegator and delegateTo
      * @dev burns delegatee's collateralToken first, then delegator's
-     * by default cert token to collateral token rate is 1:1
+     * by default ceToken to collateral token rate is 1:1
      *
      * @param _account collateral token owner
-     * @param _amount cert token amount to burn
+     * @param _amount ceToken amount to burn
      */
     function _burnCollateral(address _account, uint256 _amount) virtual internal {
         Delegation storage delegation = delegation[_account];
@@ -197,7 +194,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
      */
     function _liquidation(address _recipient, uint256 _amount) internal {
         require(_recipient != address(0));
-        IERC20(certToken).safeTransfer(_recipient, _amount);
+        IERC20(ceToken).safeTransfer(_recipient, _amount);
         emit Liquidation(_recipient, _amount);
     }
 
@@ -227,20 +224,20 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         }
     }
 
-    function changeCertToken(address _ceToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(certToken).approve(address(dao), 0);
-        certToken = _ceToken;
-        IERC20(certToken).approve(address(dao), type(uint256).max);
-        emit ChangeCertToken(_ceToken);
+    function changeCeToken(address _ceToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        IERC20(ceToken).approve(address(dao), 0);
+        ceToken = _ceToken;
+        IERC20(ceToken).approve(address(dao), type(uint256).max);
+        emit ChangeCeToken(_ceToken);
     }
     function changeCollateralToken(address _collateralToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         collateralToken = ICertToken(_collateralToken);
         emit ChangeCollateralToken(_collateralToken);
     }
     function changeDao(address _dao) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(certToken).approve(address(dao), 0);
+        IERC20(ceToken).approve(address(dao), 0);
         dao = IDao(_dao);
-        IERC20(certToken).approve(address(dao), type(uint256).max);
+        IERC20(ceToken).approve(address(dao), type(uint256).max);
         emit ChangeDao(_dao);
     }
 
