@@ -26,7 +26,7 @@ async function main() {
 
     // core parameters
     const mat = '2000000000000000000000000000' // Liquidation Ratio
-    const line = '5000000' + rad // Debt Ceiling
+    const line = '500000' + rad // Debt Ceiling
     const dust = '15' + rad // Debt Floor
     const hole = '5000000' + rad // Liquidation
     const chop = '1100000000000000000' // Liquidation
