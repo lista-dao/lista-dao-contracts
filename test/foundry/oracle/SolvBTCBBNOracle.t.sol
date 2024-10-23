@@ -18,13 +18,6 @@ contract SolvBTCBBNOracleTest is Test {
     }
 
     function test_setUp() public {
-        vm.mockCall(
-            oracle,
-            abi.encodeWithSelector(SolvBTCBBNOracle.peek.selector),
-
-        )
-
-
         (bytes32 price, ) = oracle.peek();
         console.logBytes32(price);
     }
