@@ -28,7 +28,7 @@ contract SolvBTCBBNOracle is Initializable {
         uint256 solveBtcPrice = resilientOracle.peek(SOLVE_BTC_TOKEN_ADDR);
         // get SolveBtcBBN/Btc price (8 decimals)
         uint256 solveBtcBbnPrice = resilientOracle.peek(SOLVE_BTC_BBN_TOKEN_ADDR);
-        // calculate wstETH/USD (18 decimals)
+        // calculate SolveBtcBBN/USD (18 decimals)
         return (bytes32(uint(solveBtcPrice) * uint(solveBtcBbnPrice) * 1e2), true);
     }
 }
