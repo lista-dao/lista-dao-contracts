@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "../interfaces/ICertToken.sol";
+import "../interfaces/ILpToken.sol";
 
 
 contract ytslisBNBStakeManager is
@@ -30,60 +30,58 @@ contract ytslisBNBStakeManager is
     // pause role
     bytes32 public constant PAUSER = keccak256("PAUSER");
 
-    // cert token to collateral token exchange rate
+    // token to lp token exchange rate
     uint128 public exchangeRate;
-    // rate of collateral to user
-    uint128 public userCollateralRate;
-
+    // rate of lpToken to user
+    uint128 public userLpTokenRate;
     // should be a mpc wallet address
-    address public collateralReserveAddress;
+    address public lpTokenReserveAddress;
 
-    address public certToken;
-    ICertToken public collateralToken; // (default clisBNB)
-
+    address public token;
+    ILpToken public lpToken; // (default clisBNB)
     // account > total staked
     mapping(address => uint256) public balanceOf;
-
     // account > delegation { delegateTo, amount }
     mapping(address => Delegation) public delegation;
-
-    // user account > sum collateral of user
-    mapping(address => uint256) public userCollateral;
-
-    // user account > sum reserved collateral
-    mapping(address => uint256) public userReservedCollateral;
+    // user account > sum lpToken of user (including delegated)
+    mapping(address => uint256) public userLp;
+    // user account > sum reserved lpToken
+    mapping(address => uint256) public userReservedLp;
+    // total reserved lpToken
+    uint256 public totalReservedLp;
 
     /**
      * Events
      */
-    event Staked(address indexed account, uint256 certAmount, uint256 userColl, uint256 reservedColl);
-    event Unstaked(address indexed account, uint256 certAmount, uint256 userColl, uint256 reservedColl);
+    event Staked(address indexed account, uint256 certAmount, uint256 userLp, uint256 reservedLp);
+    event Unstaked(address indexed account, uint256 certAmount, uint256 userLp, uint256 reservedLp);
     event ChangeDelegateTo(address account, address oldDelegatee, address newDelegatee, uint256 amount);
-    event SyncUserCollateral(address account, uint256 userColl, uint256 reservedColl);
+    event SyncUserLp(address account, uint256 userLp, uint256 reservedLp);
 
     event ChangeExchangeRate(uint128 rate);
-    event ChangeUserCollateralRate(uint128 rate);
-    event ChangeCertToken(address certToken);
-    event ChangeCollateralToken(address collateralToken);
+    event ChangeUserLpTokenRate(uint128 rate);
+    event ChangeLpTokenReserveAddress(address newAddress);
+    event ChangeToken(address token);
+    event ChangeLpToken(address lpToken);
 
     function initialize(
         address _admin,
         address _manager,
         address _pauser,
-        address _certToken,
-        address _collateralToken,
-        address _collateralReserveAddress,
+        address _token,
+        address _lpToken,
+        address _lpTokenReserveAddress,
         uint128 _exchangeRate,
-        uint128 _userCollateralRate
+        uint128 _lpTokenRate
     ) public initializer {
         require(_admin != address(0), "admin cannot be a zero address");
         require(_manager != address(0), "manager cannot be a zero address");
         require(_pauser != address(0), "pauser cannot be a zero address");
-        require(_certToken != address(0), "certToken cannot be a zero address");
-        require(_collateralToken != address(0), "collateralToken cannot be a zero address");
-        require(_collateralReserveAddress != address(0), "collateralReserveAddress cannot be a zero address");
-        require(_exchangeRate > 0, "exchangeRate invalid");
-        require(_userCollateralRate > 0 && _userCollateralRate <= 1e18, "userCollateralRate invalid");
+        require(_token != address(0), "token cannot be a zero address");
+        require(_lpToken != address(0), "lpToken cannot be a zero address");
+        require(_lpTokenReserveAddress != address(0), "lpTokenReserveAddress cannot be a zero address");
+        require(_exchangeRate > 0, "invalid exchangeRate");
+        require(_lpTokenRate > 0 && _lpTokenRate <= 1e18, "invalid userLpTokenRate");
 
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -91,19 +89,19 @@ contract ytslisBNBStakeManager is
         _grantRole(MANAGER, _manager);
         _grantRole(PAUSER, _pauser);
 
-        certToken = _certToken;
-        collateralToken = ICertToken(_collateralToken);
-        collateralReserveAddress = _collateralReserveAddress;
+        token = _token;
+        lpToken = ILpToken(_lpToken);
+        lpTokenReserveAddress = _lpTokenReserveAddress;
         exchangeRate = _exchangeRate;
-        userCollateralRate = _userCollateralRate;
+        userLpTokenRate = _lpTokenRate;
     }
 
     /**
-    * stake given amount of certToken to contract
-    * given amount collateral token will be mint to caller's address according to _exchangeRate
+    * stake given amount of token to contract
+    * given amount lp token will be mint to caller's address according to _exchangeRate
     *
     * @param _certAmount amount to deposit
-    * @return collateral amount minted to caller
+    * @return lp token amount minted to caller
     */
     function stake(uint256 _certAmount)
         external
@@ -113,24 +111,21 @@ contract ytslisBNBStakeManager is
     {
         require(_certAmount > 0, "zero stake amount");
 
-        IERC20(certToken).safeTransferFrom(msg.sender, address(this), _certAmount);
-        _syncCollateral(msg.sender);
-        (uint256 userPart, uint256 reservedPart) = _provideCollateral(msg.sender, msg.sender, _certAmount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _certAmount);
+        _syncLpToken(msg.sender);
+        (uint256 userPart, uint256 reservedPart) = _provideLp(msg.sender, msg.sender, _certAmount);
         balanceOf[msg.sender] += _certAmount;
-        userCollateral[msg.sender] += userPart;
-        userReservedCollateral[msg.sender] += reservedPart;
-
         emit Staked(msg.sender, _certAmount, userPart, reservedPart);
         return userPart;
     }
 
     /**
-    * stake given amount of certToken to contract
-    * given amount collateral token will be mint to delegateTo address according to _exchangeRate
+    * stake given amount of token to contract
+    * given amount lp token will be mint to delegateTo address according to _exchangeRate
     *
     * @param _certAmount amount to deposit
-    * @param _delegateTo target address of collateral tokens
-    * @return collateral amount minted to delegateTo
+    * @param _delegateTo target address of lp tokens
+    * @return lp token amount minted to delegateTo
     */
     function stake(uint256 _certAmount, address _delegateTo)
         external
@@ -141,14 +136,10 @@ contract ytslisBNBStakeManager is
         require(_certAmount > 0, "zero stake amount");
         require(_delegateTo != address(0), "delegateTo cannot be a zero address");
 
-        IERC20(certToken).safeTransferFrom(msg.sender, address(this), _certAmount);
-        _syncCollateral(msg.sender);
-        (uint256 userPart, uint256 reservedPart) = _provideCollateral(msg.sender, _delegateTo, _certAmount);
-
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _certAmount);
+        _syncLpToken(msg.sender);
+        (uint256 userPart, uint256 reservedPart) = _provideLp(msg.sender, _delegateTo, _certAmount);
         balanceOf[msg.sender] += _certAmount;
-        userCollateral[msg.sender] += userPart;
-        userReservedCollateral[msg.sender] += reservedPart;
-
         Delegation storage delegation = delegation[msg.sender];
         delegation.delegateTo = _delegateTo;
         delegation.amount += userPart;
@@ -157,27 +148,33 @@ contract ytslisBNBStakeManager is
         return userPart;
     }
 
-    function _provideCollateral(address _account, address _holder, uint256 _amount)
-        internal
+    /**
+     * provide lp token to given address
+     */
+    function _provideLp(address _account, address _holder, uint256 _amount)
+        private
         returns (uint256, uint256)
     {
-        uint256 totalCollateralAmount = _amount * exchangeRate / RATE_DENOMINATOR;
-        uint256 holderCollateralAmount = totalCollateralAmount * userCollateralRate / RATE_DENOMINATOR;
-        if (holderCollateralAmount > 0) {
-            collateralToken.mint(_holder, holderCollateralAmount);
+        uint256 totalLpAmount = _amount * exchangeRate / RATE_DENOMINATOR;
+        uint256 holderLpAmount = totalLpAmount * userLpTokenRate / RATE_DENOMINATOR;
+        if (holderLpAmount > 0) {
+            lpToken.mint(_holder, holderLpAmount);
+            userLp[_account] += holderLpAmount;
         }
 
-        uint256 reservedCollateralAmount = totalCollateralAmount - holderCollateralAmount;
-        if (reservedCollateralAmount > 0) {
-            collateralToken.mint(collateralReserveAddress, reservedCollateralAmount);
+        uint256 reservedLpAmount = totalLpAmount - holderLpAmount;
+        if (reservedLpAmount > 0) {
+            lpToken.mint(lpTokenReserveAddress, reservedLpAmount);
+            userReservedLp[_account] += reservedLpAmount;
+            totalReservedLp += reservedLpAmount;
         }
 
-        return (holderCollateralAmount, reservedCollateralAmount);
+        return (holderLpAmount, reservedLpAmount);
     }
 
     /**
-    * delegate all collateral tokens to given address
-    * @param _newDelegateTo new target address of collateral tokens
+    * delegate all lp tokens to given address
+    * @param _newDelegateTo new target address of lp tokens
     */
     function delegateAllTo(address _newDelegateTo)
         external
@@ -185,43 +182,47 @@ contract ytslisBNBStakeManager is
         nonReentrant
     {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
-        _syncCollateral(msg.sender);
+        _syncLpToken(msg.sender);
 
-        // get user total collaterals
-        uint256 totalCollateral = userCollateral[msg.sender];
-        require(totalCollateral > 0, "zero collateral to delegate");
+        // get user total lp
+        uint256 userTotalLp = userLp[msg.sender];
+        require(userTotalLp > 0, "zero lp to delegate");
 
         Delegation storage currentDelegation = delegation[msg.sender];
         address currentDelegateTo = currentDelegation.delegateTo;
         // Step 1. burn all tokens
         if (currentDelegation.amount > 0) {
             // burn delegatee's token
-            collateralToken.burn(currentDelegateTo, currentDelegation.amount);
+            lpToken.burn(currentDelegateTo, currentDelegation.amount);
             // burn self's token
-            if (totalCollateral > currentDelegation.amount) {
-                collateralToken.burn(msg.sender, totalCollateral - currentDelegation.amount);
+            if (userTotalLp > currentDelegation.amount) {
+                lpToken.burn(msg.sender, userTotalLp - currentDelegation.amount);
             }
         } else {
-            collateralToken.burn(msg.sender, totalCollateral);
+            lpToken.burn(msg.sender, userTotalLp);
         }
 
         // Step 2. save new delegatee and mint all tokens to delegatee
         if (_newDelegateTo == msg.sender) {
             // mint all to self
-            collateralToken.mint(msg.sender, totalCollateral);
+            lpToken.mint(msg.sender, userTotalLp);
             // remove delegatee
             delete delegation[msg.sender];
         } else {
             // mint all to new delegatee
-            collateralToken.mint(_newDelegateTo, totalCollateral);
+            lpToken.mint(_newDelegateTo, userTotalLp);
             // save delegatee's info
             currentDelegation.delegateTo = _newDelegateTo;
-            currentDelegation.amount = totalCollateral;
+            currentDelegation.amount = userTotalLp;
         }
 
-        emit ChangeDelegateTo(msg.sender, currentDelegateTo, _newDelegateTo, totalCollateral);
+        emit ChangeDelegateTo(msg.sender, currentDelegateTo, _newDelegateTo, userTotalLp);
     }
 
+    /**
+    * unstake given amount of tokens to caller address
+    * @param _certAmount amount of tokens
+    */
     function unstake(uint256 _certAmount)
         external
         whenNotPaused
@@ -231,6 +232,11 @@ contract ytslisBNBStakeManager is
         return _unstake(_certAmount, msg.sender);
     }
 
+    /**
+     * unstake given amount of tokens to recipient address
+     * @param _certAmount amount of tokens
+     * @param _recipient recipient address
+     */
     function unstake(uint256 _certAmount, address _recipient)
         external
         whenNotPaused
@@ -248,156 +254,133 @@ contract ytslisBNBStakeManager is
         require(_recipient != address(0), "recipient cannot be a zero address");
         require(balanceOf[msg.sender] >= _certAmount, "insufficient balance");
 
-        _syncCollateral(msg.sender);
-        (uint256 userPart, uint256 reservedPart) = _burnCollateral(msg.sender, _certAmount);
+        _syncLpToken(msg.sender);
+        (uint256 userPart, uint256 reservedPart) = _burnLp(msg.sender, _certAmount);
 
         balanceOf[msg.sender] -= _certAmount;
-        IERC20(certToken).safeTransfer(_recipient, _certAmount);
+        IERC20(token).safeTransfer(_recipient, _certAmount);
 
         emit Unstaked(msg.sender, _certAmount, userPart, reservedPart);
         return _certAmount;
     }
 
     /**
-     * Burn collateral Token from both delegator and delegateTo
-     * @dev burns delegatee's collateralToken first, then delegator's
-     * @param _account collateral owner
+     * Burn Lp Token from both delegator and delegateTo
+     * @dev burns delegatee's lpToken first, then delegator's
+     * @param _account lp owner
      * @param _certAmount cert token amount
      */
-    function _burnCollateral(address _account, uint256 _certAmount)
-        virtual
-        internal
+    function _burnLp(address _account, uint256 _certAmount)
+        private
         returns (uint256, uint256)
     {
-        uint256 userCertBalance = balanceOf[_account];
-        uint256 collAmount = _certAmount * exchangeRate / RATE_DENOMINATOR;
-        uint256 userPart = collAmount * userCollateralRate / RATE_DENOMINATOR;
-        uint256 reservePart = collAmount - userPart;
-        uint256 userTotalReserved = userReservedCollateral[_account];
+        uint256 lpAmount = _certAmount * exchangeRate / RATE_DENOMINATOR;
+        uint256 userPart = lpAmount * userLpTokenRate / RATE_DENOMINATOR;
+        uint256 reservePart = lpAmount - userPart;
+        uint256 userCurrentReserved = userReservedLp[_account];
         Delegation storage delegation = delegation[_account];
-        if (userCertBalance == _certAmount) {
-            // burn all when withdraw all cert
-            if (userTotalReserved > 0) {
-                collateralToken.burn(collateralReserveAddress, userTotalReserved);
-                userReservedCollateral[_account] = 0;
-            }
-
-            uint256 delegatedAmount = delegation.amount;
-            if (delegatedAmount > 0) {
-                collateralToken.burn(delegation.delegateTo, delegatedAmount);
-                delegation.amount = 0;
-            }
-
-            uint256 currentCollateral = userCollateral[_account];
-            uint256 userBurn = currentCollateral - delegatedAmount;
-            if (userBurn > 0) {
-                collateralToken.burn(_account, userBurn);
-            }
-
-            userCollateral[_account] = 0;
-            return (currentCollateral, userTotalReserved);
-        }
-
         if (reservePart > 0) {
-            if (userCertBalance == _certAmount) {
-            } else if (reservePart <= userTotalReserved) {
-                collateralToken.burn(collateralReserveAddress, reservePart);
-                userReservedCollateral[_account] -= reservePart;
-            } else if (userTotalReserved > 0) {
-                collateralToken.burn(collateralReserveAddress, userTotalReserved);
-                userReservedCollateral[_account] = 0;
-            }
+            lpToken.burn(lpTokenReserveAddress, reservePart);
+            userReservedLp[_account] -= reservePart;
+            totalReservedLp -= reservePart;
         }
 
         if (delegation.amount > 0) {
             uint256 delegatedAmount = delegation.amount;
             uint256 delegateeBurn = userPart > delegatedAmount ? delegatedAmount : userPart;
             // burn delegatee's token, update delegated amount
-            collateralToken.burn(delegation.delegateTo, delegateeBurn);
+            lpToken.burn(delegation.delegateTo, delegateeBurn);
             delegation.amount -= delegateeBurn;
             // burn delegator's token
             if (userPart > delegateeBurn) {
-                collateralToken.burn(_account, userPart - delegateeBurn);
+                lpToken.burn(_account, userPart - delegateeBurn);
             }
-            userCollateral[_account] -= userPart;
+            userLp[_account] -= userPart;
         } else {
             // no delegation, only burn from account
-            collateralToken.burn(_account, userPart);
-            userCollateral[_account] -= userPart;
+            lpToken.burn(_account, userPart);
+            userLp[_account] -= userPart;
         }
 
         return (userPart, reservePart);
     }
 
-    function syncUserCollateral(address _account) external {
-        bool synced = _syncCollateral(_account);
+    /**
+     * @dev sync user's lp token with contract state
+     * @param _account user account
+     */
+    function syncUserLp(address _account) external {
+        bool synced = _syncLpToken(_account);
         require(synced, "already synced");
     }
 
-    function isUserCollateralSynced(address _account) external view returns (bool) {
-        uint256 userTotalCollateral = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
-        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
-        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
+    /**
+     * @dev check if user's lp token is synced with contract
+     * @param _account user account
+     * @return true if user's lp token is synced
+     */
+    function isUserLpSynced(address _account) external view returns (bool) {
+        uint256 userTotalLp = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectUserPart = userTotalLp * userLpTokenRate / RATE_DENOMINATOR;
+        uint256 expectReservePart = userTotalLp - expectUserPart;
 
-        return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
+        return userLp[_account] == expectUserPart && userReservedLp[_account] == expectReservePart;
     }
 
-    function _syncCollateral(address _account) internal returns (bool){
-        uint256 userTotalCollateral = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
-        uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
-        uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
-        uint256 userPart = userCollateral[_account];
-        uint256 reservedPart = userReservedCollateral[_account];
-        if (userPart == expectedUserPart && reservedPart == expectedReservedPart) {
+    /**
+     * @dev sync user's lp token with contract state
+     * @param _account user account
+     * @return true if user's lp token is synced
+     */
+    function _syncLpToken(address _account) private returns (bool){
+        uint256 userTotalLp = balanceOf[_account] * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectUserPart = userTotalLp * userLpTokenRate / RATE_DENOMINATOR;
+        uint256 expectReservePart = userTotalLp - expectUserPart;
+        uint256 userPart = userLp[_account];
+        uint256 reservePart = userReservedLp[_account];
+        if (userPart == expectUserPart && reservePart == expectReservePart) {
             return false;
         }
 
-        // reserved part
-        if (expectedReservedPart > reservedPart) {
-            uint256 mintAmount = expectedReservedPart - reservedPart;
-            collateralToken.mint(collateralReserveAddress, mintAmount);
-            userReservedCollateral[_account] += mintAmount;
-        } else if (expectedReservedPart < reservedPart) {
-            uint256 burnAmount = reservedPart - expectedReservedPart;
-            collateralToken.burn(collateralReserveAddress, burnAmount);
-            userReservedCollateral[_account] -= burnAmount;
+        // considering burn and mint with delta requires more if-else branches
+        // so here just burn all and re-mint all
+        if (reservePart > 0) {
+            lpToken.burn(lpTokenReserveAddress, reservePart);
+            userReservedLp[_account] = 0;
+            totalReservedLp -= reservePart;
         }
 
-        // user part
         Delegation storage delegation = delegation[_account];
-        if (delegation.delegateTo != address(0)) {
-            if (expectedUserPart > userPart) {
-                uint256 mintAmount = expectedUserPart - userPart;
-                collateralToken.mint(delegation.delegateTo, mintAmount);
-                delegation.amount += mintAmount;
-                userCollateral[_account] += mintAmount;
-            } else if (expectedUserPart < userPart) {
-                uint256 burnAmount = userPart - expectedUserPart;
-                if (burnAmount <= delegation.amount) {
-                    collateralToken.burn(delegation.delegateTo, burnAmount);
-                    delegation.amount -= burnAmount;
-                    userCollateral[_account] -= burnAmount;
-                } else {
-                    collateralToken.burn(delegation.delegateTo, delegation.amount);
-                    collateralToken.burn(_account, burnAmount - delegation.amount);
-
-                    delegation.amount = 0;
-                    userCollateral[_account] -= burnAmount;
-                }
+        uint256 currentDelegateAmount = delegation.amount;
+        if (userPart > 0) {
+            if (currentDelegateAmount > 0) {
+                lpToken.burn(delegation.delegateTo, currentDelegateAmount);
+                delegation.amount = 0;
             }
-        } else {
-            if (expectedUserPart > userPart) {
-                uint256 mintAmount = expectedUserPart - userPart;
-                collateralToken.mint(_account, mintAmount);
-                userCollateral[_account] += mintAmount;
-            } else if (expectedUserPart < userPart) {
-                uint256 burnAmount = userPart - expectedUserPart;
-                collateralToken.burn(_account, burnAmount);
-                userCollateral[_account] -= burnAmount;
+            uint256 userSelf = userPart - delegation.amount;
+            if (userSelf > 0) {
+                lpToken.burn(_account, userSelf);
             }
         }
 
-        emit SyncUserCollateral(_account, userCollateral[_account], userReservedCollateral[_account]);
+        // re-mint
+        if (expectReservePart > 0) {
+            lpToken.mint(lpTokenReserveAddress, expectReservePart);
+            userReservedLp[_account] = expectReservePart;
+            totalReservedLp += expectReservePart;
+        }
+
+        if (expectUserPart > 0) {
+            if (delegation.delegateTo != address(0)) {
+                lpToken.mint(delegation.delegateTo, expectUserPart);
+                delegation.amount = expectUserPart;
+            } else {
+                lpToken.mint(_account, expectUserPart);
+            }
+            userLp[_account] = expectUserPart;
+        }
+
+        emit SyncUserLp(_account, userLp[_account], userReservedLp[_account]);
         return true;
     }
 
@@ -414,18 +397,18 @@ contract ytslisBNBStakeManager is
     /**
      * setters
      */
-    function changeCollateralToken(address _collateralToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_collateralToken != address(0), "collateralToken cannot be a zero address");
+    function changeLpToken(address _lpToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_lpToken != address(0), "lpToken cannot be a zero address");
 
-        collateralToken = ICertToken(_collateralToken);
-        emit ChangeCollateralToken(_collateralToken);
+        lpToken = ILpToken(_lpToken);
+        emit ChangeLpToken(_lpToken);
     }
 
-    function changeCertToken(address _certToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_certToken != address(0), "certToken cannot be a zero address");
+    function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_token != address(0), "token cannot be a zero address");
 
-        certToken = _certToken;
-        emit ChangeCertToken(_certToken);
+        token = _token;
+        emit ChangeToken(_token);
     }
 
     function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -435,11 +418,28 @@ contract ytslisBNBStakeManager is
         emit ChangeExchangeRate(exchangeRate);
     }
 
-    function changeUserCollateralRate(uint128 _userCollateralRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_userCollateralRate > 0 && _userCollateralRate <= 1e18, "userCollateralRate invalid");
+    function changeUserLpTokenRate(uint128 _userLpTokenRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_userLpTokenRate > 0 && _userLpTokenRate <= 1e18, "userLpTokenRate invalid");
 
-        userCollateralRate = _userCollateralRate;
-        emit ChangeUserCollateralRate(userCollateralRate);
+        userLpTokenRate = _userLpTokenRate;
+        emit ChangeUserLpTokenRate(userLpTokenRate);
+    }
+
+    /**
+     * change lpTokenReserveAddress, all reserved lpToken will be burned from original address and be minted to new address
+     * @param _lpTokenReserveAddress new lpTokenReserveAddress
+     */
+    function changeLpTokenReserveAddress(address _lpTokenReserveAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_lpTokenReserveAddress != address(0) && _lpTokenReserveAddress != lpTokenReserveAddress, "lpTokenReserveAddress invalid");
+        if (totalReservedLp > 0) {
+            lpToken.burn(lpTokenReserveAddress, totalReservedLp);
+        }
+
+        lpTokenReserveAddress = _lpTokenReserveAddress;
+        if (totalReservedLp > 0) {
+            lpToken.mint(lpTokenReserveAddress, totalReservedLp);
+        }
+        emit ChangeLpTokenReserveAddress(lpTokenReserveAddress);
     }
 
     /**

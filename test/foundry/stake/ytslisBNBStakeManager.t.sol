@@ -57,8 +57,8 @@ contract ytslisBNBStakeManagerTest is Test {
 
     function test_setUp() public {
         assertEq(exchangeRate, stakeManager.exchangeRate());
-        assertEq(address(slisBNB), stakeManager.certToken());
-        assertEq(address(clisBnb), address(stakeManager.collateralToken()));
+        assertEq(address(slisBNB), stakeManager.token());
+        assertEq(address(clisBnb), address(stakeManager.lpToken()));
     }
 
     function test_stake() public {
@@ -78,9 +78,9 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(user0));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
     function test_stake_notEnough() public {
@@ -110,9 +110,9 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(delegateTo));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
     function test_delegateAllTo_new() public {
@@ -130,8 +130,8 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(delegateTo));
-        assertEq(expect, stakeManager.userCollateral(user0));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
     function test_delegateAllTo_change() public {
@@ -150,8 +150,8 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(delegateTo1));
-        assertEq(expect, stakeManager.userCollateral(user0));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
     function test_unstake() public {
@@ -168,7 +168,7 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(0, slisBNB.balanceOf(address(stakeManager)));
         assertEq(0, clisBnb.balanceOf(user0));
         assertEq(0, clisBnb.balanceOf(reserveAddress));
-        assertEq(0, stakeManager.userReservedCollateral(user0));
+        assertEq(0, stakeManager.userReservedLp(user0));
     }
 
     function test_unstake_partial() public {
@@ -187,9 +187,9 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18 - 523e17, slisBNB.balanceOf(address(stakeManager)));
 
         assertEq(expect, clisBnb.balanceOf(user0));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
     function test_unstake_delegate() public {
@@ -207,7 +207,7 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(0, clisBnb.balanceOf(user0));
         assertEq(0, clisBnb.balanceOf(delegateTo));
         assertEq(0, clisBnb.balanceOf(reserveAddress));
-        assertEq(0, stakeManager.userReservedCollateral(user0));
+        assertEq(0, stakeManager.userReservedLp(user0));
     }
 
     function test_unstake_overflow() public {
@@ -222,7 +222,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_isUserCollateralSynced_true() public {
         test_stake();
 
-        bool actual = stakeManager.isUserCollateralSynced(user0);
+        bool actual = stakeManager.isUserLpSynced(user0);
         assertEq(true, actual);
     }
 
@@ -233,12 +233,12 @@ contract ytslisBNBStakeManagerTest is Test {
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
-        bool actual = stakeManager.isUserCollateralSynced(user0);
+        bool actual = stakeManager.isUserLpSynced(user0);
         assertEq(false, actual);
         assertEq(exchangeRate1, stakeManager.exchangeRate());
     }
 
-    function test_syncCollateral_stake() public {
+    function test_syncLpToken_stake() public {
         test_stake();
 
         vm.startPrank(admin);
@@ -259,12 +259,12 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(246e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(user0));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
-    function test_syncCollateral_unstake() public {
+    function test_syncLpToken_unstake() public {
         test_stake();
 
         vm.startPrank(admin);
@@ -284,12 +284,12 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18 - 523e17, slisBNB.balanceOf(address(stakeManager)));
 
         assertEq(expect, clisBnb.balanceOf(user0));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
-    function test_syncCollateral_delegateAllTo() public {
+    function test_syncLpToken_delegateAllTo() public {
         test_stake();
 
         vm.startPrank(admin);
@@ -308,11 +308,11 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(123e18, stakeManager.balanceOf(user0));
 
         assertEq(expect, clisBnb.balanceOf(delegateTo));
-        assertEq(expect, stakeManager.userCollateral(user0));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 
-    function test_syncUserCollateral() public {
+    function test_syncUserLp() public {
         test_stake();
 
         vm.startPrank(admin);
@@ -320,7 +320,7 @@ contract ytslisBNBStakeManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(manager);
-        stakeManager.syncUserCollateral(user0);
+        stakeManager.syncUserLp(user0);
         vm.stopPrank();
 
         assertEq(123e18, stakeManager.balanceOf(user0));
@@ -329,8 +329,8 @@ contract ytslisBNBStakeManagerTest is Test {
         uint256 expect = allCollateral * userCollateralRate / 1e18;
 
         assertEq(expect, clisBnb.balanceOf(user0));
-        assertEq(expect, stakeManager.userCollateral(user0));
+        assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
-        assertEq(allCollateral - expect, stakeManager.userReservedCollateral(user0));
+        assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
     }
 }
