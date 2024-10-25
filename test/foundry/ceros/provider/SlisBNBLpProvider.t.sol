@@ -76,7 +76,7 @@ contract SlisBNBLpProviderTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(true, slisBNBLpProvider.hasRole(keccak256("MANAGER"), address(interaction)));
+        assertEq(true, slisBNBLpProvider.hasRole(keccak256("PROXY"), address(interaction)));
         assertEq(address(slisBNBLpProvider), clisBnb.getMinter());
     }
 
@@ -321,28 +321,29 @@ contract SlisBNBLpProviderTest is Test {
     }
 
     function test_release_delegatee_mixed() public {
-        // set up delegateTo's tokens
-        deal(address(slisBnb), delegateTo, 123e18);
+        // set up delegateTo's tokens, make it like an old user
+        deal(address(slisBnb), delegateTo, 123 ether);
 
-        vm.startPrank(delegateTo);
-        slisBnb.approve(address(slisBNBLpProvider), 121e18);
-        slisBNBLpProvider.provide(121e18);
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(slisBnb), address(0));
         vm.stopPrank();
 
-        uint256 allCollateral = 121e18 * exchangeRate / 1e18;
-        uint256 delegateExpect = allCollateral * userCollateralRate / 1e18;
-        uint256 delegateReserve = allCollateral - delegateExpect;
+        vm.startPrank(delegateTo);
+        slisBnb.approve(address(interaction), 121 ether);
+        interaction.deposit(delegateTo, address(slisBnb), 121 ether);
+        vm.stopPrank();
 
-        assertEq(2e18, slisBnb.balanceOf(delegateTo));
-        assertEq(delegateExpect, clisBnb.balanceOf(delegateTo));
-        assertEq(delegateExpect, slisBNBLpProvider.userCollateral(delegateTo));
-        assertEq(delegateReserve, slisBNBLpProvider.userReservedCollateral(delegateTo));
+        assertEq(2 ether, slisBnb.balanceOf(delegateTo));
+        assertEq(0, clisBnb.balanceOf(delegateTo));
+        assertEq(0, slisBNBLpProvider.userCollateral(delegateTo));
+        assertEq(0, slisBNBLpProvider.userReservedCollateral(delegateTo));
 
         (uint256 delegateToDeposit, ) = vat.urns(slisBNBIlk, delegateTo);
-        assertEq(121e18, delegateToDeposit);
+        assertEq(121 ether, delegateToDeposit);
 
-        // clear delegateTo collateral tokens, make it like an old user
-        deal(address(clisBnb), delegateTo, 0);
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider));
+        vm.stopPrank();
         console.log("part 1 ok");
 
         // set up user's tokens
@@ -361,7 +362,7 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(userExpect, clisBnb.balanceOf(delegateTo));
         assertEq(userExpect, slisBNBLpProvider.userCollateral(user));
         assertEq(userAllCollateral - userExpect, slisBNBLpProvider.userReservedCollateral(user));
-        assertEq(userAllCollateral - userExpect + delegateReserve, clisBnb.balanceOf(reserveAddress));
+        assertEq(userAllCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
 
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(345e18, deposit);
@@ -379,7 +380,7 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(0, clisBnb.balanceOf(user));
         assertEq(userExpect1, clisBnb.balanceOf(delegateTo));
         assertEq(userAllCollateral1 - userExpect1, slisBNBLpProvider.userReservedCollateral(user));
-        assertEq(userAllCollateral1 - userExpect1 + delegateReserve, clisBnb.balanceOf(reserveAddress));
+        assertEq(userAllCollateral1 - userExpect1, clisBnb.balanceOf(reserveAddress));
 
         (uint256 deposit1, ) = vat.urns(slisBNBIlk, user);
         assertEq(345e18 - 11e18, deposit1);

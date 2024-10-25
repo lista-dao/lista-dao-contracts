@@ -7,13 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/IVault.sol";
-import "../interfaces/IDex.sol";
-import "../interfaces/IDao.sol";
-import "../interfaces/IHelioProviderV2.sol";
-import "../interfaces/IBNBStakingPool.sol";
-import "../interfaces/ICertToken.sol";
-import "../../masterVault/interfaces/IMasterVault.sol";
+import {IDao} from "../interfaces/IDao.sol";
+import {ILpToken} from "../interfaces/ILpToken.sol";
 import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
 
 
@@ -26,35 +21,35 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
 
     function initialize(
         address _admin,
-        address _manager,
+        address _proxy,
         address _pauser,
-        address _collateralToken,
-        address _certToken,
+        address _lpToken,
+        address _token,
         address _daoAddress
     ) public initializer {
         require(_admin != address(0), "admin is the zero address");
-        require(_manager != address(0), "manager is the zero address");
+        require(_proxy != address(0), "proxy is the zero address");
         require(_pauser != address(0), "pauser is the zero address");
-        require(_collateralToken != address(0), "collateralToken is the zero address");
-        require(_certToken != address(0), "certToken is the zero address");
+        require(_lpToken != address(0), "lpToken is the zero address");
+        require(_token != address(0), "token is the zero address");
         require(_daoAddress != address(0), "daoAddress is the zero address");
 
         __Pausable_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MANAGER, _manager);
+        _grantRole(PROXY, _proxy);
         _grantRole(PAUSER, _pauser);
 
-        certToken = _certToken;
-        collateralToken = ICertToken(_collateralToken);
+        token = _token;
+        lpToken = ILpToken(_lpToken);
         dao = IDao(_daoAddress);
 
-        IERC20(certToken).approve(_daoAddress, type(uint256).max);
+        IERC20(token).approve(_daoAddress, type(uint256).max);
     }
 
     /**
     * DEPOSIT
-    * deposit given amount of certToken to provider
+    * deposit given amount of token to provider
     * given amount collateral token will be mint to caller's address
     * @param _amount amount to deposit
     */
@@ -69,7 +64,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
     }
 
     /**
-    * deposit given amount of certToken to provider
+    * deposit given amount of token to provider
     * given amount collateral token will be mint to delegateTo
     * @param _amount amount to deposit
     * @param _delegateTo target address of collateral tokens
@@ -99,7 +94,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
 
     /**
      * RELEASE
-     * withdraw given amount of certToken to recipient address
+     * withdraw given amount of token to recipient address
      * given amount collateral token will be burned from caller's address
      *
      * @param _recipient recipient address
@@ -117,7 +112,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
 
     /**
      * DAO FUNCTIONALITY
-     * transfer given amount of certToken to recipient
+     * transfer given amount of token to recipient
      * called by AuctionProxy.buyFromAuction
      *
      * @param _recipient recipient address
@@ -128,7 +123,7 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
         override
         nonReentrant
         whenNotPaused
-        onlyRole(MANAGER)
+        onlyRole(PROXY)
     {
         _liquidation(_recipient, _amount);
     }
@@ -145,23 +140,8 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
         override
         nonReentrant
         whenNotPaused
-        onlyRole(MANAGER)
+        onlyRole(PROXY)
     {
         _daoBurn(_account, _amount);
-    }
-
-    /**
-     * mint given amount of collateral token to account
-     * @param _account collateral token receiver
-     * @param _amount amount to mint
-     */
-    function daoMint(address _account, uint256 _amount)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyRole(MANAGER)
-    {
-        _daoMint(_account, _amount);
     }
 }
