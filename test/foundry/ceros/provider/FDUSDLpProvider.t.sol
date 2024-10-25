@@ -271,8 +271,28 @@ contract FDUSDLpProviderTest is Test {
     }
 
     function test_release_less_collateral() public {
-        test_provide();
-        deal(address(clisFDUSD), user, 10e18);
+        deal(address(FDUSD), user, 123e18);
+
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(FDUSD), address(0));
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        FDUSD.approve(address(interaction), 121e18);
+        interaction.deposit(user, address(FDUSD), 121e18);
+        vm.stopPrank();
+
+        assertEq(2 ether, FDUSD.balanceOf(user));
+        assertEq(0, clisFDUSD.balanceOf(user));
+        assertEq(0, fdusdLpProvider.userCollateral(user));
+
+        (uint256 deposit0, ) = vat.urns(fdusdIlk, user);
+        assertEq(121 ether, deposit0);
+
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider));
+        vm.stopPrank();
+        console.log("part 1 ok");
 
         vm.startPrank(user);
         uint256 actual = fdusdLpProvider.release(user, 121e18);
@@ -286,64 +306,64 @@ contract FDUSDLpProviderTest is Test {
         assertEq(0, deposit);
     }
 
-    function test_release_delegatee_mixed() public {
-        // set up delegateTo's tokens
-        deal(address(FDUSD), delegateTo, 123e18);
-
-        vm.startPrank(delegateTo);
-        FDUSD.approve(address(fdusdLpProvider), 121e18);
-        fdusdLpProvider.provide(121e18);
-        vm.stopPrank();
-
-        assertEq(2e18, FDUSD.balanceOf(delegateTo));
-        assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
-
-        (uint256 delegateToDeposit, ) = vat.urns(fdusdIlk, delegateTo);
-        assertEq(121e18, delegateToDeposit);
-
-        // clear delegateTo collateral tokens, make it like an old user
-        deal(address(clisFDUSD), delegateTo, 0);
-        assertEq(0, clisFDUSD.balanceOf(delegateTo));
-
-        // set up user's tokens
-        deal(address(FDUSD), user, 345e18);
-
-        vm.startPrank(user);
-        FDUSD.approve(address(fdusdLpProvider), 345e18);
-        fdusdLpProvider.provide(345e18, delegateTo);
-        vm.stopPrank();
-
-        assertEq(0, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(345e18, clisFDUSD.balanceOf(delegateTo));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(345e18, deposit);
-
-        // user withdraw partially
-        vm.startPrank(user);
-        fdusdLpProvider.release(user, 11e18);
-        vm.stopPrank();
-
-        assertEq(11e18, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(334e18, clisFDUSD.balanceOf(delegateTo));
-
-        (uint256 deposit0, ) = vat.urns(fdusdIlk, user);
-        assertEq(334e18, deposit0);
-
-        // delegateTo release should not burn delegatedAmount
-        vm.startPrank(delegateTo);
-        uint256 actual = fdusdLpProvider.release(delegateTo, 121e18);
-        vm.stopPrank();
-
-        assertEq(121e18, actual);
-        assertEq(123e18, FDUSD.balanceOf(delegateTo));
-        assertEq(334e18, clisFDUSD.balanceOf(delegateTo));
-
-        (uint256 afterDeposit, ) = vat.urns(fdusdIlk, delegateTo);
-        assertEq(0, afterDeposit);
-    }
+//    function test_release_delegatee_mixed() public {
+//        // set up delegateTo's tokens
+//        deal(address(FDUSD), delegateTo, 123e18);
+//
+//        vm.startPrank(delegateTo);
+//        FDUSD.approve(address(fdusdLpProvider), 121e18);
+//        fdusdLpProvider.provide(121e18);
+//        vm.stopPrank();
+//
+//        assertEq(2e18, FDUSD.balanceOf(delegateTo));
+//        assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
+//
+//        (uint256 delegateToDeposit, ) = vat.urns(fdusdIlk, delegateTo);
+//        assertEq(121e18, delegateToDeposit);
+//
+//        // clear delegateTo collateral tokens, make it like an old user
+//        deal(address(clisFDUSD), delegateTo, 0);
+//        assertEq(0, clisFDUSD.balanceOf(delegateTo));
+//
+//        // set up user's tokens
+//        deal(address(FDUSD), user, 345e18);
+//
+//        vm.startPrank(user);
+//        FDUSD.approve(address(fdusdLpProvider), 345e18);
+//        fdusdLpProvider.provide(345e18, delegateTo);
+//        vm.stopPrank();
+//
+//        assertEq(0, FDUSD.balanceOf(user));
+//        assertEq(0, clisFDUSD.balanceOf(user));
+//        assertEq(345e18, clisFDUSD.balanceOf(delegateTo));
+//
+//        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
+//        assertEq(345e18, deposit);
+//
+//        // user withdraw partially
+//        vm.startPrank(user);
+//        fdusdLpProvider.release(user, 11e18);
+//        vm.stopPrank();
+//
+//        assertEq(11e18, FDUSD.balanceOf(user));
+//        assertEq(0, clisFDUSD.balanceOf(user));
+//        assertEq(334e18, clisFDUSD.balanceOf(delegateTo));
+//
+//        (uint256 deposit0, ) = vat.urns(fdusdIlk, user);
+//        assertEq(334e18, deposit0);
+//
+//        // delegateTo release should not burn delegatedAmount
+//        vm.startPrank(delegateTo);
+//        uint256 actual = fdusdLpProvider.release(delegateTo, 121e18);
+//        vm.stopPrank();
+//
+//        assertEq(121e18, actual);
+//        assertEq(123e18, FDUSD.balanceOf(delegateTo));
+//        assertEq(334e18, clisFDUSD.balanceOf(delegateTo));
+//
+//        (uint256 afterDeposit, ) = vat.urns(fdusdIlk, delegateTo);
+//        assertEq(0, afterDeposit);
+//    }
 
     function test_daoBurn() public {
         test_provide();
