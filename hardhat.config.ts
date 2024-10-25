@@ -41,7 +41,10 @@ const config: HardhatUserConfig = {
       chainId: 56,
       accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`],
     },
-
+    bscLocal: {
+      url: "http://127.0.0.1:8545",
+      accounts: [process.env.DEPLOYER_PRIVATE_KEY || ""],
+    },
     bsc_testnet: {
       url: process.env.BSC_TESTNET_RPC || `https://data-seed-prebsc-2-s3.binance.org:8545/`,
       chainId: 97,
