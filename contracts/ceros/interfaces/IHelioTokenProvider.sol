@@ -14,20 +14,17 @@ interface IHelioTokenProvider {
     /**
      * Events
      */
-    event Deposit(address indexed account, uint256 amount, uint256 collateralAmount);
+    event Deposit(address indexed account, uint256 amount, uint256 lPAmount);
     event Claim(address indexed recipient, uint256 amount);
     event Withdrawal(address indexed owner, address indexed recipient, uint256 amount);
     event Liquidation(address indexed recipient, uint256 amount);
 
-    event ChangeCeToken(address ceToken);
-    event ChangeCollateralToken(address collateralToken);
+    event ChangeToken(address ceToken);
+    event ChangeLpToken(address lPToken);
     event ChangeDao(address dao);
     event ChangeProxy(address auctionProxy);
-    event ChangeMasterVault(address masterVault);
-    event ChangeBNBStakingPool(address pool, bool useStakeManagerPool);
-    event ChangeLiquidationStrategy(address strategy);
     event ChangeDelegateTo(address account, address oldDelegatee, address newDelegatee);
-    event ChangeGuardian(address oldGuardian, address newGuardian);
+    event SyncUserLp(address account, uint256 userLp);
 
     /**
      * Deposit
@@ -46,5 +43,4 @@ interface IHelioTokenProvider {
      */
     function liquidation(address recipient, uint256 amount) external;
     function daoBurn(address account, uint256 amount) external;
-    function daoMint(address account, uint256 amount) external;
 }

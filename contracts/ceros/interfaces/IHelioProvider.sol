@@ -29,7 +29,6 @@ interface IHelioProvider {
     /**
      * Deposit
      */
-
     // in BNB
     function provide() external payable returns (uint256);
 

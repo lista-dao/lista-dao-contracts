@@ -17,7 +17,7 @@ async function main() {
         collateralReserveAddress = '' // fixme
         exchangeRate = 1022e15.toFixed()
         userCollateralRate = 95e16.toFixed()
-    } else if (hre.network.name === "bsc_testnet") {
+    } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
         pauser = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
         proxy = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
         collateralToken = '0x3dC5a40119B85d5f2b06eEC86a6d36852bd9aB52'
