@@ -2,7 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./NonTransferableERC20.sol";
+
+import {NonTransferableERC20} from "./NonTransferableERC20.sol";
 
 
 contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
@@ -49,6 +50,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
 
     function addMinter(address minter) external onlyOwner {
         require(minter != address(0), "Minter: zero address");
+        require(!_minters[minter], "Minter: already a minter");
 
         _minters[minter] = true;
         emit MinterModified(minter, true);
@@ -56,6 +58,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
 
     function removeMinter(address minter) external onlyOwner {
         require(minter != address(0), "Minter: zero address");
+        require(_minters[minter], "Minter: not a minter");
 
         delete _minters[minter];
         emit MinterModified(minter, false);
