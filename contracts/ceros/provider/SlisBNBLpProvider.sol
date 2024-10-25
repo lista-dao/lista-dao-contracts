@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IDao} from "../interfaces/IDao.sol";
-import {ICertToken} from "../interfaces/ICertToken.sol";
+import {ILpToken} from "../interfaces/ILpToken.sol";
 import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
 
 
@@ -42,8 +42,8 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         address _admin,
         address _proxy,
         address _pauser,
-        address _collateralToken,
-        address _ceToken,
+        address _lpToken,
+        address _token,
         address _daoAddress,
         address _collateralReserveAddress,
         uint128 _exchangeRate,
@@ -52,8 +52,8 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         require(_admin != address(0), "admin is the zero address");
         require(_proxy != address(0), "proxy is the zero address");
         require(_pauser != address(0), "pauser is the zero address");
-        require(_collateralToken != address(0), "collateralToken is the zero address");
-        require(_ceToken != address(0), "ceToken is the zero address");
+        require(_lpToken != address(0), "lpToken is the zero address");
+        require(_token != address(0), "ceToken is the zero address");
         require(_daoAddress != address(0), "daoAddress is the zero address");
         require(_collateralReserveAddress != address(0), "collateralReserveAddress is the zero address");
         require(_exchangeRate > 0, "exchangeRate invalid");
@@ -65,14 +65,14 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         _grantRole(PROXY, _proxy);
         _grantRole(PAUSER, _pauser);
 
-        ceToken = _ceToken;
-        collateralToken = ICertToken(_collateralToken);
+        token = _token;
+        lpToken = ILpToken(_lpToken);
         dao = IDao(_daoAddress);
         collateralReserveAddress = _collateralReserveAddress;
         exchangeRate = _exchangeRate;
         userCollateralRate = _userCollateralRate;
 
-        IERC20(ceToken).approve(_daoAddress, type(uint256).max);
+        IERC20(token).approve(_daoAddress, type(uint256).max);
     }
 
     /**
@@ -108,32 +108,30 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     /**
-     * @dev deposit ceToken to dao, mint collateral tokens to delegateTo according to rate
+     * @dev deposit token to dao, mint collateral tokens to delegateTo according to rate
      *
-     * @param _account account who deposit ceToken
+     * @param _account account who deposit token
      * @param _holder collateral token holder
-     * @param _amount ceToken amount to deposit
+     * @param _amount token amount to deposit
      */
     function _provideCollateral(address _account, address _holder, uint256 _amount)
         internal
         override
         returns (uint256)
     {
-        // do sync before balance modified
-        _syncCollateral(_account);
         // all deposit data will be recorded on behalf of `_account`
-        // collateralTokenHolder can be account or delegateTo
-        dao.deposit(_account, ceToken, _amount);
+        // lpTokenHolder can be account or delegateTo
+        dao.deposit(_account, token, _amount);
         uint256 totalCollateralAmount = _amount * exchangeRate / RATE_DENOMINATOR;
         uint256 holderCollateralAmount = totalCollateralAmount * userCollateralRate / RATE_DENOMINATOR;
         if (holderCollateralAmount > 0) {
-            collateralToken.mint(_holder, holderCollateralAmount);
+            lpToken.mint(_holder, holderCollateralAmount);
             userCollateral[_account] += holderCollateralAmount;
         }
 
         uint256 reservedCollateralAmount = totalCollateralAmount - holderCollateralAmount;
         if (reservedCollateralAmount > 0) {
-            collateralToken.mint(collateralReserveAddress, reservedCollateralAmount);
+            lpToken.mint(collateralReserveAddress, reservedCollateralAmount);
             userReservedCollateral[_account] += reservedCollateralAmount;
         }
 
@@ -150,15 +148,12 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         whenNotPaused
         nonReentrant
     {
-        require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
-
-        _syncCollateral(msg.sender);
         _delegateAllTo(_newDelegateTo);
     }
 
     /**
      * RELEASE
-     * withdraw given amount of ceToken to recipient address
+     * withdraw given amount of token to recipient address
      * given amount collateral token will be burned from caller's address
      *
      * @param _recipient recipient address
@@ -174,39 +169,33 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         return _release(_recipient, _amount);
     }
 
-    function _withdrawCollateral(address _account, uint256 _amount) internal override {
-        // do sync before balance modified
-        _syncCollateral(_account);
-
-        dao.withdraw(_account, address(ceToken), _amount);
-        _burnCollateral(_account, _amount);
-    }
-
     /**
      * Burn collateral Token from both delegator and delegateTo
      *
-     * @dev burns delegatee's collateralToken first, then delegator's
+     * @dev burns delegatee's lpToken first, then delegator's
      */
     function _burnCollateral(address _account, uint256 _amount)
         internal
         override
     {
-        uint256 userCeBalance = dao.locked(ceToken, _account);
+        uint256 userCeBalance = dao.locked(token, _account);
         uint256 totalCollateralAmount = _amount * exchangeRate / RATE_DENOMINATOR;
         uint256 userPart = totalCollateralAmount * userCollateralRate / RATE_DENOMINATOR;
         uint256 reservePart = totalCollateralAmount - userPart;
         uint256 userTotalReserved = userReservedCollateral[_account];
 
         if (reservePart > 0) {
-            if (userCeBalance == _amount) {
-                // burn all when withdraw all ceToken
-                collateralToken.burn(collateralReserveAddress, userTotalReserved);
+            // fixme: remove this case
+            if (userCeBalance == 0) {
+                // burn all when withdraw all token
+                lpToken.burn(collateralReserveAddress, userTotalReserved);
                 userReservedCollateral[_account] = 0;
             } else if (reservePart <= userTotalReserved) {
-                collateralToken.burn(collateralReserveAddress, reservePart);
+                lpToken.burn(collateralReserveAddress, reservePart);
                 userReservedCollateral[_account] -= reservePart;
             } else if (userTotalReserved > 0) {
-                collateralToken.burn(collateralReserveAddress, userTotalReserved);
+                // fixme: remove this branch
+                lpToken.burn(collateralReserveAddress, userTotalReserved);
                 userReservedCollateral[_account] = 0;
             }
         }
@@ -215,7 +204,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
             uint256 delegatedAmount = delegation[_account].amount;
             uint256 delegateeBurn = userPart > delegatedAmount ? delegatedAmount : userPart;
             // burn delegatee's token, update delegated amount
-            collateralToken.burn(delegation[_account].delegateTo, delegateeBurn);
+            lpToken.burn(delegation[_account].delegateTo, delegateeBurn);
             delegation[_account].amount -= delegateeBurn;
             delegatedCollateral[delegation[_account].delegateTo] -= delegateeBurn;
             // burn delegator's token
@@ -230,6 +219,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         if (userCollateral[_account] >= userPart) {
             userCollateral[_account] -= userPart;
         } else {
+            // fixme: remove this branch
             userCollateral[_account] = 0;
         }
     }
@@ -240,12 +230,12 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     /**
-     * check if user collateral is synced with ceToken balance
+     * check if user collateral is synced with token balance
      *
      * @param _account collateral token owner
      */
     function isUserCollateralSynced(address _account) external view returns (bool) {
-        uint256 totalCeBalance = dao.locked(ceToken, _account);
+        uint256 totalCeBalance = dao.locked(token, _account);
         uint256 userTotalCollateral = totalCeBalance * exchangeRate / RATE_DENOMINATOR;
         uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
         uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
@@ -253,14 +243,15 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         return userCollateral[_account] == expectedUserPart && userReservedCollateral[_account] == expectedReservedPart;
     }
 
-    function _syncCollateral(address _account) internal returns (bool) {
-        uint256 totalCeBalance = dao.locked(ceToken, _account);
+    function _syncCollateral(address _account) internal override returns (bool) {
+        uint256 totalCeBalance = dao.locked(token, _account);
         uint256 userTotalCollateral = totalCeBalance * exchangeRate / RATE_DENOMINATOR;
         uint256 expectedUserPart = userTotalCollateral * userCollateralRate / RATE_DENOMINATOR;
         uint256 expectedReservedPart = userTotalCollateral - expectedUserPart;
         uint256 userPart = userCollateral[_account];
         uint256 reservedPart = userReservedCollateral[_account];
 
+        // fixme add diff threshold
         if (userPart == expectedUserPart && reservedPart == expectedReservedPart) {
             return false;
         }
@@ -268,31 +259,32 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         // reserved part
         if (expectedReservedPart > reservedPart) {
             uint256 mintAmount = expectedReservedPart - reservedPart;
-            collateralToken.mint(collateralReserveAddress, mintAmount);
+            lpToken.mint(collateralReserveAddress, mintAmount);
             userReservedCollateral[_account] += mintAmount;
         } else if (expectedReservedPart < reservedPart) {
             uint256 burnAmount = reservedPart - expectedReservedPart;
-            collateralToken.burn(collateralReserveAddress, burnAmount);
+            lpToken.burn(collateralReserveAddress, burnAmount);
             userReservedCollateral[_account] -= burnAmount;
         }
 
         // user part
+        // fixme: replace with delegateToAll mode
         Delegation storage delegation = delegation[_account];
         if (delegation.delegateTo != address(0)) {
             if (expectedUserPart > userPart) {
                 uint256 mintAmount = expectedUserPart - userPart;
-                collateralToken.mint(delegation.delegateTo, mintAmount);
+                lpToken.mint(delegation.delegateTo, mintAmount);
                 delegation.amount += mintAmount;
                 userCollateral[_account] += mintAmount;
             } else if (expectedUserPart < userPart) {
                 uint256 burnAmount = userPart - expectedUserPart;
                 if (burnAmount <= delegation.amount) {
-                    collateralToken.burn(delegation.delegateTo, burnAmount);
+                    lpToken.burn(delegation.delegateTo, burnAmount);
                     delegation.amount -= burnAmount;
                     userCollateral[_account] -= burnAmount;
                 } else {
-                    collateralToken.burn(delegation.delegateTo, delegation.amount);
-                    collateralToken.burn(_account, burnAmount - delegation.amount);
+                    lpToken.burn(delegation.delegateTo, delegation.amount);
+                    lpToken.burn(_account, burnAmount - delegation.amount);
 
                     delegation.amount = 0;
                     userCollateral[_account] -= burnAmount;
@@ -301,11 +293,11 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         } else {
             if (expectedUserPart > userPart) {
                 uint256 mintAmount = expectedUserPart - userPart;
-                collateralToken.mint(_account, mintAmount);
+                lpToken.mint(_account, mintAmount);
                 userCollateral[_account] += mintAmount;
             } else if (expectedUserPart < userPart) {
                 uint256 burnAmount = userPart - expectedUserPart;
-                collateralToken.burn(_account, burnAmount);
+                lpToken.burn(_account, burnAmount);
                 userCollateral[_account] -= burnAmount;
             }
         }
@@ -316,7 +308,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     /**
      * DAO FUNCTIONALITY
-     * transfer given amount of ceToken to recipient
+     * transfer given amount of token to recipient
      * called by AuctionProxy.buyFromAuction
      * @param _recipient recipient address
      * @param _amount amount to liquidate
@@ -345,30 +337,6 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         onlyRole(PROXY)
     {
         _daoBurn(_account, _amount);
-    }
-
-    /**
-     * mint given amount of collateral token to account
-     * @param _account collateral token receiver
-     * @param _amount amount to mint
-     */
-    function daoMint(address _account, uint256 _amount)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyRole(PROXY)
-    {
-        uint256 holderCollateralAmount = _amount * userCollateralRate / RATE_DENOMINATOR;
-        if (holderCollateralAmount > 0) {
-            _daoMint(_account, _amount);
-        }
-
-        uint256 reservedCollateralAmount = _amount - holderCollateralAmount;
-        if (reservedCollateralAmount > 0) {
-            _daoMint(collateralReserveAddress, reservedCollateralAmount);
-            userReservedCollateral[_account] += reservedCollateralAmount;
-        }
     }
 
     function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
