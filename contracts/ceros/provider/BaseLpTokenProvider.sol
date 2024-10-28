@@ -127,7 +127,16 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         return _amount;
     }
 
-    function _delegateAllTo(address _newDelegateTo) internal {
+    /**
+    * delegate all collateral tokens to given address
+    * @param _newDelegateTo new target address of collateral tokens
+    */
+    function delegateAllTo(address _newDelegateTo)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+    {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
         _syncLp(msg.sender);
         // get user total deposit
@@ -168,8 +177,19 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
     /**
      * RELEASE
+     * withdraw given amount of token to recipient address
+     * given amount lp token will be burned from caller's address
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to release
      */
-    function _release(address _recipient, uint256 _amount) internal returns (uint256) {
+    function release(address _recipient, uint256 _amount)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_recipient != address(0));
         require(_amount > 0, "zero withdrawal amount");
 
@@ -215,14 +235,38 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
     /**
      * DAO FUNCTIONALITY
+     * transfer given amount of token to recipient
+     * called by AuctionProxy.buyFromAuction
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to liquidate
      */
-    function _liquidation(address _recipient, uint256 _amount) internal {
+    function liquidation(address _recipient, uint256 _amount)
+        external
+        virtual
+        nonReentrant
+        whenNotPaused
+        onlyRole(PROXY)
+    {
         require(_recipient != address(0));
         IERC20(token).safeTransfer(_recipient, _amount);
         emit Liquidation(_recipient, _amount);
     }
 
-    function _daoBurn(address _account, uint256 _amount) internal {
+    /**
+     * burn given amount of collateral token from account
+     * called by AuctionProxy.startAuction
+     *
+     * @param _account collateral token holder
+     * @param _amount amount to burn
+     */
+    function daoBurn(address _account, uint256 _amount)
+        external
+        virtual
+        nonReentrant
+        whenNotPaused
+        onlyRole(PROXY)
+    {
         require(_account != address(0));
         _syncLp(_account);
         _burnLp(_account, _amount);
@@ -245,6 +289,12 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         }
     }
 
+    /**
+     * @dev considering burn and mint with delta requires more if-else branches
+     * so here just burn all and re-mint all
+     *
+     * @param _account user address to sync
+     */
     function _syncLp(address _account) internal virtual returns (bool) {
         uint256 userExpectLp = dao.locked(token, _account);
         uint256 userCurrentLp = userLp[_account];
