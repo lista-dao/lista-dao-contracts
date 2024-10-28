@@ -266,7 +266,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
                 lpToken.burn(currentDelegateTo, currentDelegateLp);
                 delegation.amount = 0;
             }
-            uint256 userSelf = userPart - delegation.amount;
+            uint256 userSelf = userPart - currentDelegateLp;
             if (userSelf > 0) {
                 lpToken.burn(_account, userSelf);
             }
