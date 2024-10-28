@@ -349,13 +349,13 @@ contract ytslisBNBStakeManager is
             totalReservedLp -= reservePart;
         }
 
-        Delegation storage delegation = delegation[_account];
-        address currentDelegateTo = delegation.delegateTo;
-        uint256 currentDelegateLp = delegation.amount;
+        Delegation storage userDelegation = delegation[_account];
+        address currentDelegateTo = userDelegation.delegateTo;
+        uint256 currentDelegateLp = userDelegation.amount;
         if (userPart > 0) {
             if (currentDelegateLp > 0) {
                 lpToken.burn(currentDelegateTo, currentDelegateLp);
-                delegation.amount = 0;
+                userDelegation.amount = 0;
             }
             uint256 userSelf = userPart - currentDelegateLp;
             if (userSelf > 0) {
@@ -374,7 +374,7 @@ contract ytslisBNBStakeManager is
         uint256 expectUserSelfLp = expectUserPart - expectDelegateLp;
         if (expectDelegateLp > 0) {
             lpToken.mint(currentDelegateTo, expectDelegateLp);
-            delegation.amount = expectDelegateLp;
+            userDelegation.amount = expectDelegateLp;
         }
         if (expectUserSelfLp > 0) {
             lpToken.mint(_account, expectUserSelfLp);
