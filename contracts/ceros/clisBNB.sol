@@ -59,7 +59,6 @@ contract clisBNB is OwnableUpgradeable, NonTransferableERC20 {
     }
 
     function removeMinter(address minter) external onlyOwner {
-        require(minter != address(0), "Minter: zero address");
         require(_minters[minter], "Minter: not a minter");
 
         delete _minters[minter];
