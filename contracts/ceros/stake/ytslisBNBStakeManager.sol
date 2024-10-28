@@ -276,20 +276,19 @@ contract ytslisBNBStakeManager is
         uint256 lpAmount = _certAmount * exchangeRate / RATE_DENOMINATOR;
         uint256 userPart = lpAmount * userLpTokenRate / RATE_DENOMINATOR;
         uint256 reservePart = lpAmount - userPart;
-        uint256 userCurrentReserved = userReservedLp[_account];
-        Delegation storage delegation = delegation[_account];
         if (reservePart > 0) {
             lpToken.burn(lpTokenReserveAddress, reservePart);
             userReservedLp[_account] -= reservePart;
             totalReservedLp -= reservePart;
         }
 
-        if (delegation.amount > 0) {
-            uint256 delegatedAmount = delegation.amount;
+        Delegation storage userDelegation = delegation[_account];
+        if (userDelegation.amount > 0) {
+            uint256 delegatedAmount = userDelegation.amount;
             uint256 delegateeBurn = userPart > delegatedAmount ? delegatedAmount : userPart;
             // burn delegatee's token, update delegated amount
-            lpToken.burn(delegation.delegateTo, delegateeBurn);
-            delegation.amount -= delegateeBurn;
+            lpToken.burn(userDelegation.delegateTo, delegateeBurn);
+            userDelegation.amount -= delegateeBurn;
             // burn delegator's token
             if (userPart > delegateeBurn) {
                 lpToken.burn(_account, userPart - delegateeBurn);
