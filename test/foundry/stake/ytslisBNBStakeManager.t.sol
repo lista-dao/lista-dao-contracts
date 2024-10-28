@@ -229,7 +229,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_isUserCollateralSynced_false() public {
         test_stake();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -241,7 +241,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_syncLpToken_stake() public {
         test_stake();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -281,7 +281,7 @@ contract ytslisBNBStakeManagerTest is Test {
         stakeManager.stake(123e18, delegateTo);
         vm.stopPrank();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -306,7 +306,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_syncLpToken_unstake() public {
         test_stake();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -331,7 +331,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_syncLpToken_delegateAllTo() public {
         test_stake();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -354,7 +354,7 @@ contract ytslisBNBStakeManagerTest is Test {
     function test_syncUserLp() public {
         test_stake();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         stakeManager.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
