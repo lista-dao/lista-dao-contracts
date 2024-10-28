@@ -89,7 +89,7 @@ contract ytslisBNBStakeManagerTest is Test {
         vm.startPrank(user0);
         IERC20(slisBNB).safeApprove(address(stakeManager), 200e18);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        uint256 actual = stakeManager.stake(200e18);
+        stakeManager.stake(200e18);
         vm.stopPrank();
     }
 
@@ -262,6 +262,45 @@ contract ytslisBNBStakeManagerTest is Test {
         assertEq(expect, stakeManager.userLp(user0));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
         assertEq(allCollateral - expect, stakeManager.userReservedLp(user0));
+    }
+
+    function test_syncLpToken_stake_mixed() public {
+        // 1 stake to self
+        deal(address(slisBNB), user0, 123e18);
+
+        vm.startPrank(user0);
+        IERC20(slisBNB).safeApprove(address(stakeManager), 123e18);
+        stakeManager.stake(123e18);
+        vm.stopPrank();
+
+        // 1 stake to delegateTo
+        deal(address(slisBNB), user0, 123e18);
+
+        vm.startPrank(user0);
+        IERC20(slisBNB).safeApprove(address(stakeManager), 123e18);
+        stakeManager.stake(123e18, delegateTo);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        stakeManager.changeExchangeRate(exchangeRate1);
+        vm.stopPrank();
+
+        assertFalse(stakeManager.isUserLpSynced(user0));
+
+        deal(address(slisBNB), user0, 123 ether);
+        vm.startPrank(user0);
+        IERC20(slisBNB).safeApprove(address(stakeManager), 123 ether);
+        stakeManager.stake(123 ether);
+        vm.stopPrank();
+
+        assertEq(0, slisBNB.balanceOf(user0), "slisBNB.balanceOf(user0)");
+        assertEq(369 ether, stakeManager.balanceOf(user0), "stakeManager.balanceOf(user0)");
+        assertEq(246 ether * exchangeRate1 / 1e18 * userCollateralRate / 1e18, clisBnb.balanceOf(user0), "clisBnb.balanceOf(user0)");
+        assertEq(123 ether * exchangeRate1 / 1e18 * userCollateralRate / 1e18, clisBnb.balanceOf(delegateTo), "clisBnb.balanceOf(delegateTo)");
+
+        assertEq(uint256(369 ether) * exchangeRate1 / 1e18 * userCollateralRate / 1e18, stakeManager.userLp(user0));
+        assertEq(uint256(369 ether) * exchangeRate1 / 1e18 * (1 ether - userCollateralRate) / 1e18, clisBnb.balanceOf(reserveAddress));
+        assertEq(uint256(369 ether) * exchangeRate1 / 1e18 * (1 ether - userCollateralRate) / 1e18, stakeManager.userReservedLp(user0));
     }
 
     function test_syncLpToken_unstake() public {

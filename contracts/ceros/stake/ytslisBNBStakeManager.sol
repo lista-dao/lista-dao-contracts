@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../interfaces/ILpToken.sol";
 
-
+import "forge-std/console.sol";
 contract ytslisBNBStakeManager is
     AccessControlUpgradeable,
     PausableUpgradeable,
@@ -351,13 +351,14 @@ contract ytslisBNBStakeManager is
         }
 
         Delegation storage delegation = delegation[_account];
-        uint256 currentDelegateAmount = delegation.amount;
+        address currentDelegateTo = delegation.delegateTo;
+        uint256 currentDelegateLp = delegation.amount;
         if (userPart > 0) {
-            if (currentDelegateAmount > 0) {
-                lpToken.burn(delegation.delegateTo, currentDelegateAmount);
+            if (currentDelegateLp > 0) {
+                lpToken.burn(currentDelegateTo, currentDelegateLp);
                 delegation.amount = 0;
             }
-            uint256 userSelf = userPart - delegation.amount;
+            uint256 userSelf = userPart - currentDelegateLp;
             if (userSelf > 0) {
                 lpToken.burn(_account, userSelf);
             }
@@ -370,17 +371,18 @@ contract ytslisBNBStakeManager is
             totalReservedLp += expectReservePart;
         }
 
-        if (expectUserPart > 0) {
-            if (delegation.delegateTo != address(0)) {
-                lpToken.mint(delegation.delegateTo, expectUserPart);
-                delegation.amount = expectUserPart;
-            } else {
-                lpToken.mint(_account, expectUserPart);
-            }
-            userLp[_account] = expectUserPart;
+        uint256 expectDelegateLp = userPart > 0 ? expectUserPart * currentDelegateLp / userPart : 0;
+        uint256 expectUserSelfLp = expectUserPart - expectDelegateLp;
+        if (expectDelegateLp > 0) {
+            lpToken.mint(currentDelegateTo, expectDelegateLp);
+            delegation.amount = expectDelegateLp;
         }
+        if (expectUserSelfLp > 0) {
+            lpToken.mint(_account, expectUserSelfLp);
+        }
+        userLp[_account] = expectUserPart;
 
-        emit SyncUserLp(_account, userLp[_account], userReservedLp[_account]);
+        emit SyncUserLp(_account, expectUserPart, expectReservePart);
         return true;
     }
 
