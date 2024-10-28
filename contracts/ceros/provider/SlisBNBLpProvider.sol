@@ -34,7 +34,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     /**
      * Events
      */
-    event SyncUserLp(address account, uint256 userLp, uint256 reservedLp);
+    event SyncUserLpWithReserve(address account, uint256 userLp, uint256 reservedLp);
     event ChangeExchangeRate(uint128 rate);
     event ChangeUserLpRate(uint128 rate);
     event ChangeLpReserveAddress(address newAddress);
