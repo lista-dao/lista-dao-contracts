@@ -15,7 +15,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
     /**
      * Events
      */
-    event MinterModified(address minter, bool isAdd);
+    event MinterChanged(address minter, bool isAdd);
 
     /**
      * Modifiers
@@ -53,7 +53,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
         require(!_minters[minter], "Minter: already a minter");
 
         _minters[minter] = true;
-        emit MinterModified(minter, true);
+        emit MinterChanged(minter, true);
     }
 
     function removeMinter(address minter) external onlyOwner {
@@ -61,6 +61,6 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
         require(_minters[minter], "Minter: not a minter");
 
         delete _minters[minter];
-        emit MinterModified(minter, false);
+        emit MinterChanged(minter, false);
     }
 }
