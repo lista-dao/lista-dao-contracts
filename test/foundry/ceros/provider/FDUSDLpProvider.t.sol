@@ -4,10 +4,12 @@ pragma solidity ^0.8.10;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../../contracts/interfaces/VatLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
 import "../../../../contracts/ceros/provider/FDUSDLpProvider.sol";
+import "../../../../contracts/Interaction.sol";
 
 
 contract FDUSDLpProviderTest is Test {
@@ -23,7 +25,7 @@ contract FDUSDLpProviderTest is Test {
 
     uint256 mainnet;
 
-    IDao interaction;
+    Interaction interaction;
 
     VatLike vat;
 
@@ -40,7 +42,7 @@ contract FDUSDLpProviderTest is Test {
         mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
 
         vat = VatLike(0x33A34eAB3ee892D40420507B820347b1cA2201c4);
-        interaction = IDao(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4);
+        interaction = Interaction(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4);
         FDUSD = IERC20(0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409);
 
         TransparentUpgradeableProxy clisFDUSDProxy = new TransparentUpgradeableProxy(
@@ -68,8 +70,15 @@ contract FDUSDLpProviderTest is Test {
         clisFDUSD.addMinter(address(fdusdLpProvider));
         vm.stopPrank();
 
+        ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
+        vm.startPrank(address(0x08aE09467ff962aF105c23775B9Bc8EAa175D27F));
+        Interaction newInteraction = new Interaction();
+        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(address(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4));
+        proxyAdmin.upgrade(proxy, address(newInteraction));
+        vm.stopPrank();
+
         vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider));
+        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider), false);
         vm.stopPrank();
 
         (, bytes32 ilk, ,) = interaction.collaterals(address(FDUSD));
@@ -94,7 +103,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(121e18, actual);
         assertEq(2e18, FDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(user));
-        assertEq(121e18, fdusdLpProvider.userCollateral(user));
+        assertEq(121e18, fdusdLpProvider.userLp(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(121e18, deposit);
@@ -112,7 +121,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(2e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
-        assertEq(121e18, fdusdLpProvider.userCollateral(user));
+        assertEq(121e18, fdusdLpProvider.userLp(user));
 
         (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
@@ -131,7 +140,7 @@ contract FDUSDLpProviderTest is Test {
 
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo));
-        assertEq(121e18, fdusdLpProvider.userCollateral(user));
+        assertEq(121e18, fdusdLpProvider.userLp(user));
 
         (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
@@ -151,7 +160,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
         assertEq(121e18, clisFDUSD.balanceOf(delegateTo1));
-        assertEq(121e18, fdusdLpProvider.userCollateral(user));
+        assertEq(121e18, fdusdLpProvider.userLp(user));
 
         (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(121e18, amount);
@@ -171,7 +180,7 @@ contract FDUSDLpProviderTest is Test {
 
         assertEq(121e18, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
-        assertEq(121e18, fdusdLpProvider.userCollateral(user));
+        assertEq(121e18, fdusdLpProvider.userLp(user));
 
         (address actualTo, uint256 amount) = fdusdLpProvider.delegation(user);
         assertEq(0, amount);
@@ -201,7 +210,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(121e18, actual);
         assertEq(123e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userCollateral(user));
+        assertEq(0, fdusdLpProvider.userLp(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(0, deposit);
@@ -218,7 +227,7 @@ contract FDUSDLpProviderTest is Test {
         assertEq(123e18, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(delegateTo));
-        assertEq(0, fdusdLpProvider.userCollateral(user));
+        assertEq(0, fdusdLpProvider.userLp(user));
 
         (uint256 deposit, ) = vat.urns(fdusdIlk, user);
         assertEq(0, deposit);
@@ -279,7 +288,7 @@ contract FDUSDLpProviderTest is Test {
         deal(address(FDUSD), user, 123e18);
 
         vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(0));
+        interaction.setHelioProvider(address(FDUSD), address(0), true);
         vm.stopPrank();
 
         vm.startPrank(user);
@@ -289,13 +298,13 @@ contract FDUSDLpProviderTest is Test {
 
         assertEq(2 ether, FDUSD.balanceOf(user));
         assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userCollateral(user));
+        assertEq(0, fdusdLpProvider.userLp(user));
 
         (uint256 deposit0, ) = vat.urns(fdusdIlk, user);
         assertEq(121 ether, deposit0);
 
         vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider));
+        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider), false);
         vm.stopPrank();
         console.log("part 1 ok");
 
@@ -378,7 +387,7 @@ contract FDUSDLpProviderTest is Test {
         vm.stopPrank();
 
         assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userCollateral(user));
+        assertEq(0, fdusdLpProvider.userLp(user));
     }
 
     function test_daoBurn_delegated() public {
