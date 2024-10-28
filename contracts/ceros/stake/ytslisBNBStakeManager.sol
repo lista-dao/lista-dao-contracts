@@ -339,47 +339,37 @@ contract ytslisBNBStakeManager is
         if (userPart == expectUserPart && reservePart == expectReservePart) {
             return false;
         }
-
-        // considering burn and mint with delta requires more if-else branches
-        // so here just burn all and re-mint all
-        if (reservePart > 0) {
-            lpToken.burn(lpTokenReserveAddress, reservePart);
-            userReservedLp[_account] = 0;
-            totalReservedLp -= reservePart;
+        // reservePart
+        if (reservePart > expectReservePart) {
+            lpToken.burn(lpTokenReserveAddress, reservePart - expectReservePart);
+            totalReservedLp -= reservePart - expectReservePart;
+            userReservedLp[_account] = expectReservePart;
+        } else if (reservePart < expectReservePart) {
+            lpToken.mint(lpTokenReserveAddress, expectReservePart - reservePart);
+            totalReservedLp += expectReservePart - reservePart;
+            userReservedLp[_account] = expectReservePart;
         }
-
+        // user self and delegation
         Delegation storage userDelegation = delegation[_account];
         address currentDelegateTo = userDelegation.delegateTo;
         uint256 currentDelegateLp = userDelegation.amount;
-        if (userPart > 0) {
-            if (currentDelegateLp > 0) {
-                lpToken.burn(currentDelegateTo, currentDelegateLp);
-                userDelegation.amount = 0;
-            }
-            uint256 userSelf = userPart - currentDelegateLp;
-            if (userSelf > 0) {
-                lpToken.burn(_account, userSelf);
-            }
-        }
-
-        // re-mint
-        if (expectReservePart > 0) {
-            lpToken.mint(lpTokenReserveAddress, expectReservePart);
-            userReservedLp[_account] = expectReservePart;
-            totalReservedLp += expectReservePart;
-        }
-
+        uint256 currentUserSelf = userPart - currentDelegateLp;
         uint256 expectDelegateLp = userPart > 0 ? expectUserPart * currentDelegateLp / userPart : 0;
         uint256 expectUserSelfLp = expectUserPart - expectDelegateLp;
-        if (expectDelegateLp > 0) {
-            lpToken.mint(currentDelegateTo, expectDelegateLp);
+        if (currentDelegateLp > expectDelegateLp) {
+            lpToken.burn(currentDelegateTo, currentDelegateLp - expectDelegateLp);
+            userDelegation.amount = expectDelegateLp;
+        } else if (currentDelegateLp < expectDelegateLp) {
+            lpToken.mint(currentDelegateTo, expectDelegateLp - currentDelegateLp);
             userDelegation.amount = expectDelegateLp;
         }
-        if (expectUserSelfLp > 0) {
-            lpToken.mint(_account, expectUserSelfLp);
+        if (currentUserSelf > expectUserSelfLp) {
+            lpToken.burn(_account, currentUserSelf - expectUserSelfLp);
+        } else if (currentUserSelf < expectUserSelfLp) {
+            lpToken.mint(_account, expectUserSelfLp - currentUserSelf);
         }
-        userLp[_account] = expectUserPart;
 
+        userLp[_account] = expectUserPart;
         emit SyncUserLp(_account, expectUserPart, expectReservePart);
         return true;
     }
@@ -397,28 +387,14 @@ contract ytslisBNBStakeManager is
     /**
      * setters
      */
-    function changeLpToken(address _lpToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_lpToken != address(0), "lpToken cannot be a zero address");
-
-        lpToken = ILpToken(_lpToken);
-        emit ChangeLpToken(_lpToken);
-    }
-
-    function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_token != address(0), "token cannot be a zero address");
-
-        token = _token;
-        emit ChangeToken(_token);
-    }
-
-    function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeExchangeRate(uint128 _exchangeRate) external onlyRole(MANAGER) {
         require(_exchangeRate > 0, "exchangeRate invalid");
 
         exchangeRate = _exchangeRate;
         emit ChangeExchangeRate(exchangeRate);
     }
 
-    function changeUserLpTokenRate(uint128 _userLpTokenRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeUserLpTokenRate(uint128 _userLpTokenRate) external onlyRole(MANAGER) {
         require(_userLpTokenRate > 0 && _userLpTokenRate <= 1e18, "userLpTokenRate invalid");
 
         userLpTokenRate = _userLpTokenRate;
@@ -429,7 +405,7 @@ contract ytslisBNBStakeManager is
      * change lpTokenReserveAddress, all reserved lpToken will be burned from original address and be minted to new address
      * @param _lpTokenReserveAddress new lpTokenReserveAddress
      */
-    function changeLpTokenReserveAddress(address _lpTokenReserveAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeLpTokenReserveAddress(address _lpTokenReserveAddress) external onlyRole(MANAGER) {
         require(_lpTokenReserveAddress != address(0) && _lpTokenReserveAddress != lpTokenReserveAddress, "lpTokenReserveAddress invalid");
         if (totalReservedLp > 0) {
             lpToken.burn(lpTokenReserveAddress, totalReservedLp);
