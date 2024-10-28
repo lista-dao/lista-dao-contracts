@@ -10,15 +10,15 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IDao} from "../interfaces/IDao.sol";
 import {ILpToken} from "../interfaces/ILpToken.sol";
-import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
+import {BaseTokenProvider} from "./BaseTokenProvider.sol";
 
 /**
- * @title SlisBNBLpProvider
+ * @title SlisBNBProvider
  * @dev In comparison to BaseLpTokenProvider, SlisBNBLpProvider has two major differences:
  * 1. token to lpToken rate is not 1:1 and modifiable
  * 2. user's lpToken will be minted to itself(delegatee) and lpReserveAddress according to userLpRate
  */
-contract SlisBNBLpProvider is BaseLpTokenProvider {
+contract SlisBNBProvider is BaseTokenProvider {
     using SafeERC20 for IERC20;
     // token to lpToken exchange rate
     uint128 public exchangeRate;
@@ -46,6 +46,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
 
     function initialize(
         address _admin,
+        address _manager,
         address _proxy,
         address _pauser,
         address _lpToken,
@@ -56,6 +57,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         uint128 _userLpRate
     ) public initializer {
         require(_admin != address(0), "admin is the zero address");
+        require(_manager != address(0), "manager is the zero address");
         require(_proxy != address(0), "proxy is the zero address");
         require(_pauser != address(0), "pauser is the zero address");
         require(_lpToken != address(0), "lpToken is the zero address");
@@ -68,6 +70,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         __Pausable_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(MANAGER, _manager);
         _grantRole(PROXY, _proxy);
         _grantRole(PAUSER, _pauser);
 
@@ -172,59 +175,47 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     /**
-     * @dev considering burn and mint with delta requires more if-else branches
-     * so here just burn all and re-mint all
+     * @dev mint/burn lpToken to sync user's lpToken with token balance
      *
      * @param _account user address to sync
      */
     function _syncLp(address _account) internal override returns (bool) {
-        uint256 totalTokenBalance = dao.locked(token, _account);
-        uint256 userTotalLp = totalTokenBalance * exchangeRate / RATE_DENOMINATOR;
-        uint256 expectUserLp = userTotalLp * userLpRate / RATE_DENOMINATOR;
-        uint256 expectReserveLp = userTotalLp - expectUserLp;
+        uint256 expectAllLp = dao.locked(token, _account) * exchangeRate / RATE_DENOMINATOR;
+        uint256 expectUserLp = expectAllLp * userLpRate / RATE_DENOMINATOR;
+        uint256 expectReserveLp = expectAllLp - expectUserLp;
         uint256 reservePart = userReservedLp[_account];
         uint256 userPart = userLp[_account];
         if (userPart == expectUserLp && reservePart == expectReserveLp) {
             return false;
         }
 
-        // burn all first
-        if (reservePart > 0) {
-            lpToken.burn(lpReserveAddress, reservePart);
-            userReservedLp[_account] = 0;
-            totalReservedLp -= reservePart;
-        }
-
-        Delegation storage delegation = delegation[_account];
-        uint256 currentDelegateLp = delegation.amount;
-        address currentDelegateTo = delegation.delegateTo;
-        if (userPart > 0) {
-            if (currentDelegateLp > 0) {
-                lpToken.burn(currentDelegateTo, currentDelegateLp);
-                delegation.amount = 0;
-            }
-            uint256 userSelf = userPart - currentDelegateLp;
-            if (userSelf > 0) {
-                lpToken.burn(_account, userSelf);
-            }
-            userLp[_account] = 0;
-        }
-
-        // re-mint
-        if (expectReserveLp > 0) {
-            lpToken.mint(lpReserveAddress, expectReserveLp);
+        // reservePart
+        if (reservePart > expectReserveLp) {
+            lpToken.burn(lpReserveAddress, reservePart - expectReserveLp);
             userReservedLp[_account] = expectReserveLp;
-            totalReservedLp += expectReserveLp;
+            totalReservedLp -= reservePart - expectReserveLp;
+        } else if (reservePart < expectReserveLp) {
+            lpToken.mint(lpReserveAddress, expectReserveLp - reservePart);
+            userReservedLp[_account] = expectReserveLp;
+            totalReservedLp += expectReserveLp - reservePart;
         }
-
+        // user self and delegation
+        Delegation storage userDelegation = delegation[_account];
+        uint256 currentDelegateLp = userDelegation.amount;
+        uint256 currentUserSelf = userPart - currentDelegateLp;
         uint256 expectDelegateLp = userPart > 0 ? expectUserLp * currentDelegateLp / userPart : 0;
         uint256 expectUserSelfLp = expectUserLp - expectDelegateLp;
-        if (expectDelegateLp > 0) {
-            lpToken.mint(currentDelegateTo, expectDelegateLp);
-            delegation.amount = expectDelegateLp;
+        if (currentDelegateLp > expectDelegateLp) {
+            lpToken.burn(userDelegation.delegateTo, currentDelegateLp - expectDelegateLp);
+            userDelegation.amount = expectDelegateLp;
+        } else if (currentDelegateLp < expectDelegateLp) {
+            lpToken.mint(userDelegation.delegateTo, expectDelegateLp - currentDelegateLp);
+            userDelegation.amount = expectDelegateLp;
         }
-        if (expectUserSelfLp > 0) {
-            lpToken.mint(_account, expectUserSelfLp);
+        if (currentUserSelf > expectUserSelfLp) {
+            lpToken.burn(_account, currentUserSelf - expectUserSelfLp);
+        } else if (currentUserSelf < expectUserSelfLp) {
+            lpToken.mint(_account, expectUserSelfLp - currentUserSelf);
         }
 
         userLp[_account] = expectUserLp;
@@ -232,14 +223,14 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         return true;
     }
 
-    function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeExchangeRate(uint128 _exchangeRate) external onlyRole(MANAGER) {
         require(_exchangeRate > 0, "exchangeRate invalid");
 
         exchangeRate = _exchangeRate;
         emit ChangeExchangeRate(exchangeRate);
     }
 
-    function changeUserLpRate(uint128 _userLpRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeUserLpRate(uint128 _userLpRate) external onlyRole(MANAGER) {
         require(_userLpRate > 0 && _userLpRate <= 1e18, "userLpRate invalid");
 
         userLpRate = _userLpRate;
@@ -250,7 +241,7 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
      * change lpReserveAddress, all reserved lpToken will be burned from original address and be minted to new address
      * @param _lpTokenReserveAddress new lpTokenReserveAddress
      */
-    function changeLpReserveAddress(address _lpTokenReserveAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function changeLpReserveAddress(address _lpTokenReserveAddress) external onlyRole(MANAGER) {
         require(_lpTokenReserveAddress != address(0) && _lpTokenReserveAddress != lpReserveAddress, "lpTokenReserveAddress invalid");
         if (totalReservedLp > 0) {
             lpToken.burn(lpReserveAddress, totalReservedLp);
