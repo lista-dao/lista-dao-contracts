@@ -114,37 +114,6 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     /**
-    * delegate all lp tokens to given address
-    * @param _newDelegateTo new target address of lp tokens
-    */
-    function delegateAllTo(address _newDelegateTo)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-    {
-        _delegateAllTo(_newDelegateTo);
-    }
-
-    /**
-     * RELEASE
-     * withdraw given amount of token to recipient address
-     * given amount lp token will be burned from caller's address
-     *
-     * @param _recipient recipient address
-     * @param _amount amount to release
-     */
-    function release(address _recipient, uint256 _amount)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        return _release(_recipient, _amount);
-    }
-
-    /**
      * Burn lp token from both delegator and delegateTo
      *
      * @dev burns delegatee's lpToken first, then delegator's
@@ -261,40 +230,6 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
         userLp[_account] = expectUserLp;
         emit SyncUserLpWithReserve(_account, expectUserLp, expectReserveLp);
         return true;
-    }
-
-    /**
-     * DAO FUNCTIONALITY
-     * transfer given amount of token to recipient
-     * called by AuctionProxy.buyFromAuction
-     * @param _recipient recipient address
-     * @param _amount amount to liquidate
-     */
-    function liquidation(address _recipient, uint256 _amount)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyRole(PROXY)
-    {
-        _liquidation(_recipient, _amount);
-    }
-
-    /**
-     * burn given amount of token from account
-     * called by AuctionProxy.startAuction
-     *
-     * @param _account lp token holder
-     * @param _amount amount to burn
-     */
-    function daoBurn(address _account, uint256 _amount)
-        external
-        override
-        nonReentrant
-        whenNotPaused
-        onlyRole(PROXY)
-    {
-        _daoBurn(_account, _amount);
     }
 
     function changeExchangeRate(uint128 _exchangeRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
