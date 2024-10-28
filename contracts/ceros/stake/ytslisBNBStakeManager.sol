@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../interfaces/ILpToken.sol";
 
-import "forge-std/console.sol";
 contract ytslisBNBStakeManager is
     AccessControlUpgradeable,
     PausableUpgradeable,
