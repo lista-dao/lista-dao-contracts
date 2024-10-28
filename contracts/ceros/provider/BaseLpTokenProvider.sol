@@ -41,11 +41,8 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     IDao public dao;
     // account > delegation { delegateTo, amount }
     mapping(address => Delegation) public delegation;
-    // delegateTo account > sum delegated amount on this address
-    // fixme: remove this field
-    mapping(address => uint256) public delegatedCollateral;
-    // user account > sum collateral of user
-    mapping(address => uint256) public userCollateral;
+    // user account > sum lpTokens of user including delegated part
+    mapping(address => uint256) public userLp;
 
     /**
      * DEPOSIT
@@ -55,12 +52,12 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
-        _syncCollateral(msg.sender);
-        // deposit token as collateral
-        uint256 collateralAmount = _provideCollateral(msg.sender, msg.sender, _amount);
+        _syncLp(msg.sender);
+        // deposit token as lp
+        uint256 lpAmount = _provideLp(msg.sender, msg.sender, _amount);
 
-        emit Deposit(msg.sender, _amount, collateralAmount);
-        return collateralAmount;
+        emit Deposit(msg.sender, _amount, lpAmount);
+        return lpAmount;
     }
 
     function _provide(uint256 _amount, address _delegateTo) internal returns (uint256) {
@@ -74,27 +71,26 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
-        _syncCollateral(msg.sender);
-        uint256 userCollateral = _provideCollateral(msg.sender, _delegateTo, _amount);
+        _syncLp(msg.sender);
+        uint256 userLp = _provideLp(msg.sender, _delegateTo, _amount);
 
         Delegation storage delegation = delegation[msg.sender];
         delegation.delegateTo = _delegateTo;
-        delegation.amount += userCollateral;
-        delegatedCollateral[_delegateTo] += userCollateral;
+        delegation.amount += userLp;
 
-        emit Deposit(msg.sender, _amount, userCollateral);
-        return userCollateral;
+        emit Deposit(msg.sender, _amount, userLp);
+        return userLp;
     }
 
     /**
-     * @dev deposit token to dao, mint collateral tokens to delegateTo
-     * by default token to collateral token rate is 1:1
+     * @dev deposit token to dao, mint lp tokens to delegateTo
+     * by default token to lp token rate is 1:1
      *
      * @param _account account who deposit token
-     * @param _holder collateral token holder
+     * @param _holder lp token holder
      * @param _amount token amount to deposit
      */
-    function _provideCollateral(address _account, address _holder, uint256 _amount)
+    function _provideLp(address _account, address _holder, uint256 _amount)
         virtual
         internal
         returns (uint256)
@@ -103,17 +99,17 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         dao.deposit(_account, token, _amount);
         // lpTokenHolder can be account or delegateTo
         lpToken.mint(_holder, _amount);
-        userCollateral[_account] += _amount;
+        userLp[_account] += _amount;
 
         return _amount;
     }
 
     function _delegateAllTo(address _newDelegateTo) internal {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
-        _syncCollateral(msg.sender);
+        _syncLp(msg.sender);
         // get user total deposit
-        uint256 userCollateral = userCollateral[msg.sender];
-        require(userCollateral > 0, "zero collateral to delegate");
+        uint256 userTotalLp = userLp[msg.sender];
+        require(userTotalLp > 0, "zero lp to delegate");
 
         Delegation storage currentDelegation = delegation[msg.sender];
         address currentDelegateTo = currentDelegation.delegateTo;
@@ -122,28 +118,26 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         if (currentDelegation.amount > 0) {
             // burn delegatee's token
             lpToken.burn(currentDelegateTo, currentDelegation.amount);
-            delegatedCollateral[currentDelegateTo] -= currentDelegation.amount;
             // burn self's token
-            if (userCollateral > currentDelegation.amount) {
-                _safeBurnCollateral(msg.sender, userCollateral - currentDelegation.amount);
+            if (userTotalLp > currentDelegation.amount) {
+                _safeBurnLp(msg.sender, userTotalLp - currentDelegation.amount);
             }
         } else {
-            _safeBurnCollateral(msg.sender, userCollateral);
+            _safeBurnLp(msg.sender, userTotalLp);
         }
 
         // Step 2. save new delegatee and mint all tokens to delegatee
         if (_newDelegateTo == msg.sender) {
             // mint all to self
-            lpToken.mint(msg.sender, userCollateral);
+            lpToken.mint(msg.sender, userTotalLp);
             // remove delegatee
             delete delegation[msg.sender];
         } else {
             // mint all to new delegatee
-            lpToken.mint(_newDelegateTo, userCollateral);
+            lpToken.mint(_newDelegateTo, userTotalLp);
             // save delegatee's info
             currentDelegation.delegateTo = _newDelegateTo;
-            currentDelegation.amount = userCollateral;
-            delegatedCollateral[_newDelegateTo] += userCollateral;
+            currentDelegation.amount = userTotalLp;
         }
 
         emit ChangeDelegateTo(msg.sender, currentDelegateTo, _newDelegateTo);
@@ -156,27 +150,27 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         require(_recipient != address(0));
         require(_amount > 0, "zero withdrawal amount");
 
-        _withdrawCollateral(msg.sender, _amount);
+        _withdrawLp(msg.sender, _amount);
         IERC20(token).safeTransfer(_recipient, _amount);
         emit Withdrawal(msg.sender, _recipient, _amount);
         return _amount;
     }
 
-    function _withdrawCollateral(address _account, uint256 _amount) virtual internal {
-        _syncCollateral(msg.sender);
+    function _withdrawLp(address _account, uint256 _amount) virtual internal {
+        _syncLp(msg.sender);
         dao.withdraw(_account, address(token), _amount);
-        _burnCollateral(_account, _amount);
+        _burnLp(_account, _amount);
     }
 
     /**
-     * Burn collateral Token from both delegator and delegateTo
+     * Burn lp Token from both delegator and delegateTo
      * @dev burns delegatee's lpToken first, then delegator's
-     * by default token to collateral token rate is 1:1
+     * by default token to lp token rate is 1:1
      *
-     * @param _account collateral token owner
-     * @param _amount token amount to burn
+     * @param _account lp token owner
+     * @param _amount token amount to burn, token to lpToken rate is 1:1 by default
      */
-    function _burnCollateral(address _account, uint256 _amount) virtual internal {
+    function _burnLp(address _account, uint256 _amount) virtual internal {
         Delegation storage delegation = delegation[_account];
         if (delegation.amount > 0) {
             uint256 delegatedAmount = delegation.amount;
@@ -184,16 +178,15 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
             // burn delegatee's token, update delegated amount
             lpToken.burn(delegation.delegateTo, delegateeBurn);
             delegation.amount -= delegateeBurn;
-            delegatedCollateral[delegation.delegateTo] -= delegateeBurn;
             // burn delegator's token
             if (_amount > delegateeBurn) {
-                _safeBurnCollateral(_account, _amount - delegateeBurn);
+                _safeBurnLp(_account, _amount - delegateeBurn);
             }
-            userCollateral[_account] -= _amount;
+            userLp[_account] -= _amount;
         } else {
             // no delegation, only burn from account
-            _safeBurnCollateral(_account, _amount);
-            userCollateral[_account] -= _amount;
+            _safeBurnLp(_account, _amount);
+            userLp[_account] -= _amount;
         }
     }
 
@@ -208,21 +201,19 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
     function _daoBurn(address _account, uint256 _amount) internal {
         require(_account != address(0));
-        _syncCollateral(_account);
-        _burnCollateral(_account, _amount);
+        _syncLp(_account);
+        _burnLp(_account, _amount);
     }
 
     /**
      * @dev to make sure existing users who do not have enough lpToken can still burn
      * only the available amount excluding delegated part will be burned
      *
-     * @param _account collateral token holder
+     * @param _account lp token holder
      * @param _amount amount to burn
      */
-    function _safeBurnCollateral(address _account, uint256 _amount) virtual internal {
-        // fixme: use local balanceOf instead of erc20.balanceOf
-        //        uint256 availableBalance = lpToken.balanceOf(_account) - delegatedCollateral[_account];
-        uint256 availableBalance = userCollateral[_account] - delegation[_account].amount;
+    function _safeBurnLp(address _account, uint256 _amount) virtual internal {
+        uint256 availableBalance = userLp[_account] - delegation[_account].amount;
         if (_amount <= availableBalance) {
             lpToken.burn(_account, _amount);
         } else if (availableBalance > 0) {
@@ -231,10 +222,9 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         }
     }
 
-
-    function _syncCollateral(address _account) internal virtual returns (bool) {
+    function _syncLp(address _account) internal virtual returns (bool) {
         uint256 userExpectLp = dao.locked(token, _account);
-        uint256 userCurrentLp = userCollateral[_account];
+        uint256 userCurrentLp = userLp[_account];
         if (userExpectLp == userCurrentLp) {
             return false;
         }
@@ -246,27 +236,25 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         if (currentDelegateLp > 0) {
             // burn delegatee's token
             lpToken.burn(currentDelegateTo, currentDelegateLp);
-            delegatedCollateral[currentDelegateTo] -= currentDelegateLp;
             currentDelegation.amount = 0;
             // burn self's token
             if (userCurrentLp > currentDelegateLp) {
-                _safeBurnCollateral(_account, userCurrentLp - currentDelegateLp);
+                _safeBurnLp(_account, userCurrentLp - currentDelegateLp);
             }
         } else {
-            _safeBurnCollateral(_account, userCurrentLp);
+            _safeBurnLp(_account, userCurrentLp);
         }
 
         uint256 expectDelegateLp = userCurrentLp > 0 ? userExpectLp * currentDelegateLp / userCurrentLp : 0;
         uint256 expectUserSelfLp = userExpectLp - expectDelegateLp;
         if (expectDelegateLp > 0) {
             lpToken.mint(currentDelegateTo, expectDelegateLp);
-            delegatedCollateral[currentDelegateTo] += expectDelegateLp;
             currentDelegation.amount = expectDelegateLp;
         }
         if (expectUserSelfLp > 0) {
             lpToken.mint(_account, expectUserSelfLp);
         }
-        userCollateral[_account] = userExpectLp;
+        userLp[_account] = userExpectLp;
 
         emit SyncUserLp(_account, userExpectLp);
         return true;
@@ -306,5 +294,5 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     }
 
     // storage gap, declared fields: 6/50
-    uint256[44] __gap;
+    uint256[45] __gap;
 }
