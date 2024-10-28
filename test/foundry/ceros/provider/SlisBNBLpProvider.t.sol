@@ -388,4 +388,30 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(0, clisBnb.balanceOf(delegateTo));
         assertEq(0, slisBNBLpProvider._userReservedAmount(user));
     }
+
+    function test_syncUserLp_exchangeRate_upper() public {
+        deal(address(slisBnb), user, 1 ether);
+
+        uint256 amount = 1 ether;
+        uint256 receiverBalanceBefore = clisBnb.balanceOf(reserveAddress);
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), amount);
+        slisBNBLpProvider.provide(amount, delegateTo);
+        vm.stopPrank();
+
+        assertEq(interaction.locked(address(slisBnb), user), amount, "interaction.locked user");
+        assertEq(clisBnb.balanceOf(reserveAddress) - receiverBalanceBefore, (1 ether - userCollateralRate) * amount * exchangeRate / 10 ** 36, "clisBnb.balanceOf reserveAddress");
+
+        //userLpRate invalid
+        //change exchange rate to 1.1 ether
+        vm.startPrank(admin);
+        slisBNBLpProvider.changeExchangeRate(1.1 ether);
+        slisBNBLpProvider.syncUserLp(user);
+        vm.stopPrank();
+
+        uint128 tokenExchangeRate = 1.1 ether;
+        assertEq(interaction.locked(address(slisBnb), user), amount, "interaction.locked user final");
+        assertEq(clisBnb.balanceOf(reserveAddress) - receiverBalanceBefore, (1 ether - userCollateralRate) * amount * tokenExchangeRate / 10 ** 36, "clisBnb.balanceOf reserveAddress final");
+    }
 }
