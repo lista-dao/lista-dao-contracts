@@ -31,7 +31,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function rely(address usr) external auth {wards[usr] = 1;}
     function deny(address usr) external auth {wards[usr] = 0;}
     modifier auth {
-        require(wards[msg.sender] == 1, "Interaction/not-authorized");
+        require(wards[msg.sender] == 1, "un-auth");
         _;
     }
 
@@ -58,6 +58,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     bool private _entered;
 
     IBorrowLisUSDListaDistributor public borrowLisUSDListaDistributor;
+
+    // added on 241028
+    mapping(address => bool) public providerCompatibilityMode;
 
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
@@ -154,8 +157,11 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         jug.file(collateralType.ilk, "duty", data);
     }
 
-    function setHelioProvider(address token, address helioProvider) external auth {
-        helioProviders[token] = helioProvider;
+    function setHelioProvider(address token, address helioProvider, bool compatibilityMode) external auth {
+        if (helioProviders[token] != helioProvider) {
+            helioProviders[token] = helioProvider;
+        }
+        providerCompatibilityMode[token] = compatibilityMode;
     }
 
     function removeCollateralType(address token) external auth {
@@ -177,7 +183,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
         if (helioProviders[token] != address(0)) {
             require(
-                msg.sender == helioProviders[token],
+                msg.sender == helioProviders[token] || providerCompatibilityMode[token],
                 "Interaction/only helio provider can deposit for this token"
             );
         }
@@ -303,10 +309,17 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
         if (helioProviders[token] != address(0)) {
-            require(
-                msg.sender == helioProviders[token],
-                "Interaction/Only helio provider can call this function for this token"
-            );
+            if (providerCompatibilityMode[token]) {
+                require(
+                    msg.sender == participant || msg.sender == helioProviders[token],
+                    "Interaction/Caller must be participant/provider"
+                );
+            } else {
+                require(
+                    msg.sender == helioProviders[token],
+                    "Interaction/Only helio provider can call this function for this token"
+                );
+            }
         } else {
             require(
                 msg.sender == participant,

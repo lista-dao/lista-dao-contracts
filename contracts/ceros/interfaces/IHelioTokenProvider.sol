@@ -14,13 +14,13 @@ interface IHelioTokenProvider {
     /**
      * Events
      */
-    event Deposit(address indexed account, uint256 amount, uint256 collateralAmount);
+    event Deposit(address indexed account, uint256 amount, uint256 lPAmount);
     event Claim(address indexed recipient, uint256 amount);
     event Withdrawal(address indexed owner, address indexed recipient, uint256 amount);
     event Liquidation(address indexed recipient, uint256 amount);
 
     event ChangeToken(address ceToken);
-    event ChangeLpToken(address collateralToken);
+    event ChangeLpToken(address lPToken);
     event ChangeDao(address dao);
     event ChangeProxy(address auctionProxy);
     event ChangeDelegateTo(address account, address oldDelegatee, address newDelegatee);
