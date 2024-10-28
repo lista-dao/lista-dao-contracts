@@ -82,45 +82,13 @@ contract SlisBNBLpProvider is BaseLpTokenProvider {
     }
 
     /**
-    * DEPOSIT
-    * deposit given amount of token to provider
-    * given amount lp token will be mint to caller's address
-    * @param _amount amount to deposit
-    */
-    function provide(uint256 _amount)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        return _provide(_amount);
-    }
-
-    /**
-    * deposit given amount of token to provider
-    * given amount lp token will be mint to delegateTo
-    * @param _amount amount to deposit
-    * @param _delegateTo target address of lp tokens
-    */
-    function provide(uint256 _amount, address _delegateTo)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        return _provide(_amount, _delegateTo);
-    }
-
-    /**
      * @dev deposit token to dao, mint lp tokens to delegateTo according to rate
      *
      * @param _account account who deposit token
      * @param _holder lp token holder
      * @param _amount token amount to deposit
      */
-    function _provideLp(address _account, address _holder, uint256 _amount)
+    function _provideCollateral(address _account, address _holder, uint256 _amount)
         internal
         override
         returns (uint256)

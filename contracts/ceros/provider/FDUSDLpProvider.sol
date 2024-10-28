@@ -48,38 +48,6 @@ contract FDUSDLpProvider is BaseLpTokenProvider {
     }
 
     /**
-    * DEPOSIT
-    * deposit given amount of token to provider
-    * given amount collateral token will be mint to caller's address
-    * @param _amount amount to deposit
-    */
-    function provide(uint256 _amount)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        return _provide(_amount);
-    }
-
-    /**
-    * deposit given amount of token to provider
-    * given amount collateral token will be mint to delegateTo
-    * @param _amount amount to deposit
-    * @param _delegateTo target address of collateral tokens
-    */
-    function provide(uint256 _amount, address _delegateTo)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        return _provide(_amount, _delegateTo);
-    }
-
-    /**
     * delegate all collateral tokens to given address
     * @param _newDelegateTo new target address of collateral tokens
     */

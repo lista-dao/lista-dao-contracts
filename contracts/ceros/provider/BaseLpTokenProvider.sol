@@ -47,20 +47,43 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     /**
      * DEPOSIT
      */
-    function _provide(uint256 _amount) internal returns (uint256) {
+    /**
+    * deposit given amount of token to provider
+    * given amount lp token will be mint to caller's address
+    * @param _amount amount to deposit
+    */
+    function provide(uint256 _amount)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_amount > 0, "zero deposit amount");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
         _syncLp(msg.sender);
         // deposit token as lp
-        uint256 lpAmount = _provideLp(msg.sender, msg.sender, _amount);
+        uint256 lpAmount = _provideCollateral(msg.sender, msg.sender, _amount);
 
         emit Deposit(msg.sender, _amount, lpAmount);
         return lpAmount;
     }
 
-    function _provide(uint256 _amount, address _delegateTo) internal returns (uint256) {
+    /**
+    * deposit given amount of token to provider
+    * given amount lp token will be mint to delegateTo
+    * @param _amount amount to deposit
+    * @param _delegateTo target address of lp tokens
+    */
+    function provide(uint256 _amount, address _delegateTo)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_amount > 0, "zero deposit amount");
         require(_delegateTo != address(0), "delegateTo cannot be zero address");
         require(
@@ -72,7 +95,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
         _syncLp(msg.sender);
-        uint256 userPartLp = _provideLp(msg.sender, _delegateTo, _amount);
+        uint256 userPartLp = _provideCollateral(msg.sender, _delegateTo, _amount);
 
         Delegation storage userDelegation = delegation[msg.sender];
         userDelegation.delegateTo = _delegateTo;
@@ -90,7 +113,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
      * @param _holder lp token holder
      * @param _amount token amount to deposit
      */
-    function _provideLp(address _account, address _holder, uint256 _amount)
+    function _provideCollateral(address _account, address _holder, uint256 _amount)
         virtual
         internal
         returns (uint256)
@@ -260,12 +283,25 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         return true;
     }
 
+    /**
+     * @dev change token address
+     * this method *should not* be called after user provides token through this provider
+     * as it will cause inconsistency between token and lpToken
+     * @param _token new token address
+     */
     function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20(token).approve(address(dao), 0);
         token = _token;
         IERC20(token).approve(address(dao), type(uint256).max);
         emit ChangeToken(_token);
     }
+    /**
+     * @dev change lpToken address
+     * this method *should not* be called after user provides token through this provider
+     * as it will cause inconsistency between token and lpToken
+     *
+     * @param _lpToken new lpToken address
+     */
     function changeLpToken(address _lpToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         lpToken = ILpToken(_lpToken);
         emit ChangeLpToken(_lpToken);
