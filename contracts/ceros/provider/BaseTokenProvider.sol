@@ -15,7 +15,7 @@ import {ILpToken} from "../interfaces/ILpToken.sol";
 import {IHelioTokenProvider} from "../interfaces/IHelioTokenProvider.sol";
 
 
-abstract contract BaseLpTokenProvider is IHelioTokenProvider,
+abstract contract BaseTokenProvider is IHelioTokenProvider,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -290,8 +290,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     }
 
     /**
-     * @dev considering burn and mint with delta requires more if-else branches
-     * so here just burn all and re-mint all
+     * @dev mint/burn lpToken to sync user's lpToken with token balance
      *
      * @param _account user address to sync
      */
@@ -304,63 +303,26 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
         Delegation storage currentDelegation = delegation[_account];
         uint256 currentDelegateLp = currentDelegation.amount;
-        address currentDelegateTo = currentDelegation.delegateTo;
-        // Step 1. burn all tokens
-        if (currentDelegateLp > 0) {
-            // burn delegatee's token
-            lpToken.burn(currentDelegateTo, currentDelegateLp);
-            currentDelegation.amount = 0;
-            // burn self's token
-            if (userCurrentLp > currentDelegateLp) {
-                _safeBurnLp(_account, userCurrentLp - currentDelegateLp);
-            }
-        } else {
-            _safeBurnLp(_account, userCurrentLp);
-        }
-
+        uint256 currentUserSelfLp = userCurrentLp - currentDelegateLp;
         uint256 expectDelegateLp = userCurrentLp > 0 ? userExpectLp * currentDelegateLp / userCurrentLp : 0;
         uint256 expectUserSelfLp = userExpectLp - expectDelegateLp;
-        if (expectDelegateLp > 0) {
-            lpToken.mint(currentDelegateTo, expectDelegateLp);
+        if (currentDelegateLp > expectDelegateLp) {
+            lpToken.burn(currentDelegation.delegateTo, currentDelegateLp - expectDelegateLp);
+            currentDelegation.amount = expectDelegateLp;
+        } else if (currentDelegateLp < expectDelegateLp) {
+            lpToken.mint(currentDelegation.delegateTo, expectDelegateLp - currentDelegateLp);
             currentDelegation.amount = expectDelegateLp;
         }
-        if (expectUserSelfLp > 0) {
-            lpToken.mint(_account, expectUserSelfLp);
-        }
-        userLp[_account] = userExpectLp;
 
+        if (currentUserSelfLp > expectUserSelfLp) {
+            _safeBurnLp(_account, currentUserSelfLp - expectUserSelfLp);
+        } else if (currentUserSelfLp < expectUserSelfLp) {
+            lpToken.mint(_account, expectUserSelfLp - currentUserSelfLp);
+        }
+
+        userLp[_account] = userExpectLp;
         emit SyncUserLp(_account, userExpectLp);
         return true;
-    }
-
-    /**
-     * @dev change token address
-     * this method *should not* be called after user provides token through this provider
-     * as it will cause inconsistency between token and lpToken
-     * @param _token new token address
-     */
-    function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).approve(address(dao), 0);
-        token = _token;
-        IERC20(token).approve(address(dao), type(uint256).max);
-        emit ChangeToken(_token);
-    }
-    /**
-     * @dev change lpToken address
-     * this method *should not* be called after user provides token through this provider
-     * as it will cause inconsistency between token and lpToken
-     *
-     * @param _lpToken new lpToken address
-     */
-    function changeLpToken(address _lpToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        lpToken = ILpToken(_lpToken);
-        emit ChangeLpToken(_lpToken);
-    }
-    function changeDao(address _dao) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).approve(address(dao), 0);
-        dao = IDao(_dao);
-        IERC20(token).approve(address(dao), type(uint256).max);
-        emit ChangeDao(_dao);
     }
 
     /**

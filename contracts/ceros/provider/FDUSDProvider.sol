@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IDao} from "../interfaces/IDao.sol";
 import {ILpToken} from "../interfaces/ILpToken.sol";
-import {BaseLpTokenProvider} from "./BaseLpTokenProvider.sol";
+import {BaseTokenProvider} from "./BaseTokenProvider.sol";
 
 
-contract FDUSDLpProvider is BaseLpTokenProvider {
+contract FDUSDProvider is BaseTokenProvider {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
