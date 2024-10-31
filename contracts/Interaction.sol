@@ -263,7 +263,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
      * @param hayAmount Amount of HAY to payback
      * @param borrower Borrower address
      */
-    function paybackAs(address token, uint256 hayAmount, address borrower) external nonReentrant returns (int256) {
+    function paybackFor(address token, uint256 hayAmount, address borrower) external nonReentrant returns (int256) {
         return _payback(token, hayAmount, borrower);
     }
 
