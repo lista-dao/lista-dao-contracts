@@ -32,7 +32,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function rely(address usr) external auth {wards[usr] = 1;}
     function deny(address usr) external auth {wards[usr] = 0;}
     modifier auth {
-        require(wards[msg.sender] == 1, "unauth");
+        require(wards[msg.sender] == 1, "Interaction/not-authorized");
         _;
     }
 
@@ -119,7 +119,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         _;
     }
     modifier nonReentrant {
-        require(!_entered, "reentrant");
+        require(!_entered, "re-entrant call");
         _entered = true;
         _;
         _entered = false;
