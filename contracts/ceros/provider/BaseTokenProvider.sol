@@ -15,7 +15,7 @@ import {ILpToken} from "../interfaces/ILpToken.sol";
 import {IHelioTokenProvider} from "../interfaces/IHelioTokenProvider.sol";
 
 
-abstract contract BaseLpTokenProvider is IHelioTokenProvider,
+abstract contract BaseTokenProvider is IHelioTokenProvider,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -47,20 +47,43 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     /**
      * DEPOSIT
      */
-    function _provide(uint256 _amount) internal returns (uint256) {
+    /**
+    * deposit given amount of token to provider
+    * given amount lp token will be mint to caller's address
+    * @param _amount amount to deposit
+    */
+    function provide(uint256 _amount)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_amount > 0, "zero deposit amount");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
         _syncLp(msg.sender);
         // deposit token as lp
-        uint256 lpAmount = _provideLp(msg.sender, msg.sender, _amount);
+        uint256 lpAmount = _provideCollateral(msg.sender, msg.sender, _amount);
 
         emit Deposit(msg.sender, _amount, lpAmount);
         return lpAmount;
     }
 
-    function _provide(uint256 _amount, address _delegateTo) internal returns (uint256) {
+    /**
+    * deposit given amount of token to provider
+    * given amount lp token will be mint to delegateTo
+    * @param _amount amount to deposit
+    * @param _delegateTo target address of lp tokens
+    */
+    function provide(uint256 _amount, address _delegateTo)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_amount > 0, "zero deposit amount");
         require(_delegateTo != address(0), "delegateTo cannot be zero address");
         require(
@@ -72,14 +95,14 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
         // do sync before balance modified
         _syncLp(msg.sender);
-        uint256 userLp = _provideLp(msg.sender, _delegateTo, _amount);
+        uint256 userPartLp = _provideCollateral(msg.sender, _delegateTo, _amount);
 
-        Delegation storage delegation = delegation[msg.sender];
-        delegation.delegateTo = _delegateTo;
-        delegation.amount += userLp;
+        Delegation storage userDelegation = delegation[msg.sender];
+        userDelegation.delegateTo = _delegateTo;
+        userDelegation.amount += userPartLp;
 
-        emit Deposit(msg.sender, _amount, userLp);
-        return userLp;
+        emit Deposit(msg.sender, _amount, userPartLp);
+        return userPartLp;
     }
 
     /**
@@ -90,7 +113,7 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
      * @param _holder lp token holder
      * @param _amount token amount to deposit
      */
-    function _provideLp(address _account, address _holder, uint256 _amount)
+    function _provideCollateral(address _account, address _holder, uint256 _amount)
         virtual
         internal
         returns (uint256)
@@ -104,7 +127,16 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         return _amount;
     }
 
-    function _delegateAllTo(address _newDelegateTo) internal {
+    /**
+    * delegate all collateral tokens to given address
+    * @param _newDelegateTo new target address of collateral tokens
+    */
+    function delegateAllTo(address _newDelegateTo)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+    {
         require(_newDelegateTo != address(0), "delegateTo cannot be zero address");
         _syncLp(msg.sender);
         // get user total deposit
@@ -145,8 +177,19 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
     /**
      * RELEASE
+     * withdraw given amount of token to recipient address
+     * given amount lp token will be burned from caller's address
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to release
      */
-    function _release(address _recipient, uint256 _amount) internal returns (uint256) {
+    function release(address _recipient, uint256 _amount)
+        external
+        virtual
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
         require(_recipient != address(0));
         require(_amount > 0, "zero withdrawal amount");
 
@@ -171,13 +214,13 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
      * @param _amount token amount to burn, token to lpToken rate is 1:1 by default
      */
     function _burnLp(address _account, uint256 _amount) virtual internal {
-        Delegation storage delegation = delegation[_account];
-        if (delegation.amount > 0) {
-            uint256 delegatedAmount = delegation.amount;
+        Delegation storage userDelegation = delegation[_account];
+        if (userDelegation.amount > 0) {
+            uint256 delegatedAmount = userDelegation.amount;
             uint256 delegateeBurn = _amount > delegatedAmount ? delegatedAmount : _amount;
             // burn delegatee's token, update delegated amount
-            lpToken.burn(delegation.delegateTo, delegateeBurn);
-            delegation.amount -= delegateeBurn;
+            lpToken.burn(userDelegation.delegateTo, delegateeBurn);
+            userDelegation.amount -= delegateeBurn;
             // burn delegator's token
             if (_amount > delegateeBurn) {
                 _safeBurnLp(_account, _amount - delegateeBurn);
@@ -192,14 +235,38 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
     /**
      * DAO FUNCTIONALITY
+     * transfer given amount of token to recipient
+     * called by AuctionProxy.buyFromAuction
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to liquidate
      */
-    function _liquidation(address _recipient, uint256 _amount) internal {
+    function liquidation(address _recipient, uint256 _amount)
+        external
+        virtual
+        nonReentrant
+        whenNotPaused
+        onlyRole(PROXY)
+    {
         require(_recipient != address(0));
         IERC20(token).safeTransfer(_recipient, _amount);
         emit Liquidation(_recipient, _amount);
     }
 
-    function _daoBurn(address _account, uint256 _amount) internal {
+    /**
+     * burn given amount of collateral token from account
+     * called by AuctionProxy.startAuction
+     *
+     * @param _account collateral token holder
+     * @param _amount amount to burn
+     */
+    function daoBurn(address _account, uint256 _amount)
+        external
+        virtual
+        nonReentrant
+        whenNotPaused
+        onlyRole(PROXY)
+    {
         require(_account != address(0));
         _syncLp(_account);
         _burnLp(_account, _amount);
@@ -222,6 +289,11 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
         }
     }
 
+    /**
+     * @dev mint/burn lpToken to sync user's lpToken with token balance
+     *
+     * @param _account user address to sync
+     */
     function _syncLp(address _account) internal virtual returns (bool) {
         uint256 userExpectLp = dao.locked(token, _account);
         uint256 userCurrentLp = userLp[_account];
@@ -231,50 +303,27 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
 
         Delegation storage currentDelegation = delegation[_account];
         uint256 currentDelegateLp = currentDelegation.amount;
-        address currentDelegateTo = currentDelegation.delegateTo;
-        // Step 1. burn all tokens
-        if (currentDelegateLp > 0) {
-            // burn delegatee's token
-            lpToken.burn(currentDelegateTo, currentDelegateLp);
-            currentDelegation.amount = 0;
-            // burn self's token
-            if (userCurrentLp > currentDelegateLp) {
-                _safeBurnLp(_account, userCurrentLp - currentDelegateLp);
-            }
-        } else {
-            _safeBurnLp(_account, userCurrentLp);
-        }
-
+        uint256 currentUserSelfLp = userCurrentLp - currentDelegateLp;
         uint256 expectDelegateLp = userCurrentLp > 0 ? userExpectLp * currentDelegateLp / userCurrentLp : 0;
         uint256 expectUserSelfLp = userExpectLp - expectDelegateLp;
-        if (expectDelegateLp > 0) {
-            lpToken.mint(currentDelegateTo, expectDelegateLp);
+        if (currentDelegateLp > expectDelegateLp) {
+            lpToken.burn(currentDelegation.delegateTo, currentDelegateLp - expectDelegateLp);
+            currentDelegation.amount = expectDelegateLp;
+        } else if (currentDelegateLp < expectDelegateLp) {
+            lpToken.mint(currentDelegation.delegateTo, expectDelegateLp - currentDelegateLp);
             currentDelegation.amount = expectDelegateLp;
         }
-        if (expectUserSelfLp > 0) {
-            lpToken.mint(_account, expectUserSelfLp);
+
+        if (currentUserSelfLp > expectUserSelfLp) {
+            _safeBurnLp(_account, currentUserSelfLp - expectUserSelfLp);
+            userLp[_account] = userExpectLp;
+        } else if (currentUserSelfLp < expectUserSelfLp) {
+            lpToken.mint(_account, expectUserSelfLp - currentUserSelfLp);
+            userLp[_account] = userExpectLp;
         }
-        userLp[_account] = userExpectLp;
 
         emit SyncUserLp(_account, userExpectLp);
         return true;
-    }
-
-    function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).approve(address(dao), 0);
-        token = _token;
-        IERC20(token).approve(address(dao), type(uint256).max);
-        emit ChangeToken(_token);
-    }
-    function changeLpToken(address _lpToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        lpToken = ILpToken(_lpToken);
-        emit ChangeLpToken(_lpToken);
-    }
-    function changeDao(address _dao) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).approve(address(dao), 0);
-        dao = IDao(_dao);
-        IERC20(token).approve(address(dao), type(uint256).max);
-        emit ChangeDao(_dao);
     }
 
     /**
@@ -293,6 +342,6 @@ abstract contract BaseLpTokenProvider is IHelioTokenProvider,
     function _authorizeUpgrade(address _newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
     }
 
-    // storage gap, declared fields: 6/50
+    // storage gap, declared fields: 5/50
     uint256[45] __gap;
 }

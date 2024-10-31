@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../../contracts/interfaces/VatLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
-import "../../../../contracts/ceros/provider/FDUSDLpProvider.sol";
+import "../../../../contracts/ceros/provider/FDUSDProvider.sol";
 import "../../../../contracts/Interaction.sol";
 
 
-contract FDUSDLpProviderTest is Test {
+contract FDUSDProviderTest is Test {
     address admin = address(0x1A11AA);
     address manager = address(0x2A11AA);
     address user = address(0x3A11AA);
@@ -35,7 +35,7 @@ contract FDUSDLpProviderTest is Test {
 
     ClisToken clisFDUSD;
 
-    FDUSDLpProvider fdusdLpProvider;
+    FDUSDProvider fdusdLpProvider;
 
     function setUp() public {
         sender = msg.sender;
@@ -57,14 +57,14 @@ contract FDUSDLpProviderTest is Test {
         clisFDUSD.transferOwnership(admin);
 
         TransparentUpgradeableProxy providerProxy = new TransparentUpgradeableProxy(
-            address(new FDUSDLpProvider()),
+            address(new FDUSDProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
                 "initialize(address,address,address,address,address,address)",
                 admin, address(interaction), manager, address(clisFDUSD), address(FDUSD), address(interaction)
             )
         );
-        fdusdLpProvider = FDUSDLpProvider(address(providerProxy));
+        fdusdLpProvider = FDUSDProvider(address(providerProxy));
 
         vm.startPrank(admin);
         clisFDUSD.addMinter(address(fdusdLpProvider));

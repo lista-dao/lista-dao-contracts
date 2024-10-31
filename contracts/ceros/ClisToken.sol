@@ -15,7 +15,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
     /**
      * Events
      */
-    event MinterModified(address minter, bool isAdd);
+    event MinterChanged(address minter, bool isAdd);
 
     /**
      * Modifiers
@@ -28,16 +28,6 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
     function initialize(string memory name, string memory symbol) external initializer {
         __Ownable_init();
         __ERC20_init_unchained(name, symbol);
-    }
-
-    function setName(string memory newName) external onlyOwner {
-        require(keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked(newName)), "new name cannot be the same as the current name");
-        _name = newName;
-    }
-
-    function setSymbol(string memory newSymbol) external onlyOwner {
-        require(keccak256(abi.encodePacked(_symbol)) != keccak256(abi.encodePacked(newSymbol)), "new symbol cannot be the same as the current symbol");
-        _symbol = newSymbol;
     }
 
     function burn(address account, uint256 amount) external onlyMinter {
@@ -53,7 +43,7 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
         require(!_minters[minter], "Minter: already a minter");
 
         _minters[minter] = true;
-        emit MinterModified(minter, true);
+        emit MinterChanged(minter, true);
     }
 
     function removeMinter(address minter) external onlyOwner {
@@ -61,6 +51,6 @@ contract ClisToken is OwnableUpgradeable, NonTransferableERC20 {
         require(_minters[minter], "Minter: not a minter");
 
         delete _minters[minter];
-        emit MinterModified(minter, false);
+        emit MinterChanged(minter, false);
     }
 }

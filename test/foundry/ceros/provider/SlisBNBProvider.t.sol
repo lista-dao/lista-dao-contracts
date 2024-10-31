@@ -9,11 +9,11 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../../../contracts/interfaces/VatLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
 import "../../../../contracts/ceros/clisBNB.sol";
-import "../../../../contracts/ceros/provider/SlisBNBLpProvider.sol";
+import "../../../../contracts/ceros/provider/SlisBNBProvider.sol";
 import {Interaction} from "../../../../contracts/Interaction.sol";
 
 
-contract SlisBNBLpProviderTest is Test {
+contract SlisBNBProviderTest is Test {
     address admin = address(0x1A11AA);
     address manager = address(0x2A11AA);
     address user = address(0x3A11AA);
@@ -37,7 +37,7 @@ contract SlisBNBLpProviderTest is Test {
 
     clisBNB clisBnb;
 
-    SlisBNBLpProvider slisBNBLpProvider;
+    SlisBNBProvider slisBNBLpProvider;
 
     uint128 exchangeRate = 1023e15;
     uint128 exchangeRate1 = 1031e15;
@@ -54,16 +54,16 @@ contract SlisBNBLpProviderTest is Test {
         clisBnb = clisBNB(0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6);
 
         TransparentUpgradeableProxy providerProxy = new TransparentUpgradeableProxy(
-            address(new SlisBNBLpProvider()),
+            address(new SlisBNBProvider()),
             proxyAdminOwner,
             abi.encodeWithSignature(
-                "initialize(address,address,address,address,address,address,address,uint128,uint128)",
-                admin, address(interaction), manager,
+                "initialize(address,address,address,address,address,address,address,address,uint128,uint128)",
+                admin, manager, address(interaction), manager,
                 address(clisBnb), address(slisBnb), address(interaction), reserveAddress,
                 exchangeRate, userCollateralRate
             )
         );
-        slisBNBLpProvider = SlisBNBLpProvider(address(providerProxy));
+        slisBNBLpProvider = SlisBNBProvider(address(providerProxy));
 
         vm.startPrank(address(0x702115D6d3Bbb37F407aae4dEcf9d09980e28ebc));
         clisBnb.changeMinter(address(slisBNBLpProvider));
@@ -443,7 +443,7 @@ contract SlisBNBLpProviderTest is Test {
     function test_isUserCollateralSynced_false() public {
         test_provide();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         slisBNBLpProvider.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
 
@@ -455,7 +455,7 @@ contract SlisBNBLpProviderTest is Test {
     function test_syncUserCollateral() public {
         test_provide();
 
-        vm.startPrank(admin);
+        vm.startPrank(manager);
         slisBNBLpProvider.changeExchangeRate(exchangeRate1);
         vm.stopPrank();
         console.log("changeExchangeRate ok");
@@ -475,5 +475,31 @@ contract SlisBNBLpProviderTest is Test {
         assertEq(expect, slisBNBLpProvider.userLp(user));
         assertEq(allCollateral - expect, clisBnb.balanceOf(reserveAddress));
         assertEq(allCollateral - expect, slisBNBLpProvider.userReservedLp(user));
+    }
+
+    function test_syncUserLp_exchangeRate_upper() public {
+        deal(address(slisBnb), user, 1 ether);
+
+        uint256 amount = 1 ether;
+        uint256 receiverBalanceBefore = clisBnb.balanceOf(reserveAddress);
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), amount);
+        slisBNBLpProvider.provide(amount, delegateTo);
+        vm.stopPrank();
+
+        assertEq(interaction.locked(address(slisBnb), user), amount, "interaction.locked user");
+        assertEq(clisBnb.balanceOf(reserveAddress) - receiverBalanceBefore, (1 ether - userCollateralRate) * amount * exchangeRate / 10 ** 36, "clisBnb.balanceOf reserveAddress");
+
+        //userLpRate invalid
+        //change exchange rate to 1.1 ether
+        vm.startPrank(manager);
+        slisBNBLpProvider.changeExchangeRate(1.1 ether);
+        slisBNBLpProvider.syncUserLp(user);
+        vm.stopPrank();
+
+        uint128 tokenExchangeRate = 1.1 ether;
+        assertEq(interaction.locked(address(slisBnb), user), amount, "interaction.locked user final");
+        assertEq(clisBnb.balanceOf(reserveAddress) - receiverBalanceBefore, (1 ether - userCollateralRate) * amount * tokenExchangeRate / 10 ** 36, "clisBnb.balanceOf reserveAddress final");
     }
 }
