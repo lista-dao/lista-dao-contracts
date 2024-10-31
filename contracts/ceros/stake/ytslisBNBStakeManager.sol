@@ -112,7 +112,7 @@ contract ytslisBNBStakeManager is
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _certAmount);
         _syncLpToken(msg.sender);
-        (uint256 userPart, uint256 reservedPart) = _provideLp(msg.sender, msg.sender, _certAmount);
+        (uint256 userPart, uint256 reservedPart) = _provide(msg.sender, msg.sender, _certAmount);
         balanceOf[msg.sender] += _certAmount;
         emit Staked(msg.sender, _certAmount, userPart, reservedPart);
         return userPart;
@@ -137,7 +137,7 @@ contract ytslisBNBStakeManager is
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _certAmount);
         _syncLpToken(msg.sender);
-        (uint256 userPart, uint256 reservedPart) = _provideLp(msg.sender, _delegateTo, _certAmount);
+        (uint256 userPart, uint256 reservedPart) = _provide(msg.sender, _delegateTo, _certAmount);
         balanceOf[msg.sender] += _certAmount;
         Delegation storage delegation = delegation[msg.sender];
         delegation.delegateTo = _delegateTo;
@@ -150,7 +150,7 @@ contract ytslisBNBStakeManager is
     /**
      * provide lp token to given address
      */
-    function _provideLp(address _account, address _holder, uint256 _amount)
+    function _provide(address _account, address _holder, uint256 _amount)
         private
         returns (uint256, uint256)
     {
@@ -342,11 +342,11 @@ contract ytslisBNBStakeManager is
         // reservePart
         if (reservePart > expectReservePart) {
             lpToken.burn(lpTokenReserveAddress, reservePart - expectReservePart);
-            totalReservedLp -= reservePart - expectReservePart;
+            totalReservedLp -= (reservePart - expectReservePart);
             userReservedLp[_account] = expectReservePart;
         } else if (reservePart < expectReservePart) {
             lpToken.mint(lpTokenReserveAddress, expectReservePart - reservePart);
-            totalReservedLp += expectReservePart - reservePart;
+            totalReservedLp += (expectReservePart - reservePart);
             userReservedLp[_account] = expectReservePart;
         }
         // user self and delegation
@@ -365,11 +365,12 @@ contract ytslisBNBStakeManager is
         }
         if (currentUserSelf > expectUserSelfLp) {
             lpToken.burn(_account, currentUserSelf - expectUserSelfLp);
+            userLp[_account] = expectUserPart;
         } else if (currentUserSelf < expectUserSelfLp) {
             lpToken.mint(_account, expectUserSelfLp - currentUserSelf);
+            userLp[_account] = expectUserPart;
         }
 
-        userLp[_account] = expectUserPart;
         emit SyncUserLp(_account, expectUserPart, expectReservePart);
         return true;
     }
@@ -381,9 +382,10 @@ contract ytslisBNBStakeManager is
         _pause();
     }
 
-    function togglePause() external onlyRole(PAUSER) {
+    function togglePause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         paused() ? _unpause() : _pause();
     }
+
     /**
      * setters
      */
@@ -409,12 +411,10 @@ contract ytslisBNBStakeManager is
         require(_lpTokenReserveAddress != address(0) && _lpTokenReserveAddress != lpTokenReserveAddress, "lpTokenReserveAddress invalid");
         if (totalReservedLp > 0) {
             lpToken.burn(lpTokenReserveAddress, totalReservedLp);
+            lpToken.mint(_lpTokenReserveAddress, totalReservedLp);
         }
 
         lpTokenReserveAddress = _lpTokenReserveAddress;
-        if (totalReservedLp > 0) {
-            lpToken.mint(lpTokenReserveAddress, totalReservedLp);
-        }
         emit ChangeLpTokenReserveAddress(lpTokenReserveAddress);
     }
 
