@@ -109,7 +109,7 @@ contract InteractionMainnetTest is Test {
 
         vm.startPrank(user1);
         interaction.hay().approve(address(interaction), 101 ether);
-        interaction.paybackAs(address(FDUSD), 101 ether, user0);
+        interaction.paybackFor(address(FDUSD), 101 ether, user0);
         vm.stopPrank();
 
         (uint256 deposit1, uint256 borrow) = vat.urns(fdusdIlk, user0);
