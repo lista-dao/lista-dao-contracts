@@ -316,12 +316,11 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
 
         if (currentUserSelfLp > expectUserSelfLp) {
             _safeBurnLp(_account, currentUserSelfLp - expectUserSelfLp);
-            userLp[_account] = userExpectLp;
         } else if (currentUserSelfLp < expectUserSelfLp) {
             lpToken.mint(_account, expectUserSelfLp - currentUserSelfLp);
-            userLp[_account] = userExpectLp;
         }
 
+        userLp[_account] = userExpectLp;
         emit SyncUserLp(_account, userExpectLp);
         return true;
     }
