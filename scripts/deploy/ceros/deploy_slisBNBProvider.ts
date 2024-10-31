@@ -5,10 +5,11 @@ async function main() {
     console.log("deploy SlisBNBLpProvider start network: ", hre.network.name);
     const signers = await hre.ethers.getSigners();
     const deployer = signers[0].address;
-    let proxy = '', pauser = ''
+    let proxy = '', manager = '', pauser = ''
     let certToken = '', collateralToken = '', daoAddress = '', collateralReserveAddress = ''
     let userCollateralRate = '', exchangeRate = ''
     if (hre.network.name === "bsc") {
+        manager = ''
         pauser = '0xEEfebb1546d88EA0909435DF6f615084DD3c5Bd8'
         proxy = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4' // interaction
         collateralToken = '0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6'
@@ -17,7 +18,8 @@ async function main() {
         collateralReserveAddress = '' // fixme
         exchangeRate = 1022e15.toFixed()
         userCollateralRate = 95e16.toFixed()
-    } else if (hre.network.name === "bsc_testnet") {
+    } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
+        manager = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
         pauser = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
         proxy = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
         collateralToken = '0x3dC5a40119B85d5f2b06eEC86a6d36852bd9aB52'
@@ -29,9 +31,9 @@ async function main() {
     }
 
     // testnet address 241017: 0x8AE7BFF744fd91c8f033125a54fAdD1430256B78
-    let contractFactory = await hre.ethers.getContractFactory("SlisBNBLpProvider");
+    let contractFactory = await hre.ethers.getContractFactory("SlisBNBProvider");
     const ytslisBNBStakeVault = await upgrades.deployProxy(contractFactory, [
-        deployer, proxy, pauser, collateralToken, certToken, daoAddress, collateralReserveAddress, exchangeRate, userCollateralRate
+        deployer, manager, proxy, pauser, collateralToken, certToken, daoAddress, collateralReserveAddress, exchangeRate, userCollateralRate
     ], {initializer: "initialize"})
 
     console.log("Deployed: SlisBNBLpProvider: " + await ytslisBNBStakeVault.getAddress())

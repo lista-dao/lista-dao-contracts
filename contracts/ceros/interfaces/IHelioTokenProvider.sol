@@ -19,10 +19,6 @@ interface IHelioTokenProvider {
     event Withdrawal(address indexed owner, address indexed recipient, uint256 amount);
     event Liquidation(address indexed recipient, uint256 amount);
 
-    event ChangeToken(address ceToken);
-    event ChangeLpToken(address lPToken);
-    event ChangeDao(address dao);
-    event ChangeProxy(address auctionProxy);
     event ChangeDelegateTo(address account, address oldDelegatee, address newDelegatee);
     event SyncUserLp(address account, uint256 userLp);
 
