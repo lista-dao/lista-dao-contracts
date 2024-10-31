@@ -316,11 +316,12 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
 
         if (currentUserSelfLp > expectUserSelfLp) {
             _safeBurnLp(_account, currentUserSelfLp - expectUserSelfLp);
+            userLp[_account] = userExpectLp;
         } else if (currentUserSelfLp < expectUserSelfLp) {
             lpToken.mint(_account, expectUserSelfLp - currentUserSelfLp);
+            userLp[_account] = userExpectLp;
         }
 
-        userLp[_account] = userExpectLp;
         emit SyncUserLp(_account, userExpectLp);
         return true;
     }
@@ -341,6 +342,6 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
     function _authorizeUpgrade(address _newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
     }
 
-    // storage gap, declared fields: 6/50
+    // storage gap, declared fields: 5/50
     uint256[45] __gap;
 }

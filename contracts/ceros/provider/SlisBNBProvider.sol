@@ -193,11 +193,11 @@ contract SlisBNBProvider is BaseTokenProvider {
         if (reservePart > expectReserveLp) {
             lpToken.burn(lpReserveAddress, reservePart - expectReserveLp);
             userReservedLp[_account] = expectReserveLp;
-            totalReservedLp -= reservePart - expectReserveLp;
+            totalReservedLp -= (reservePart - expectReserveLp);
         } else if (reservePart < expectReserveLp) {
             lpToken.mint(lpReserveAddress, expectReserveLp - reservePart);
             userReservedLp[_account] = expectReserveLp;
-            totalReservedLp += expectReserveLp - reservePart;
+            totalReservedLp += (expectReserveLp - reservePart);
         }
         // user self and delegation
         Delegation storage userDelegation = delegation[_account];
@@ -214,11 +214,12 @@ contract SlisBNBProvider is BaseTokenProvider {
         }
         if (currentUserSelf > expectUserSelfLp) {
             lpToken.burn(_account, currentUserSelf - expectUserSelfLp);
+            userLp[_account] = expectUserLp;
         } else if (currentUserSelf < expectUserSelfLp) {
             lpToken.mint(_account, expectUserSelfLp - currentUserSelf);
+            userLp[_account] = expectUserLp;
         }
 
-        userLp[_account] = expectUserLp;
         emit SyncUserLpWithReserve(_account, expectUserLp, expectReserveLp);
         return true;
     }
