@@ -365,12 +365,11 @@ contract ytslisBNBStakeManager is
         }
         if (currentUserSelf > expectUserSelfLp) {
             lpToken.burn(_account, currentUserSelf - expectUserSelfLp);
-            userLp[_account] = expectUserPart;
         } else if (currentUserSelf < expectUserSelfLp) {
             lpToken.mint(_account, expectUserSelfLp - currentUserSelf);
-            userLp[_account] = expectUserPart;
         }
 
+        userLp[_account] = expectUserPart;
         emit SyncUserLp(_account, expectUserPart, expectReservePart);
         return true;
     }
