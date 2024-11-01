@@ -30,7 +30,7 @@ async function main() {
         userCollateralRate = 95e16.toFixed()
     }
 
-    // testnet address 241017: 0x8AE7BFF744fd91c8f033125a54fAdD1430256B78
+    // testnet address 241017: 0x11f6aDcb73473FD7bdd15f32df65Fa3ECdD0Bc20
     let contractFactory = await hre.ethers.getContractFactory("SlisBNBProvider");
     const ytslisBNBStakeVault = await upgrades.deployProxy(contractFactory, [
         deployer, manager, proxy, pauser, collateralToken, certToken, daoAddress, collateralReserveAddress, exchangeRate, userCollateralRate
