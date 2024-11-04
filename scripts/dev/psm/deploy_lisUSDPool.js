@@ -4,6 +4,7 @@ const hre = require('hardhat')
 let lisUSD = '0x785b5d1Bde70bD6042877cA08E4c73e0a40071af';
 let maxDuty = '1000000034836767751273470154'; // 200%
 let zero = "0x0000000000000000000000000000000000000000";
+let maxAmount = "10000000000000000000000000";
 
 async function main() {
     const signers = await hre.ethers.getSigners();
@@ -32,8 +33,9 @@ async function main() {
     const LisUSDPoolContract = await ethers.getContractAt('LisUSDPoolSet', proxyAddress);
 
     await LisUSDPoolContract.registerPool(lisUSD, lisUSD, zero);
+    await LisUSDPoolContract.setMaxAmount(maxAmount);
 
-    console.log('VaultManager deploy and setup done');
+    console.log('LisUSDPoolSet deploy and setup done');
 }
 
 main()
