@@ -3,17 +3,18 @@ const hre = require('hardhat')
 
 let lisUSD = '0x785b5d1Bde70bD6042877cA08E4c73e0a40071af';
 let maxDuty = '1000000034836767751273470154'; // 200%
-let vat = "0x382589e4dE7A061fcb9716c203983d8FE847AE0b";
+let zero = "0x0000000000000000000000000000000000000000";
 
 async function main() {
     const signers = await hre.ethers.getSigners();
     const deployer = signers[0].address;
 
-    const LisUSDPool = await hre.ethers.getContractFactory('LisUSDPool');
+    const LisUSDPool = await hre.ethers.getContractFactory('LisUSDPoolSet');
     const lisUSDPool = await upgrades.deployProxy(LisUSDPool, [
+        deployer,
+        deployer,
         lisUSD,
-        vat,
-        maxDuty,
+        maxDuty
     ]);
     await lisUSDPool.waitForDeployment();
 
@@ -28,6 +29,11 @@ async function main() {
         console.error('error verifying contract:', error);
     }
 
+    const LisUSDPoolContract = await ethers.getContractAt('LisUSDPoolSet', proxyAddress);
+
+    await LisUSDPoolContract.registerPool(lisUSD, lisUSD, zero);
+
+    console.log('VaultManager deploy and setup done');
 }
 
 main()
