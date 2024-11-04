@@ -375,5 +375,9 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         maxAmount = _maxAmount;
     }
 
+    function decimals() public view returns (uint8) {
+        return 18;
+    }
+
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

@@ -253,10 +253,9 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
             uint256 fee = totalAmount - netDepositAmount;
             IERC20(token).safeTransfer(feeReceiver, fee);
 
-            _distribute(netDepositAmount);
-
             emit Harvest(fee);
         }
+        _distribute(netDepositAmount);
     }
 
     /**
