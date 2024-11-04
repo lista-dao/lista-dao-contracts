@@ -98,9 +98,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
 
         // withdraw from quota
-        if (vTokenAmount == 0) {
-            return;
-        }
+        require(vTokenAmount > 0, "no vToken to withdraw");
         // withdraw from venus pool
         IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
         uint256 before = IERC20(token).balanceOf(address(this));

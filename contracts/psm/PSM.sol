@@ -114,7 +114,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
         uint256 realAmount = amount - fee;
 
         // check sell limit
-        require(realAmount <= IERC20(lisUSD).balanceOf(address(this)), "exceed sell limit");
+        require(amount <= IERC20(lisUSD).balanceOf(address(this)), "exceed sell limit");
 
         // transfer token from user
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
