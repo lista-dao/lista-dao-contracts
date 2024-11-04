@@ -1,8 +1,8 @@
 const {ethers, upgrades, run} = require('hardhat')
 const hre = require('hardhat')
 
-let psm = '0x89F5e21Ed5d716FcD86dfF00fDAbf9Bbc9327AC5';
-let usdc = '0xA528b0E61b72A0191515944cD8818a88d1D1D22b';
+let psm = '0x7616c413F29059D5002B0cCdFc2c82526EdA3E23';
+let usdc = '0xadbccCa89eC498F8B9B7F6A4B05206b113676861';
 
 async function main() {
     const signers = await hre.ethers.getSigners();

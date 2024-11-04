@@ -1,12 +1,10 @@
 const {ethers, upgrades, run} = require('hardhat')
 const hre = require('hardhat')
 
-let usdc = '0xA528b0E61b72A0191515944cD8818a88d1D1D22b';
+let usdc = '0xadbccCa89eC498F8B9B7F6A4B05206b113676861';
 let lisUSD = '0x785b5d1Bde70bD6042877cA08E4c73e0a40071af';
 let sellFee = 0;
 let buyFee = 500;
-let sellLimit = '1000000000000000000000000000'; // 1e27
-let buyLimit = '1000000000000000000000000000'; // 1e27
 let dailyLimit = '10000000000000000000000000' // 1e25;
 let minSell = '1000000000000000000'; // 1e18;
 let minBuy = '1000000000000000000'; // 1e18;

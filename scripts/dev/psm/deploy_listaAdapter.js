@@ -1,8 +1,8 @@
 const {ethers, upgrades, run} = require('hardhat')
 const hre = require('hardhat')
 
-let USDC = '0xA528b0E61b72A0191515944cD8818a88d1D1D22b';
-let vaultManager = '0x181DEC72eA77D01b01f283597Ed3CB0A2B6a9858';
+let USDC = '0xadbccCa89eC498F8B9B7F6A4B05206b113676861';
+let vaultManager = '0x218d35E5a3972Bd9D0E48007054603CFf9922aAA';
 
 async function main() {
     const signers = await hre.ethers.getSigners();
