@@ -17,13 +17,13 @@ async function main() {
 
     const PSM = await hre.ethers.getContractFactory('PSM');
     const psm = await upgrades.deployProxy(PSM, [
+        deployer,
+        deployer,
         usdc,
         deployer,
         lisUSD,
         sellFee,
         buyFee,
-        sellLimit,
-        buyLimit,
         dailyLimit,
         minSell,
         minBuy
