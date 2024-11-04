@@ -12,9 +12,9 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     address public venusPool; // venus pool address
     address public token; // token address
     address public vToken; // vToken address
-    uint256 public quota; // quota
+    uint256 public delta; // delta
 
-    uint256 public quotaAmount; // quota amount
+    uint256 public deltaAmount; // delta amount
 
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
 
@@ -47,7 +47,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
             address _venusPool, 
             address _token, 
             address _vToken,
-            uint256 _quotaAmount
+            uint256 _deltaAmount
         ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
@@ -66,7 +66,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         token = _token;
         venusPool = _venusPool;
         vToken = _vToken;
-        quotaAmount = _quotaAmount;
+        deltaAmount = _deltaAmount;
     }
 
     /**
@@ -97,7 +97,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         uint256 vTokenAmount = Math.mulDiv(amount, 1e18, exchangeRate);
         require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
 
-        // withdraw from quota
+        // withdraw from delta
         require(vTokenAmount > 0, "no vToken to withdraw");
         // withdraw from venus pool
         IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
@@ -107,11 +107,11 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
 
         uint256 remain = amount - tokenAmount;
         if (remain > 0) {
-            if (quota < remain) {
-                _withdrawQuota();
-                require(quota >= remain, "not enough quota");
+            if (delta < remain) {
+                _withdrawDelta();
+                require(delta >= remain, "not enough delta");
             }
-            quota -= remain;
+            delta -= remain;
         }
 
         // transfer token to account
@@ -120,15 +120,15 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         emit Withdraw(account, tokenAmount);
     }
 
-    // withdraw quota from venus pool
-    function _withdrawQuota() private {
-        uint256 vTokenAmount = Math.mulDiv(quotaAmount, 1e18, IVBep20Delegate(venusPool).exchangeRateStored());
+    // withdraw delta from venus pool
+    function _withdrawDelta() private {
+        uint256 vTokenAmount = Math.mulDiv(deltaAmount, 1e18, IVBep20Delegate(venusPool).exchangeRateStored());
         require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
         IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
         uint256 before = IERC20(token).balanceOf(address(this));
         IVBep20Delegate(venusPool).redeem(vTokenAmount);
         uint256 tokenAmount = IERC20(token).balanceOf(address(this)) - before;
-        quota += tokenAmount;
+        delta += tokenAmount;
     }
 
     /**
@@ -137,7 +137,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     function totalAvailableAmount() public view returns (uint256) {
         uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
         uint256 tokenAmount = Math.mulDiv(vTokenAmount, IVBep20Delegate(venusPool).exchangeRateStored(), 1e18)
-            + quota;
+            + delta;
         return tokenAmount;
     }
 
@@ -147,8 +147,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     function withdrawAll() external onlyVaultManager returns (uint256) {
         uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
 
-        uint256 tokenAmount = quota;
-        quota = 0;
+        uint256 tokenAmount = delta;
+        delta = 0;
         if (vTokenAmount > 0) {
             uint256 before = IERC20(token).balanceOf(address(this));
             IVBep20Delegate(venusPool).redeem(vTokenAmount);
@@ -160,11 +160,11 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @dev set quota amount
-     * @param _quotaAmount quota amount
+     * @dev set delta amount
+     * @param _deltaAmount delta amount
      */
-    function setQuotaAmount(uint256 _quotaAmount) external onlyRole(MANAGER) {
-        quotaAmount = _quotaAmount;
+    function setDeltaAmount(uint256 _deltaAmount) external onlyRole(MANAGER) {
+        deltaAmount = _deltaAmount;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
