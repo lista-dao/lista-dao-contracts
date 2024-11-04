@@ -101,7 +101,7 @@ contract InteractionMainnetTest is Test {
         assertEq(0, borrow, "borrow check");
     }
 
-    function test_paybackAs_fdusd() public {
+    function test_paybackFor_fdusd() public {
         test_borrow_fdusd();
 
         deal(address(interaction.hay()), user0, 0);
@@ -115,5 +115,22 @@ contract InteractionMainnetTest is Test {
         (uint256 deposit1, uint256 borrow) = vat.urns(fdusdIlk, user0);
         assertEq(1000 ether, deposit1, "deposit1 check");
         assertEq(0, borrow, "borrow check");
+    }
+
+    function test_paybackFor_fdusd_invalid_allowance() public {
+        test_borrow_fdusd();
+
+        deal(address(interaction.hay()), user0, 0);
+        deal(address(interaction.hay()), user1, 101 ether);
+
+        vm.startPrank(user1);
+        vm.expectRevert("LisUSD/insufficient-allowance");
+        interaction.paybackFor(address(FDUSD), 101 ether, user0);
+        vm.stopPrank();
+
+        (, uint256 rate, , ,) = vat.ilks(fdusdIlk);
+        (uint256 deposit1, uint256 borrow) = vat.urns(fdusdIlk, user0);
+        assertEq(1000 ether, deposit1, "deposit1 check");
+        assertEq(100 ether * RAY / rate + 1, borrow, "borrow check");
     }
 }
