@@ -30,8 +30,6 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     mapping(address => mapping(address => uint256)) public poolEmissionWeights;
     // user => emission weights
     mapping(address => uint256) public totalUserEmissionWeights;
-    // pool => emission weights
-    mapping(address => uint256) public totalAssetEmissionWeights;
     // pool => pool info
     mapping(address => Pool) public pools;
 
@@ -131,14 +129,12 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
             if (poolBalance >= remain) {
                 costWeight += remain;
                 poolEmissionWeights[_pools[i]][account] -= remain;
-                totalAssetEmissionWeights[_pools[i]] -= remain;
                 takeSnapshot(account, _pools[i]);
                 break;
             } else {
                 costWeight += poolBalance;
                 remain -= poolBalance;
                 poolEmissionWeights[_pools[i]][account] = 0;
-                totalAssetEmissionWeights[_pools[i]] -= poolBalance;
                 takeSnapshot(account, _pools[i]);
             }
         }
@@ -205,7 +201,6 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         totalSupply += share;
         poolEmissionWeights[pool][account] += amount;
         totalUserEmissionWeights[account] += amount;
-        totalAssetEmissionWeights[pool] += amount;
 
         takeSnapshot(account, pool);
 
