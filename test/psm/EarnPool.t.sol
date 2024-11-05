@@ -21,6 +21,7 @@ contract EarnPoolTest is Test {
     uint256 MAX_DUTY = 1000000005781378656804590540;
     uint256 duty = 1000000005781378656804590540;
     address vat = 0x33A34eAB3ee892D40420507B820347b1cA2201c4;
+    address USDT = 0x55d398326f99059fF775485246999027B3197955;
 
     address lisUSDAuth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
 
@@ -47,9 +48,7 @@ contract EarnPoolTest is Test {
                 lisUSD,
                 0,
                 0,
-                1e18 * 1e7,
                 1e18*1e7,
-                1e18*1e4,
                 1e18,
                 1e18
             )
@@ -123,6 +122,158 @@ contract EarnPoolTest is Test {
         vm.stopPrank();
     }
 
+    function test_initialize() public {
+        EarnPool earnPoolImpl = new EarnPool();
+
+        address zero = address(0x0);
+
+        vm.expectRevert("admin cannot be zero address");
+        new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                zero,
+                admin,
+                address(lisUSDPool),
+                lisUSD
+            )
+        );
+
+        vm.expectRevert("manager cannot be zero address");
+        new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                admin,
+                zero,
+                address(lisUSDPool),
+                lisUSD
+            )
+        );
+        vm.expectRevert("lisUSDPool cannot be zero address");
+        new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                admin,
+                admin,
+                zero,
+                lisUSD
+            )
+        );
+        vm.expectRevert("lisUSD cannot be zero address");
+        new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                admin,
+                admin,
+                address(lisUSDPool),
+                zero
+            )
+        );
+
+        assertEq(earnPool.lisUSDPool(), address(lisUSDPool), "lisUSDPool set error");
+        assertEq(earnPool.lisUSD(), lisUSD, "lisUSD set error");
+
+    }
+
+    function test_role() public {
+        EarnPool earnPoolImpl = new EarnPool();
+
+        ERC1967Proxy earnPoolProxy = new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                admin,
+                admin,
+                address(lisUSDPool),
+                lisUSD
+            )
+        );
+
+        EarnPool earnPool = EarnPool(address(earnPoolProxy));
+
+        assertTrue(earnPool.hasRole(earnPool.DEFAULT_ADMIN_ROLE(), admin), "admin role error");
+        assertTrue(earnPool.hasRole(earnPool.MANAGER(), admin), "manager role error");
+        assertTrue(!earnPool.hasRole(earnPool.PAUSER(), admin), "pauser role error");
+        assertTrue(!earnPool.hasRole(earnPool.PAUSER(), user1), "pauser role error");
+
+        vm.startPrank(admin);
+        earnPool.grantRole(earnPool.PAUSER(), user1);
+        vm.stopPrank();
+
+        assertTrue(earnPool.hasRole(earnPool.PAUSER(), user1), "pauser role error");
+    }
+
+    function test_pause() public {
+        vm.startPrank(user1);
+        vm.expectRevert();
+        earnPool.pause();
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        earnPool.grantRole(earnPool.PAUSER(), user1);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        earnPool.pause();
+        vm.stopPrank();
+
+        assertTrue(earnPool.paused(), "paused error");
+
+        vm.startPrank(admin);
+        earnPool.unpause();
+        vm.stopPrank();
+
+        assertTrue(!earnPool.paused(), "paused error");
+    }
+
+    function test_setPSM() public {
+        PSM psmImpl = new PSM();
+
+        ERC1967Proxy psmProxy = new ERC1967Proxy(
+            address(psmImpl),
+            abi.encodeWithSelector(
+                psmImpl.initialize.selector,
+                admin,
+                admin,
+                USDT,
+                admin,
+                lisUSD,
+                0,
+                0,
+                1e18*1e7,
+                1e18,
+                1e18
+            )
+        );
+        address usdtPSM = address(psmProxy);
+        address zero = address(0x0);
+
+        vm.startPrank(user1);
+        vm.expectRevert();
+        earnPool.setPSM(USDT, address(usdtPSM));
+        vm.stopPrank();
+
+        vm.startPrank(admin);
+        vm.expectRevert("token cannot be zero address");
+        earnPool.setPSM(zero, address(usdtPSM));
+        vm.expectRevert("psm cannot be zero address");
+        earnPool.setPSM(USDT, zero);
+        vm.expectRevert("psm already set");
+        earnPool.setPSM(USDC, address(psm));
+        vm.expectRevert("psm token not match");
+        earnPool.setPSM(USDT, address(psm));
+
+        earnPool.setPSM(USDT, address(usdtPSM));
+        assertEq(earnPool.psm(USDT), address(usdtPSM), "psm set error");
+
+        earnPool.removePSM(USDT);
+        assertEq(earnPool.psm(USDT), address(0), "psm remove error");
+        vm.stopPrank();
+    }
+
     function test_depositAndWithdraw() public {
         deal(USDC, user1, 1000 ether);
         deal(lisUSD, user1, 1000 ether);
@@ -148,16 +299,16 @@ contract EarnPoolTest is Test {
         assertEq(IERC20(lisUSD).balanceOf(address(lisUSDPool)), 200 ether, "lisUSDPool lisUSD balance 0 error");
 
         skip(1 days);
-        lisUSDPool.withdraw(pools, 1);
+        lisUSDPool.withdraw(pools, 1 ether);
         usdcBalance = IERC20(USDC).balanceOf(user1);
         lisUSDBalance = IERC20(lisUSD).balanceOf(user1);
 
         uint256 earnPoolBalance = lisUSDPool.poolEmissionWeights(address(USDC), user1);
         uint256 totalEmission = lisUSDPool.totalUserEmissionWeights(user1);
-        assertEq(earnPoolBalance, 100 ether - 1, "user1 earnPool balance 1 error");
+        assertEq(earnPoolBalance, 99 ether, "user1 earnPool balance 1 error");
         assertEq(usdcBalance, 900 ether, "user1 USDC 1 error");
-        assertEq(lisUSDBalance, 1000 ether + 1, "user1 lisUSD 1 error");
-        assertEq(totalEmission, 100 ether - 1, "user1 totalEmission 1 error");
+        assertEq(lisUSDBalance, 1001 ether, "user1 lisUSD 1 error");
+        assertEq(totalEmission, 99 ether, "user1 totalEmission 1 error");
 
         lisUSDPool.withdraw(pools, 99 ether);
 
@@ -165,13 +316,14 @@ contract EarnPoolTest is Test {
         lisUSDBalance = IERC20(lisUSD).balanceOf(user1);
         earnPoolBalance = lisUSDPool.poolEmissionWeights(address(USDC), user1);
         totalEmission = lisUSDPool.totalUserEmissionWeights(user1);
-        assertEq(earnPoolBalance, 1 ether - 1, "user1 earnPool balance 2 error");
+        assertEq(earnPoolBalance, 0, "user1 earnPool balance 2 error");
         assertEq(usdcBalance, 900 ether, "user1 USDC 2 error");
-        assertEq(lisUSDBalance, 1099 ether + 1, "user1 lisUSD 2 error");
-        assertEq(totalEmission, 1 ether - 1, "user1 totalEmission 2 error");
+        assertEq(lisUSDBalance, 1100 ether, "user1 lisUSD 2 error");
+        assertEq(totalEmission, 0, "user1 totalEmission 2 error");
 
         vm.stopPrank();
 
     }
+
 
 }

@@ -8,4 +8,6 @@ interface IAdapter {
     function totalAvailableAmount() external returns (uint256);
 
     function withdrawAll() external returns (uint256);
+
+    function netDepositAmount() external view returns (uint256);
 }

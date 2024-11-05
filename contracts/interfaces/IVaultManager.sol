@@ -4,4 +4,6 @@ interface IVaultManager {
     function deposit(uint256 amount) external;
 
     function withdraw(address receiver, uint256 amount) external;
+
+    function getTotalNetDeposit() external view returns (uint256);
 }

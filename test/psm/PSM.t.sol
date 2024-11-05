@@ -31,9 +31,8 @@ contract PSMTest is Test {
         vm.startPrank(admin);
         PSM psmImpl = new PSM();
 
-        TransparentUpgradeableProxy psmProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy psmProxy = new ERC1967Proxy(
             address(psmImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 psmImpl.initialize.selector,
                 admin,
@@ -53,9 +52,8 @@ contract PSMTest is Test {
 
         VaultManager vaultManagerImpl = new VaultManager();
 
-        TransparentUpgradeableProxy vaultManagerProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy vaultManagerProxy = new ERC1967Proxy(
             address(vaultManagerImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 vaultManagerImpl.initialize.selector,
                 admin,
@@ -100,5 +98,28 @@ contract PSMTest is Test {
 
         vm.stopPrank();
 
+    }
+
+    function test_initialize() public {
+        address zero = address(0x0);
+        PSM psmImpl = new PSM();
+
+        vm.expectRevert("admin cannot be zero address");
+        new ERC1967Proxy(
+            address(psmImpl),
+            abi.encodeWithSelector(
+                psmImpl.initialize.selector,
+                zero,
+                admin,
+                USDC,
+                admin,
+                lisUSD,
+                0,
+                500,
+                1e18*10000,
+                1e18,
+                1e18
+            )
+        );
     }
 }

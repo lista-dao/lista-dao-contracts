@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -18,8 +19,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     Adapter[] public adapters; // adapter list
-    uint256 public netDepositAmount; // net deposit amount
-    address public feeReceiver; // fee receiver address
 
     uint256 constant public MAX_PRECISION = 10000;
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
@@ -28,13 +27,11 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
     event SetPSM(address psm);
     event SetToken(address token);
     event SetAdapter(address adapter, bool active, uint256 point);
-    event SetFeeReceiver(address feeReceiver);
     event AddAdapter(address adapter, uint256 point);
     event Deposit(uint256 amount);
     event Withdraw(address receiver, uint256 amount);
     event ReBalance(uint256 amount);
     event EmergencyWithdraw(address account, uint256 amount);
-    event Harvest(uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -47,14 +44,12 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
       * @param _manager manager address
       * @param _psm PSM address
       * @param _token token address
-      * @param _feeReceiver fee receiver address
       */
     function initialize(
         address _admin,
         address _manager,
         address _psm,
-        address _token,
-        address _feeReceiver
+        address _token
     ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
@@ -68,11 +63,9 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
 
         psm = _psm;
         token = _token;
-        feeReceiver = _feeReceiver;
 
         emit SetPSM(_psm);
         emit SetToken(_token);
-        emit SetFeeReceiver(_feeReceiver);
     }
 
     modifier onlyPSM() {
@@ -96,7 +89,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         _distribute(amount);
 
-        netDepositAmount += amount;
         emit Deposit(amount);
     }
 
@@ -137,12 +129,8 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
       * @param receiver receiver address
       * @param amount withdraw amount
       */
-    function withdraw(address receiver, uint256 amount) external onlyPSM {
+    function withdraw(address receiver, uint256 amount) external onlyPSMOrManager {
         require(amount > 0, "withdraw amount cannot be zero");
-
-        require(amount <= netDepositAmount, "withdraw amount exceeds net deposit amount");
-
-        netDepositAmount -= amount;
 
         uint256 localAmount = IERC20(token).balanceOf(address(this));
 
@@ -161,13 +149,13 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
 
         // withdraw token from adapters
         for (uint256 i = 0; i < adapters.length; i++) {
-            uint256 totalAvailableAmount = IAdapter(adapters[i].adapter).totalAvailableAmount();
-            if (totalAvailableAmount >= remain) {
+            uint256 netDeposit = IAdapter(adapters[i].adapter).netDepositAmount();
+            if (netDeposit >= remain) {
                 IAdapter(adapters[i].adapter).withdraw(receiver, remain);
                 break;
             } else {
-                IAdapter(adapters[i].adapter).withdraw(receiver, totalAvailableAmount);
-                remain -= totalAvailableAmount;
+                IAdapter(adapters[i].adapter).withdraw(receiver, netDeposit);
+                remain -= netDeposit;
             }
         }
 
@@ -212,13 +200,14 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     /**
-      * @dev set fee receiver
-      * @param _feeReceiver fee receiver address
+      * @dev get total net deposit amount
       */
-    function setFeeReceiver(address _feeReceiver) external onlyRole(MANAGER) {
-        require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
-        feeReceiver = _feeReceiver;
-        emit SetFeeReceiver(_feeReceiver);
+    function getTotalNetDeposit() public view returns (uint256) {
+        uint256 amount;
+        for (uint256 i = 0; i < adapters.length; i++) {
+            amount += IAdapter(adapters[i].adapter).netDepositAmount();
+        }
+        return amount;
     }
 
     /**
@@ -235,26 +224,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         }
 
         emit ReBalance(amount);
-    }
-
-    /**
-      * @dev harvest token, only bot can call this function
-      */
-    function harvest() external onlyRole(BOT) {
-        // withdraw all token from adapters
-        for (uint256 i = 0; i < adapters.length; i++) {
-            IAdapter(adapters[i].adapter).withdrawAll();
-        }
-
-        uint256 totalAmount = IERC20(token).balanceOf(address(this));
-        // if total amount > net deposit amount, transfer fee to fee receiver
-        if (totalAmount > netDepositAmount) {
-            uint256 fee = totalAmount - netDepositAmount;
-            IERC20(token).safeTransfer(feeReceiver, fee);
-
-            emit Harvest(fee);
-        }
-        _distribute(netDepositAmount);
     }
 
     /**
