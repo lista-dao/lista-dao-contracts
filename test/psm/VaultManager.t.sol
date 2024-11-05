@@ -6,14 +6,12 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../contracts/psm/PSM.sol";
 import "../../contracts/psm/VaultManager.sol";
-import "../../contracts/psm/ListaAdapter.sol";
 import "../../contracts/psm/VenusAdapter.sol";
 import "../../contracts/LisUSD.sol";
 import "../../contracts/hMath.sol";
 
 contract VaultManagerTest is Test {
     VaultManager vaultManager;
-    ListaAdapter listaAdapter;
     VenusAdapter venusAdapter;
     address admin = address(0x1);
     address user1 = address(0x2);
@@ -52,22 +50,6 @@ contract VaultManagerTest is Test {
 
         vaultManager = VaultManager(address(vaultManagerProxy));
 
-        ListaAdapter listaAdpaterImpl = new ListaAdapter();
-
-        TransparentUpgradeableProxy listaAdapterProxy = new TransparentUpgradeableProxy(
-            address(listaAdpaterImpl),
-            address(proxyAdmin),
-            abi.encodeWithSelector(
-                listaAdpaterImpl.initialize.selector,
-                admin,
-                admin,
-                USDC,
-                address(vaultManager)
-            )
-        );
-
-        listaAdapter = ListaAdapter(address(listaAdapterProxy));
-
         VenusAdapter venusAdapterImpl = new VenusAdapter();
 
         TransparentUpgradeableProxy venusAdapterProxy = new TransparentUpgradeableProxy(
@@ -81,7 +63,8 @@ contract VaultManagerTest is Test {
                 venusPool,
                 USDC,
                 vUSDC,
-                quotaAmount
+                quotaAmount,
+                admin
             )
         );
 
@@ -118,7 +101,6 @@ contract VaultManagerTest is Test {
         deal(USDC, user1, 1000 ether);
 
         vm.startPrank(admin);
-        vaultManager.addAdapter(address(listaAdapter), 1000);
         vaultManager.addAdapter(address(venusAdapter), 1000);
         vm.stopPrank();
 
@@ -127,18 +109,14 @@ contract VaultManagerTest is Test {
 
         vaultManager.deposit(1000 ether);
 
-        uint256 listaAdapterBalance = listaAdapter.totalAvailableAmount();
         uint256 venusAdapterBalance = venusAdapter.totalAvailableAmount();
         uint256 vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
-        assertEq(listaAdapterBalance, 500 ether, "listaAdapterBalance 0 error");
         assertTrue(venusAdapterBalance <= 500 ether && venusAdapterBalance > 499 ether, "venusAdapterBalance 0 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 0 error");
 
         vaultManager.withdraw(user1, 900 ether);
-        listaAdapterBalance = listaAdapter.totalAvailableAmount();
         venusAdapterBalance = venusAdapter.totalAvailableAmount();
         vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
-        assertEq(listaAdapterBalance, 0 ether, "listaAdapterBalance 1 error");
         assertTrue(venusAdapterBalance <= 100 ether && venusAdapterBalance > 99 ether, "venusAdapterBalance 1 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 1 error");
 

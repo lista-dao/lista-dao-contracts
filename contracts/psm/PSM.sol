@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -111,7 +112,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @param amount token amount
      */
     function sell(uint256 amount) external nonReentrant whenNotPaused {
-        require(amount >= minSell, "amount must be greater than minSell");
+        require(amount >= minSell, "amount smaller than minSell");
         // calculate fee and real amount
         uint256 fee = Math.mulDiv(amount, sellFee, FEE_PRECISION);
         uint256 realAmount = amount - fee;
@@ -264,6 +265,10 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
 
         minBuy = _minBuy;
         emit SetMinBuy(_minBuy);
+    }
+
+    function getTotalBuyLimit() external view returns (uint256) {
+        return IVaultManager(vaultManager).getTotalNetDeposit();
     }
 
     /**
