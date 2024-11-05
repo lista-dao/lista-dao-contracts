@@ -20,7 +20,7 @@ contract EarnPool is AccessControlUpgradeable, ReentrancyGuardUpgradeable, Pausa
     address public lisUSD; // lisUSD address
 
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
-    bytes32 public constant PAUSE = keccak256("PAUSE"); // pause role
+    bytes32 public constant PAUSER = keccak256("PAUSER"); // pause role
 
     event SetLisUSDPool(address lisUSDPool);
     event SetLisUSD(address lisUSD);
@@ -89,7 +89,7 @@ contract EarnPool is AccessControlUpgradeable, ReentrancyGuardUpgradeable, Pausa
     /**
      * @dev pause contract
      */
-    function pause() external onlyRole(PAUSE) {
+    function pause() external onlyRole(PAUSER) {
         _pause();
     }
 
@@ -109,6 +109,7 @@ contract EarnPool is AccessControlUpgradeable, ReentrancyGuardUpgradeable, Pausa
         require(_token != address(0), "token cannot be zero address");
         require(_psm != address(0), "psm cannot be zero address");
         require(psm[_token] == address(0), "psm already set");
+        require(IPSM(_psm).token() == _token, "psm token not match");
         psm[_token] = _psm;
     }
 

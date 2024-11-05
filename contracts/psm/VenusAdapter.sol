@@ -136,8 +136,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      */
     function totalAvailableAmount() public view returns (uint256) {
         uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
-        uint256 tokenAmount = Math.mulDiv(vTokenAmount, IVBep20Delegate(venusPool).exchangeRateStored(), 1e18)
-            + delta;
+        uint256 tokenAmount = Math.mulDiv(vTokenAmount, IVBep20Delegate(venusPool).exchangeRateStored(), 1e18);
         return tokenAmount;
     }
 

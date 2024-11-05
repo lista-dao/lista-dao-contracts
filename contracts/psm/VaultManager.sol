@@ -18,7 +18,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     Adapter[] public adapters; // adapter list
-    uint256 public localToken; // local token amount
     uint256 public netDepositAmount; // net deposit amount
     address public feeReceiver; // fee receiver address
 
@@ -105,6 +104,9 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         uint256 remain = amount;
         uint256 totalPoint = getTotalPoint();
 
+        if (totalPoint == 0) {
+            return;
+        }
         // deposit token to adapters by adapter point
         for (uint256 i = 0; i < adapters.length; i++) {
             if (adapters[i].active) { // only active adapter can be used
@@ -116,11 +118,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
                     remain -= amt;
                 }
             }
-        }
-
-        // if remain amount > 0, add to local token
-        if (remain > 0) {
-            localToken += remain;
         }
     }
 
@@ -147,17 +144,19 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
 
         netDepositAmount -= amount;
 
+        uint256 localAmount = IERC20(token).balanceOf(address(this));
+
         uint256 remain = amount;
 
         // withdraw token from local first
-        if (localToken >= remain) {
+        if (localAmount >= remain) {
             IERC20(token).safeTransfer(receiver, remain);
-            localToken -= remain;
+
+            emit Withdraw(receiver, amount);
             return;
         } else {
-            IERC20(token).safeTransfer(receiver, localToken);
-            remain -= localToken;
-            localToken = 0;
+            remain -= localAmount;
+            IERC20(token).safeTransfer(receiver, localAmount);
         }
 
         // withdraw token from adapters
@@ -165,7 +164,7 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
             uint256 totalAvailableAmount = IAdapter(adapters[i].adapter).totalAvailableAmount();
             if (totalAvailableAmount >= remain) {
                 IAdapter(adapters[i].adapter).withdraw(receiver, remain);
-                return;
+                break;
             } else {
                 IAdapter(adapters[i].adapter).withdraw(receiver, totalAvailableAmount);
                 remain -= totalAvailableAmount;
