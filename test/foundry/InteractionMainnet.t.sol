@@ -117,6 +117,21 @@ contract InteractionMainnetTest is Test {
         assertEq(0, borrow, "borrow check");
     }
 
+    function test_paybackFor_fdusd_self() public {
+        test_borrow_fdusd();
+
+        deal(address(interaction.hay()), user0, 101 ether);
+
+        vm.startPrank(user0);
+        interaction.hay().approve(address(interaction), 101 ether);
+        interaction.paybackFor(address(FDUSD), 101 ether, user0);
+        vm.stopPrank();
+
+        (uint256 deposit1, uint256 borrow) = vat.urns(fdusdIlk, user0);
+        assertEq(1000 ether, deposit1, "deposit1 check");
+        assertEq(0, borrow, "borrow check");
+    }
+
     function test_paybackFor_fdusd_invalid_allowance() public {
         test_borrow_fdusd();
 
