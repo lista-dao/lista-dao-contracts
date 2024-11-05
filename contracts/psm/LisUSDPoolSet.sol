@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../hMath.sol";
 import "../interfaces/IStakeLisUSDListaDistributor.sol";
-import "../interfaces/VatLike.sol";
 
 contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
@@ -35,7 +34,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
     uint256 public rate; // share to lisUSD rate when last update
     uint256 public lastUpdate; // last rate update time
-    uint256 public duty; // interest rate per second
+    uint256 public duty; // the fixed interest rate per second
     uint256 public maxDuty; // max interest rate per second
     address public earnPool; // earn pool address
     uint256 public maxAmount; // max assets amount
@@ -370,7 +369,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         maxAmount = _maxAmount;
     }
 
-    function decimals() public view returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 18;
     }
 

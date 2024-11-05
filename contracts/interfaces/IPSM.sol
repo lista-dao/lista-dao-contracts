@@ -4,4 +4,6 @@ interface IPSM {
     function buy(uint256 amount) external;
 
     function sell(uint256 amount) external;
+
+    function token() external view returns (address);
 }

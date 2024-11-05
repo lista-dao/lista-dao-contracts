@@ -129,7 +129,7 @@ contract VaultManagerTest is Test {
 
         uint256 listaAdapterBalance = listaAdapter.totalAvailableAmount();
         uint256 venusAdapterBalance = venusAdapter.totalAvailableAmount();
-        uint256 vaultManagerBalance = vaultManager.localToken();
+        uint256 vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
         assertEq(listaAdapterBalance, 500 ether, "listaAdapterBalance 0 error");
         assertTrue(venusAdapterBalance <= 500 ether && venusAdapterBalance > 499 ether, "venusAdapterBalance 0 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 0 error");
@@ -137,7 +137,7 @@ contract VaultManagerTest is Test {
         vaultManager.withdraw(user1, 900 ether);
         listaAdapterBalance = listaAdapter.totalAvailableAmount();
         venusAdapterBalance = venusAdapter.totalAvailableAmount();
-        vaultManagerBalance = vaultManager.localToken();
+        vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
         assertEq(listaAdapterBalance, 0 ether, "listaAdapterBalance 1 error");
         assertTrue(venusAdapterBalance <= 100 ether && venusAdapterBalance > 99 ether, "venusAdapterBalance 1 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 1 error");
