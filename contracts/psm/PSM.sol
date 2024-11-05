@@ -78,6 +78,8 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
         require(_lisUSD != address(0), "lisUSD cannot be zero address");
         require(_sellFee <= FEE_PRECISION, "sellFee must be less or equal than FEE_PRECISION");
         require(_buyFee <= FEE_PRECISION, "buyFee must be less or equal than FEE_PRECISION");
+        require(_dailyLimit >= minBuy, "dailyLimit must be greater or equal than minBuy");
+
         __AccessControl_init();
         __ReentrancyGuard_init();
         __Pausable_init();
@@ -109,6 +111,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @param amount token amount
      */
     function sell(uint256 amount) external nonReentrant whenNotPaused {
+        require(amount >= minSell, "amount must be greater than minSell");
         // calculate fee and real amount
         uint256 fee = Math.mulDiv(amount, sellFee, FEE_PRECISION);
         uint256 realAmount = amount - fee;
@@ -138,13 +141,12 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @param amount lisUSD amount
      */
     function buy(uint256 amount) external nonReentrant whenNotPaused {
+        // check buy limit
+        checkAndUpdateBuyUsed(amount);
 
         // calculate fee and real amount
         uint256 fee = Math.mulDiv(amount, buyFee, FEE_PRECISION);
         uint256 realAmount = amount - fee;
-
-        // check buy limit
-        checkAndUpdateBuyUsed(realAmount);
 
         // transfer lisUSD from user and withdraw token from vault manager
         if (realAmount > 0) {
@@ -177,7 +179,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
 
     // check and update buy used
     function checkAndUpdateBuyUsed(uint256 amount) private {
-        require(checkBuyLimit(amount), "exceed buy limit");
+        require(checkBuyLimit(amount), "amount smaller than minBuy or exceed buy limit");
 
         // update total sell and buy used
         if (getDay() != lastBuyDay) {
@@ -234,10 +236,12 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
     }
 
     /**
-     * @dev set daily limit
+     * @dev set daily buy limit
      * @param _dailyLimit daily limit
      */
     function setDailyLimit(uint256 _dailyLimit) external onlyRole(MANAGER) {
+        require(_dailyLimit >= minBuy, "dailyLimit must be greater or equal than minBuy");
+
         dailyLimit = _dailyLimit;
         emit SetDailyLimit(_dailyLimit);
     }
@@ -256,6 +260,8 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @param _minBuy min buy amount
      */
     function setMinBuy(uint256 _minBuy) external onlyRole(MANAGER) {
+        require(dailyLimit >= _minBuy, "minBuy must be less or equal than dailyLimit");
+
         minBuy = _minBuy;
         emit SetMinBuy(_minBuy);
     }

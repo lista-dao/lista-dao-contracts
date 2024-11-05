@@ -2,7 +2,7 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "../../contracts/psm/LisUSDPoolSet.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../contracts/psm/PSM.sol";
 import "../../contracts/psm/VaultManager.sol";
@@ -16,7 +16,6 @@ contract EarnPoolTest is Test {
     EarnPool earnPool;
     address admin = address(0x1);
     address user1 = address(0x2);
-    ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
     address lisUSD = 0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5;
     address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     uint256 MAX_DUTY = 1000000005781378656804590540;
@@ -37,9 +36,8 @@ contract EarnPoolTest is Test {
         vm.startPrank(admin);
         PSM psmImpl = new PSM();
 
-        TransparentUpgradeableProxy psmProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy psmProxy = new ERC1967Proxy(
             address(psmImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 psmImpl.initialize.selector,
                 admin,
@@ -61,15 +59,15 @@ contract EarnPoolTest is Test {
 
         VaultManager vaultManagerImpl = new VaultManager();
 
-        TransparentUpgradeableProxy vaultManagerProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy vaultManagerProxy = new ERC1967Proxy(
             address(vaultManagerImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 vaultManagerImpl.initialize.selector,
                 admin,
                 admin,
                 address(psm),
-                USDC
+                USDC,
+                admin
             )
         );
 
@@ -78,9 +76,8 @@ contract EarnPoolTest is Test {
         psm.setVaultManager(address(vaultManager));
 
         LisUSDPoolSet lisUSDPoolImpl = new LisUSDPoolSet();
-        TransparentUpgradeableProxy lisUSDPoolProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy lisUSDPoolProxy = new ERC1967Proxy(
             address(lisUSDPoolImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 lisUSDPoolImpl.initialize.selector,
                 admin,
@@ -94,9 +91,8 @@ contract EarnPoolTest is Test {
         lisUSDPool = LisUSDPoolSet(address(lisUSDPoolProxy));
 
         EarnPool earnPoolImpl = new EarnPool();
-        TransparentUpgradeableProxy earnPoolProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy earnPoolProxy = new ERC1967Proxy(
             address(earnPoolImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 earnPoolImpl.initialize.selector,
                 admin,
@@ -106,6 +102,7 @@ contract EarnPoolTest is Test {
             )
         );
         earnPool = EarnPool(address(earnPoolProxy));
+
 
         earnPool.setPSM(USDC, address(psm));
 
