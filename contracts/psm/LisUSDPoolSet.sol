@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -38,6 +39,9 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     uint256 public maxDuty; // max interest rate per second
     address public earnPool; // earn pool address
     uint256 public maxAmount; // max assets amount
+    // user -> last deposit time
+    mapping(address => uint256) private lastDepositTime;
+    uint256 public withdrawDelay; // withdraw delay
 
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
     bytes32 public constant PAUSER = keccak256("PAUSER"); // pause role
@@ -113,7 +117,19 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
             share += 1;
         }
 
+        _withdraw(account, _pools, share, amount);
+    }
+
+    function withdrawAll(address[] memory _pools) public update nonReentrant whenNotPaused {
+        address account = msg.sender;
+        uint256 share = balanceOf[account];
+        uint256 amount = convertToAssets(share);
+        _withdraw(account, _pools, share, amount);
+    }
+
+    function _withdraw(address account, address[] memory _pools, uint256 share, uint256 amount) private {
         require(share <= balanceOf[account], "insufficient balance");
+        require(block.timestamp >= withdrawDelay + lastDepositTime[account], "withdraw delay not reached");
 
         // update shares
         balanceOf[account] -= share;
@@ -151,6 +167,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
         emit Transfer(account, address(0), share);
         emit Withdraw(account, amount);
+
     }
 
 
@@ -200,6 +217,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         totalSupply += share;
         poolEmissionWeights[pool][account] += amount;
         totalUserEmissionWeights[account] += amount;
+        lastDepositTime[account] = block.timestamp;
 
         takeSnapshot(account, pool);
 
@@ -371,6 +389,14 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
     function decimals() public pure returns (uint8) {
         return 18;
+    }
+
+    /**
+     * @dev set withdraw delay
+     * @param _withdrawDelay withdraw delay
+     */
+    function setWithdrawDelay(uint256 _withdrawDelay) external onlyRole(MANAGER) {
+        withdrawDelay = _withdrawDelay;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}

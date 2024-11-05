@@ -35,7 +35,8 @@ contract VenusAdapterTest is Test {
                 venusPool,
                 USDC,
                 vUSDC,
-                quotaAmount
+                quotaAmount,
+                admin
             )
         );
 
