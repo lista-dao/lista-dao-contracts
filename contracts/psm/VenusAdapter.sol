@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -12,14 +13,18 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     address public venusPool; // venus pool address
     address public token; // token address
     address public vToken; // vToken address
-    uint256 public delta; // delta
+    uint256 public netDepositAmount; // user net deposit amount
+    address public feeReceiver; // fee receiver address
 
     uint256 public deltaAmount; // delta amount
+    uint256 public delta; // delta
 
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
 
     event Deposit(uint256 amount);
     event Withdraw(address account, uint256 amount);
+    event Harvest(address account, uint256 amount);
+    event SetFeeReceiver(address feeReceiver);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -39,6 +44,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      * @param _venusPool venus pool address
      * @param _token token address
      * @param _vToken vToken address
+     * @param _deltaAmount delta amount
+     * @param _feeReceiver fee receiver address
      */
     function initialize(
             address _admin,
@@ -47,7 +54,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
             address _venusPool, 
             address _token, 
             address _vToken,
-            uint256 _deltaAmount
+            uint256 _deltaAmount,
+            address _feeReceiver
         ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
@@ -55,6 +63,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         require(_venusPool != address(0), "venusPool cannot be zero address");
         require(_token != address(0), "token cannot be zero address");
         require(_vToken != address(0), "vToken cannot be zero address");
+        require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
 
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -78,6 +87,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         IERC20(token).safeTransferFrom(vaultManager, address(this), amount);
         IERC20(token).safeIncreaseAllowance(venusPool, amount);
 
+        netDepositAmount += amount;
+
         // deposit to venus pool
         IVBep20Delegate(venusPool).mint(amount);
 
@@ -91,44 +102,31 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      */
     function withdraw(address account, uint256 amount) external onlyVaultManager {
         require(amount > 0, "withdraw amount cannot be zero");
+        require(amount <= netDepositAmount, "withdraw amount exceeds net deposit");
+
+        netDepositAmount -= amount;
+
+        // withdraw amount contains delta amount
+        uint256 withdrawAmount = amount + deltaAmount - delta;
 
         uint256 exchangeRate = IVBep20Delegate(venusPool).exchangeRateStored();
         // calculate vToken amount
-        uint256 vTokenAmount = Math.mulDiv(amount, 1e18, exchangeRate);
+        uint256 vTokenAmount = Math.mulDiv(withdrawAmount, 1e18, exchangeRate);
+
+        require(vTokenAmount > 0, "no vToken to withdraw");
         require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
 
-        // withdraw from delta
-        require(vTokenAmount > 0, "no vToken to withdraw");
         // withdraw from venus pool
-        IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
-        uint256 before = IERC20(token).balanceOf(address(this));
-        IVBep20Delegate(venusPool).redeem(vTokenAmount);
-        uint256 tokenAmount = IERC20(token).balanceOf(address(this)) - before;
+        uint256 tokenAmount = _withdrawFromVenus(vTokenAmount);
 
-        uint256 remain = amount - tokenAmount;
-        if (remain > 0) {
-            if (delta < remain) {
-                _withdrawDelta();
-                require(delta >= remain, "not enough delta");
-            }
-            delta -= remain;
-        }
+        require(tokenAmount + delta >= amount, "not enough token");
+
+        delta = tokenAmount + delta - amount;
 
         // transfer token to account
         IERC20(token).safeTransfer(account, amount);
 
         emit Withdraw(account, tokenAmount);
-    }
-
-    // withdraw delta from venus pool
-    function _withdrawDelta() private {
-        uint256 vTokenAmount = Math.mulDiv(deltaAmount, 1e18, IVBep20Delegate(venusPool).exchangeRateStored());
-        require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
-        IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
-        uint256 before = IERC20(token).balanceOf(address(this));
-        IVBep20Delegate(venusPool).redeem(vTokenAmount);
-        uint256 tokenAmount = IERC20(token).balanceOf(address(this)) - before;
-        delta += tokenAmount;
     }
 
     /**
@@ -144,18 +142,20 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      * @dev withdraw all token to vault manager
      */
     function withdrawAll() external onlyVaultManager returns (uint256) {
+        // harvest interest to fee receiver
+        harvest();
+
+        // withdraw all token to vault manager
+        netDepositAmount = 0;
+
+        uint256 totalAmount = delta;
         uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
 
-        uint256 tokenAmount = delta;
-        delta = 0;
         if (vTokenAmount > 0) {
-            uint256 before = IERC20(token).balanceOf(address(this));
-            IVBep20Delegate(venusPool).redeem(vTokenAmount);
-            tokenAmount += IERC20(token).balanceOf(address(this)) - before;
-
+            totalAmount += _withdrawFromVenus(vTokenAmount);
         }
-        IERC20(token).safeTransfer(vaultManager, tokenAmount);
-        return tokenAmount;
+        IERC20(token).safeTransfer(vaultManager, totalAmount);
+        return totalAmount;
     }
 
     /**
@@ -164,6 +164,48 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      */
     function setDeltaAmount(uint256 _deltaAmount) external onlyRole(MANAGER) {
         deltaAmount = _deltaAmount;
+    }
+
+    /**
+     * @dev harvest interest to fee receiver
+     */
+    function harvest() public {
+        uint256 totalAmount = totalAvailableAmount() + delta;
+        if (totalAmount > netDepositAmount) {
+            // calculate interest and redeem amount
+            uint256 interest = totalAmount - netDepositAmount;
+            uint256 exchangeRate = IVBep20Delegate(venusPool).exchangeRateStored();
+            uint256 interestVTokenAmount = Math.mulDiv(interest, 1e18, exchangeRate);
+
+            if (interestVTokenAmount > 0) {
+                // redeem interest
+                uint256 fee = _withdrawFromVenus(interestVTokenAmount);
+
+                if (fee > 0) {
+                    // transfer fee to fee receiver
+                    IERC20(token).safeTransfer(feeReceiver, fee);
+
+                    emit Harvest(feeReceiver, fee);
+                }
+            }
+        }
+    }
+
+    function _withdrawFromVenus(uint256 vTokenAmount) private returns (uint256) {
+        uint256 before = IERC20(token).balanceOf(address(this));
+        IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
+        IVBep20Delegate(venusPool).redeem(vTokenAmount);
+        return IERC20(token).balanceOf(address(this)) - before;
+    }
+
+    /**
+      * @dev set fee receiver
+      * @param _feeReceiver fee receiver address
+      */
+    function setFeeReceiver(address _feeReceiver) external onlyRole(MANAGER) {
+        require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
+        feeReceiver = _feeReceiver;
+        emit SetFeeReceiver(_feeReceiver);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
