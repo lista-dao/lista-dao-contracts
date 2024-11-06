@@ -272,7 +272,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     }
 
     function getTotalBuyLimit() external view returns (uint256) {
-        return IVaultManager(vaultManager).getTotalNetDeposit();
+        return IVaultManager(vaultManager).getTotalNetDepositAmount();
     }
 
     /**

@@ -184,7 +184,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     /**
       * @dev get total net deposit amount
       */
-    function getTotalNetDeposit() public view returns (uint256) {
+    function getTotalNetDepositAmount() public view returns (uint256) {
         uint256 amount;
         for (uint256 i = 0; i < adapters.length; i++) {
             amount += IAdapter(adapters[i].adapter).netDepositAmount();
