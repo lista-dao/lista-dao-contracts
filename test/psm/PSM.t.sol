@@ -42,6 +42,7 @@ contract PSMTest is Test {
                 psmImpl.initialize.selector,
                 admin,
                 admin,
+                admin,
                 USDC,
                 admin,
                 lisUSD,
@@ -74,9 +75,8 @@ contract PSMTest is Test {
 
         VenusAdapter venusAdapterImpl = new VenusAdapter();
 
-        TransparentUpgradeableProxy venusAdapterProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
             address(venusAdapterImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 venusAdapterImpl.initialize.selector,
                 admin,
@@ -137,6 +137,7 @@ contract PSMTest is Test {
             abi.encodeWithSelector(
                 psmImpl.initialize.selector,
                 zero,
+                admin,
                 admin,
                 USDC,
                 admin,

@@ -31,7 +31,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     event SetVToken(address vToken);
     event SetToken(address token);
     event SetDeltaAmount(uint256 deltaAmount);
-    event SetFeeReceiver(address feeReceiver);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
