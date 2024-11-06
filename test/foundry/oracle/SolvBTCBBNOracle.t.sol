@@ -13,7 +13,7 @@ contract SolvBTCBBNOracleTest is Test {
     uint testnet;
 
     function setUp() public {
-        testnet = vm.createSelectFork("https://data-seed-prebsc-2-s3.binance.org:8545");
+        testnet = vm.createSelectFork("https://bsc-testnet.bnbchain.org");
         oracle = SolvBTCBBNOracle(0x3e6c4Efe6D6A470439795756BEDE9f4cd6BdDd5d);
     }
 
