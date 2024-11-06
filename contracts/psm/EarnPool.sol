@@ -11,7 +11,7 @@ import "../interfaces/ILisUSDPool.sol";
 import "../interfaces/IPSM.sol";
 import "../interfaces/IStakeLisUSDListaDistributor.sol";
 
-contract EarnPool is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable {
+contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     // token => psm
@@ -67,7 +67,7 @@ contract EarnPool is AccessControlUpgradeable, ReentrancyGuardUpgradeable, Pausa
      * @dev deposit token to earn pool
      * @param amount token amount
      */
-    function deposit(address token, uint256 amount) external nonReentrant whenNotPaused {
+    function deposit(address token, uint256 amount) external whenNotPaused {
         require(amount > 0, "amount must be greater than zero");
         require(psm[token] != address(0), "psm not set");
 
