@@ -92,7 +92,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
         lisUSD = _lisUSD;
 
-        name = "lisUSD single staking Pool";
+        name = "lisUSD Single Staking Pool";
         symbol = "sLisUSD";
         maxDuty = _maxDuty;
 

@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IVaultManager.sol";
 import "../interfaces/HayLike.sol";
 
-contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable {
+contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     address public vaultManager; // VaultManager address
@@ -111,7 +111,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @dev sell token to get lisUSD
      * @param amount token amount
      */
-    function sell(uint256 amount) external nonReentrant whenNotPaused {
+    function sell(uint256 amount) external whenNotPaused {
         require(amount >= minSell, "amount smaller than minSell");
         // calculate fee and real amount
         uint256 fee = Math.mulDiv(amount, sellFee, FEE_PRECISION);
@@ -141,7 +141,7 @@ contract PSM is AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUp
      * @dev buy token with lisUSD
      * @param amount lisUSD amount
      */
-    function buy(uint256 amount) external nonReentrant whenNotPaused {
+    function buy(uint256 amount) external whenNotPaused {
         // check buy limit
         checkAndUpdateBuyUsed(amount);
 
