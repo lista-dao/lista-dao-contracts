@@ -113,17 +113,6 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function getTotalPoint() public view returns (uint256) {
-        uint256 totalPoint;
-        for (uint256 i = 0; i < adapters.length; i++) {
-            if (adapters[i].active) {
-                totalPoint += adapters[i].point;
-            }
-        }
-
-        return totalPoint;
-    }
-
     /**
       * @dev withdraw token from adapters, only PSM can call this function
       * @param receiver receiver address
@@ -132,30 +121,18 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
     function withdraw(address receiver, uint256 amount) external onlyPSMOrManager {
         require(amount > 0, "withdraw amount cannot be zero");
 
-        uint256 localAmount = IERC20(token).balanceOf(address(this));
-
         uint256 remain = amount;
-
-        // withdraw token from local first
-        if (localAmount >= remain) {
-            IERC20(token).safeTransfer(receiver, remain);
-
-            emit Withdraw(receiver, amount);
-            return;
-        } else {
-            remain -= localAmount;
-            IERC20(token).safeTransfer(receiver, localAmount);
-        }
 
         // withdraw token from adapters
         for (uint256 i = 0; i < adapters.length; i++) {
             uint256 netDeposit = IAdapter(adapters[i].adapter).netDepositAmount();
             if (netDeposit >= remain) {
+                remain = 0;
                 IAdapter(adapters[i].adapter).withdraw(receiver, remain);
                 break;
             } else {
-                IAdapter(adapters[i].adapter).withdraw(receiver, netDeposit);
                 remain -= netDeposit;
+                IAdapter(adapters[i].adapter).withdraw(receiver, netDeposit);
             }
         }
 
@@ -209,6 +186,20 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         }
         return amount;
     }
+    /**
+      * @dev get total point
+      */
+    function getTotalPoint() public view returns (uint256) {
+        uint256 totalPoint;
+        for (uint256 i = 0; i < adapters.length; i++) {
+            if (adapters[i].active) {
+                totalPoint += adapters[i].point;
+            }
+        }
+
+        return totalPoint;
+    }
+
 
     /**
       * @dev rebalance token to adapters, only bot can call this function
