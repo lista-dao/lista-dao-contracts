@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import "../interfaces/IAdapter.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "../interfaces/IAdapter.sol";
 
-contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
+contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
     address public psm; // PSM address
     address public token; // token address
@@ -82,7 +83,7 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
       * @dev deposit token to adapters, only PSM can call this function
       * @param amount deposit amount
       */
-    function deposit(uint256 amount) external onlyPSMOrManager {
+    function deposit(uint256 amount) external nonReentrant onlyPSMOrManager {
         require(amount > 0, "deposit amount cannot be zero");
 
         // transfer token to this contract
@@ -118,7 +119,7 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
       * @param receiver receiver address
       * @param amount withdraw amount
       */
-    function withdraw(address receiver, uint256 amount) external onlyPSMOrManager {
+    function withdraw(address receiver, uint256 amount) external nonReentrant onlyPSMOrManager {
         require(amount > 0, "withdraw amount cannot be zero");
 
         uint256 remain = amount;
