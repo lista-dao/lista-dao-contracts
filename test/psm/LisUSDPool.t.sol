@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../contracts/psm/PSM.sol";
 import "../../contracts/psm/VaultManager.sol";
 import "../../contracts/LisUSD.sol";
-import {Pool} from "../../contracts/ceros/mocks/Pool.sol";
 
 contract LisUSDPoolTest is Test {
     LisUSDPoolSet lisUSDPool;
@@ -32,15 +31,16 @@ contract LisUSDPoolTest is Test {
 
         vm.startPrank(admin);
         LisUSDPoolSet lisUSDPoolImpl = new LisUSDPoolSet();
-        TransparentUpgradeableProxy lisUSDPoolProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy lisUSDPoolProxy = new ERC1967Proxy(
             address(lisUSDPoolImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 lisUSDPoolImpl.initialize.selector,
                 admin,
                 admin,
+                admin,
                 lisUSD,
-                MAX_DUTY
+                MAX_DUTY,
+                0
             )
         );
 
@@ -118,8 +118,10 @@ contract LisUSDPoolTest is Test {
                 lisUSDPoolImpl.initialize.selector,
                 zero,
                 admin,
+                admin,
                 lisUSD,
-                MAX_DUTY
+                MAX_DUTY,
+                0
             )
         );
 
@@ -130,11 +132,14 @@ contract LisUSDPoolTest is Test {
                 lisUSDPoolImpl.initialize.selector,
                 admin,
                 zero,
+                admin,
                 lisUSD,
-                MAX_DUTY
+                MAX_DUTY,
+                0
             )
         );
-        vm.expectRevert("lisUSD cannot be zero address");
+
+        vm.expectRevert("pauser cannot be zero address");
         new ERC1967Proxy(
             address(lisUSDPoolImpl),
             abi.encodeWithSelector(
@@ -142,11 +147,26 @@ contract LisUSDPoolTest is Test {
                 admin,
                 admin,
                 zero,
-                MAX_DUTY
+                lisUSD,
+                MAX_DUTY,
+                0
             )
         );
 
-        console.log("maxDuty", lisUSDPool.maxDuty());
+        vm.expectRevert("lisUSD cannot be zero address");
+        new ERC1967Proxy(
+            address(lisUSDPoolImpl),
+            abi.encodeWithSelector(
+                lisUSDPoolImpl.initialize.selector,
+                admin,
+                admin,
+                admin,
+                zero,
+                MAX_DUTY,
+                0
+            )
+        );
+
         assertEq(lisUSDPool.lisUSD(), lisUSD, "lisUSD error");
         assertEq(lisUSDPool.maxDuty(), MAX_DUTY, "maxDuty error");
     }

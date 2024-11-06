@@ -46,6 +46,7 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
     ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
+        require(_pauser != address(0), "pauser cannot be zero address");
         require(_lisUSDPool != address(0), "lisUSDPool cannot be zero address");
         require(_lisUSD != address(0), "lisUSD cannot be zero address");
         __AccessControl_init();

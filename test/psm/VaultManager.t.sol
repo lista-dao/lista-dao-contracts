@@ -36,9 +36,8 @@ contract VaultManagerTest is Test {
 
         VaultManager vaultManagerImpl = new VaultManager();
 
-        TransparentUpgradeableProxy vaultManagerProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy vaultManagerProxy = new ERC1967Proxy(
             address(vaultManagerImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 vaultManagerImpl.initialize.selector,
                 admin,
@@ -52,9 +51,8 @@ contract VaultManagerTest is Test {
 
         VenusAdapter venusAdapterImpl = new VenusAdapter();
 
-        TransparentUpgradeableProxy venusAdapterProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
             address(venusAdapterImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 venusAdapterImpl.initialize.selector,
                 admin,

@@ -75,6 +75,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
+        require(_pauser != address(0), "pauser cannot be zero address");
         require(_token != address(0), "token cannot be zero address");
         require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
         require(_lisUSD != address(0), "lisUSD cannot be zero address");
