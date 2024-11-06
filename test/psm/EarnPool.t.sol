@@ -20,7 +20,6 @@ contract EarnPoolTest is Test {
     address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     uint256 MAX_DUTY = 1000000005781378656804590540;
     uint256 duty = 1000000005781378656804590540;
-    address vat = 0x33A34eAB3ee892D40420507B820347b1cA2201c4;
     address USDT = 0x55d398326f99059fF775485246999027B3197955;
 
     address lisUSDAuth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
@@ -41,6 +40,7 @@ contract EarnPoolTest is Test {
             address(psmImpl),
             abi.encodeWithSelector(
                 psmImpl.initialize.selector,
+                admin,
                 admin,
                 admin,
                 USDC,
@@ -81,9 +81,10 @@ contract EarnPoolTest is Test {
                 lisUSDPoolImpl.initialize.selector,
                 admin,
                 admin,
+                admin,
                 lisUSD,
-                vat,
-                MAX_DUTY
+                MAX_DUTY,
+                0
             )
         );
 
@@ -94,6 +95,7 @@ contract EarnPoolTest is Test {
             address(earnPoolImpl),
             abi.encodeWithSelector(
                 earnPoolImpl.initialize.selector,
+                admin,
                 admin,
                 admin,
                 address(lisUSDPool),
@@ -134,6 +136,7 @@ contract EarnPoolTest is Test {
                 earnPoolImpl.initialize.selector,
                 zero,
                 admin,
+                admin,
                 address(lisUSDPool),
                 lisUSD
             )
@@ -146,6 +149,21 @@ contract EarnPoolTest is Test {
                 earnPoolImpl.initialize.selector,
                 admin,
                 zero,
+                admin,
+                address(lisUSDPool),
+                lisUSD
+            )
+        );
+
+        vm.expectRevert("pauser cannot be zero address");
+        new ERC1967Proxy(
+            address(earnPoolImpl),
+            abi.encodeWithSelector(
+                earnPoolImpl.initialize.selector,
+                admin,
+                admin,
+                zero,
+                admin,
                 address(lisUSDPool),
                 lisUSD
             )
@@ -157,6 +175,7 @@ contract EarnPoolTest is Test {
                 earnPoolImpl.initialize.selector,
                 admin,
                 admin,
+                admin,
                 zero,
                 lisUSD
             )
@@ -166,6 +185,7 @@ contract EarnPoolTest is Test {
             address(earnPoolImpl),
             abi.encodeWithSelector(
                 earnPoolImpl.initialize.selector,
+                admin,
                 admin,
                 admin,
                 address(lisUSDPool),
@@ -187,6 +207,7 @@ contract EarnPoolTest is Test {
                 earnPoolImpl.initialize.selector,
                 admin,
                 admin,
+                admin,
                 address(lisUSDPool),
                 lisUSD
             )
@@ -196,7 +217,7 @@ contract EarnPoolTest is Test {
 
         assertTrue(earnPool.hasRole(earnPool.DEFAULT_ADMIN_ROLE(), admin), "admin role error");
         assertTrue(earnPool.hasRole(earnPool.MANAGER(), admin), "manager role error");
-        assertTrue(!earnPool.hasRole(earnPool.PAUSER(), admin), "pauser role error");
+        assertTrue(earnPool.hasRole(earnPool.PAUSER(), admin), "pauser role error");
         assertTrue(!earnPool.hasRole(earnPool.PAUSER(), user1), "pauser role error");
 
         vm.startPrank(admin);
@@ -236,6 +257,7 @@ contract EarnPoolTest is Test {
             address(psmImpl),
             abi.encodeWithSelector(
                 psmImpl.initialize.selector,
+                admin,
                 admin,
                 admin,
                 USDT,

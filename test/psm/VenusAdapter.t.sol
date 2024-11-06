@@ -24,9 +24,8 @@ contract VenusAdapterTest is Test {
         vm.startPrank(admin);
         VenusAdapter venusAdapterImpl = new VenusAdapter();
 
-        TransparentUpgradeableProxy venusAdapterProxy = new TransparentUpgradeableProxy(
+        ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
             address(venusAdapterImpl),
-            address(proxyAdmin),
             abi.encodeWithSelector(
                 venusAdapterImpl.initialize.selector,
                 admin,
