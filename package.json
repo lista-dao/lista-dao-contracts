@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "forge test",
+    "prepare": "husky",
+    "check": "prettier --check **/*.sol",
+    "fix": "prettier --write **/*.sol"
   },
   "author": "",
   "license": "ISC",
@@ -40,8 +43,11 @@
     "hardhat-gas-reporter": "^1.0.10",
     "hardhat-spdx-license-identifier": "^2.2.0",
     "hardhat-storage-layout": "^0.1.7",
+    "husky": "^9.1.6",
     "math.js": "^1.1.46",
     "mocha": "^10.2.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-solidity": "^1.4.1",
     "solidity-coverage": "^0.8.6",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
