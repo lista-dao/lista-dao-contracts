@@ -1,22 +1,27 @@
 pragma solidity ^0.8.10;
 
-import "forge-std/Test.sol";
-import "../../contracts/psm/LisUSDPoolSet.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "../../contracts/psm/PSM.sol";
-import "../../contracts/psm/VaultManager.sol";
 import "../../contracts/LisUSD.sol";
 import "../../contracts/hMath.sol";
+import "../../contracts/psm/LisUSDPoolSet.sol";
+import "../../contracts/psm/PSM.sol";
+import "../../contracts/psm/VaultManager.sol";
+import "../../contracts/psm/VenusAdapter.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "forge-std/Test.sol";
 
 contract PSMTest is Test {
     PSM psm;
     VaultManager vaultManager;
+    VenusAdapter venusAdapter;
     address admin = address(0x1);
     address user1 = address(0x2);
     ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
     address lisUSD = 0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5;
     address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
+    address venusPool = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
+    address vUSDC = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
+    uint256 quotaAmount = 1e18;
 
     address lisUSDAuth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
 
@@ -66,6 +71,28 @@ contract PSMTest is Test {
         vaultManager = VaultManager(address(vaultManagerProxy));
 
         psm.setVaultManager(address(vaultManager));
+
+        VenusAdapter venusAdapterImpl = new VenusAdapter();
+
+        TransparentUpgradeableProxy venusAdapterProxy = new TransparentUpgradeableProxy(
+            address(venusAdapterImpl),
+            address(proxyAdmin),
+            abi.encodeWithSelector(
+                venusAdapterImpl.initialize.selector,
+                admin,
+                admin,
+                address(vaultManager),
+                venusPool,
+                USDC,
+                vUSDC,
+                quotaAmount,
+                admin
+            )
+        );
+
+        venusAdapter = VenusAdapter(address(venusAdapterProxy));
+
+        vaultManager.addAdapter(address(venusAdapter), 100);
 
         vm.stopPrank();
 
