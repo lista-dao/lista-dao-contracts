@@ -98,15 +98,15 @@ contract VaultManagerTest is Test {
 
     vaultManager.deposit(1000 ether);
 
-    uint256 venusAdapterBalance = venusAdapter.totalAvailableAmount();
+    uint256 venusAdapterBalance = IVBep20Delegate(venusPool).balanceOfUnderlying(address(venusAdapter));
     uint256 vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
     assertTrue(venusAdapterBalance <= 1000 ether && venusAdapterBalance > 999 ether, "venusAdapterBalance 0 error");
     assertEq(vaultManagerBalance, 0, "vaultManagerBalance 0 error");
 
     vaultManager.withdraw(user1, 900 ether);
-    venusAdapterBalance = venusAdapter.totalAvailableAmount();
+    venusAdapterBalance = IVBep20Delegate(venusPool).balanceOfUnderlying(address(venusAdapter));
     vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
-    assertTrue(venusAdapterBalance <= 100 ether && venusAdapterBalance > 98 ether, "venusAdapterBalance 1 error");
+    assertTrue(venusAdapterBalance <= 101 ether && venusAdapterBalance > 99 ether, "venusAdapterBalance 1 error");
     assertEq(vaultManagerBalance, 0, "vaultManagerBalance 1 error");
 
     vm.stopPrank();
