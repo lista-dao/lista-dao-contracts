@@ -26,6 +26,12 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     event Harvest(address account, uint256 amount);
     event SetFeeReceiver(address feeReceiver);
     event EmergencyWithdraw(address token, uint256 amount);
+    event SetVaultManager(address vaultManager);
+    event SetVenusPool(address venusPool);
+    event SetVToken(address vToken);
+    event SetToken(address token);
+    event SetDeltaAmount(uint256 deltaAmount);
+    event SetFeeReceiver(address feeReceiver);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -77,6 +83,14 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         venusPool = _venusPool;
         vToken = _vToken;
         deltaAmount = _deltaAmount;
+        feeReceiver = _feeReceiver;
+
+        emit SetVaultManager(_vaultManager);
+        emit SetVenusPool(_venusPool);
+        emit SetToken(_token);
+        emit SetVToken(_vToken);
+        emit SetDeltaAmount(_deltaAmount);
+        emit SetFeeReceiver(_feeReceiver);
     }
 
     /**
@@ -156,6 +170,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
             totalAmount += _withdrawFromVenus(vTokenAmount);
         }
         IERC20(token).safeTransfer(vaultManager, totalAmount);
+
+        emit Withdraw(vaultManager, totalAmount);
         return totalAmount;
     }
 
@@ -165,6 +181,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      */
     function setDeltaAmount(uint256 _deltaAmount) external onlyRole(MANAGER) {
         deltaAmount = _deltaAmount;
+
+        emit SetDeltaAmount(_deltaAmount);
     }
 
     /**

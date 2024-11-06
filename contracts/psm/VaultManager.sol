@@ -58,6 +58,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
         require(_token != address(0), "token cannot be zero address");
         __AccessControl_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(MANAGER, _manager);
