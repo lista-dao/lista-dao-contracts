@@ -55,6 +55,12 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     event RemovePool(address pool);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event EmergencyWithdraw(address token, uint256 amount);
+    event SetLisUSD(address lisUSD);
+    event SetWithdrawDelay(uint256 withdrawDelay);
+    event SetEarnPool(address earnPool);
+    event SetDistributor(address pool, address distributor);
+    event RemoveDistributor(address pool);
+    event SetMaxAmount(uint256 maxAmount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -76,8 +82,10 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     function initialize(
         address _admin,
         address _manager,
+        address _pauser,
         address _lisUSD,
-        uint256 _maxDuty
+        uint256 _maxDuty,
+        uint256 _withdrawDelay
     ) public initializer {
         require(_admin != address(0), "admin cannot be zero address");
         require(_manager != address(0), "manager cannot be zero address");
@@ -89,6 +97,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(MANAGER, _manager);
+        _setupRole(PAUSER, _pauser);
 
         lisUSD = _lisUSD;
 
@@ -99,8 +108,12 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         rate = RATE_SCALE;
         lastUpdate = block.timestamp;
         duty = RATE_SCALE;
+        withdrawDelay = _withdrawDelay;
 
+        emit SetDuty(duty);
         emit SetMaxDuty(_maxDuty);
+        emit SetLisUSD(_lisUSD);
+        emit SetWithdrawDelay(_withdrawDelay);
     }
 
     /**
@@ -191,7 +204,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      * @param account account address
      * @param amount amount to deposit
      */
-    function depositFor(address pool, address account, uint256 amount) external onlyEarnPool nonReentrant whenNotPaused {
+    function depositFor(address pool, address account, uint256 amount) external onlyEarnPool  {
         _depositFor(msg.sender, pool, account, amount);
     }
 
@@ -199,12 +212,11 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      * @dev deposit lisUSD
      * @param amount amount to deposit
      */
-    function deposit(uint256 amount) external nonReentrant whenNotPaused {
+    function deposit(uint256 amount) external {
         _depositFor(msg.sender, lisUSD, msg.sender, amount);
-
     }
 
-    function _depositFor(address sender, address pool, address account, uint256 amount) private update {
+    function _depositFor(address sender, address pool, address account, uint256 amount) private update nonReentrant whenNotPaused {
         require(amount > 0, "amount cannot be zero");
         require(totalAssets() + amount <= maxAmount, "exceed max amount");
         require(pools[pool].active, "pool not active");
@@ -302,6 +314,8 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     function setEarnPool(address _earnPool) external onlyRole(MANAGER) {
         require(_earnPool != address(0), "earnPool cannot be zero address");
         earnPool = _earnPool;
+
+        emit SetEarnPool(_earnPool);
     }
 
 
@@ -324,7 +338,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      * @param user user address
      * @param pool pool address
      */
-    function takeSnapshot(address user, address pool) private {
+    function takeSnapshot(address user, address pool) public {
         address distributor = pools[pool].distributor;
         // ensure the distributor address is set
         if (distributor != address(0)) {
@@ -337,6 +351,8 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         require(pools[pool].distributor == address(0), "distributor already exists");
 
         pools[pool].distributor = _distributor;
+
+        emit SetDistributor(pool, _distributor);
     }
 
     /**
@@ -345,6 +361,8 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      */
     function removeDistributor(address pool) external onlyRole(MANAGER) {
         pools[pool].distributor = address(0);
+
+        emit RemoveDistributor(pool);
     }
 
     /**
@@ -365,6 +383,9 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         });
 
         emit RegisterPool(pool, asset, distributor);
+        if (distributor != address(0)) {
+            emit SetDistributor(pool, distributor);
+        }
     }
 
     /**
@@ -377,6 +398,9 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
         pools[pool].active = false;
 
         emit RemovePool(pool);
+        if (pools[pool].distributor != address(0)) {
+            emit RemoveDistributor(pool);
+        }
     }
 
     /**
@@ -385,6 +409,8 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      */
     function setMaxAmount(uint256 _maxAmount) external onlyRole(MANAGER) {
         maxAmount = _maxAmount;
+
+        emit SetMaxAmount(_maxAmount);
     }
 
     function decimals() public pure returns (uint8) {
@@ -397,6 +423,8 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
      */
     function setWithdrawDelay(uint256 _withdrawDelay) external onlyRole(MANAGER) {
         withdrawDelay = _withdrawDelay;
+
+        emit SetWithdrawDelay(_withdrawDelay);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
