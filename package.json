@@ -6,8 +6,8 @@
   "scripts": {
     "test": "forge test",
     "prepare": "husky",
-    "check": "prettier --check **/*.sol",
-    "fix": "prettier --write **/*.sol"
+    "check": "prettier --check **.{sol,ts}",
+    "fix": "prettier --write **.{sol,ts}"
   },
   "author": "",
   "license": "ISC",
