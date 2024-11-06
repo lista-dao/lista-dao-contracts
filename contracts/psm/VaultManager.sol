@@ -126,6 +126,9 @@ contract VaultManager is AccessControlUpgradeable, UUPSUpgradeable {
         // withdraw token from adapters
         for (uint256 i = 0; i < adapters.length; i++) {
             uint256 netDeposit = IAdapter(adapters[i].adapter).netDepositAmount();
+            if (netDeposit == 0) {
+                continue;
+            }
             if (netDeposit >= remain) {
                 IAdapter(adapters[i].adapter).withdraw(receiver, remain);
                 remain = 0;

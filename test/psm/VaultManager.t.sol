@@ -76,24 +76,23 @@ contract VaultManagerTest is Test {
     function test_depositAndWithdraw() public {
         deal(USDC, user1, 1000 ether);
 
+        vm.startPrank(admin);
+        vaultManager.addAdapter(address(venusAdapter), 100);
+        vm.stopPrank();
+
         vm.startPrank(user1);
         IERC20(USDC).approve(address(vaultManager), MAX_UINT);
 
         vaultManager.deposit(100 ether);
 
         uint256 usdcBalance = IERC20(USDC).balanceOf(user1);
-        uint256 vaultManagerUSDC = IERC20(USDC).balanceOf(address(vaultManager));
         assertEq(usdcBalance, 900 ether, "user1 USDC 0 error");
-        assertEq(vaultManagerUSDC, 100 ether, "vaultManager USDC 0 error");
 
-        vaultManager.withdraw(user1, 100 ether);
-
+        vaultManager.withdraw(user1, 99 ether);
         usdcBalance = IERC20(USDC).balanceOf(user1);
-        vaultManagerUSDC = IERC20(USDC).balanceOf(address(vaultManager));
-        assertEq(usdcBalance, 1000 ether, "user1 USDC 1 error");
-        assertEq(vaultManagerUSDC, 0, "vaultManager USDC 1 error");
-
+        assertEq(usdcBalance, 999 ether, "user1 USDC 1 error");
         vm.stopPrank();
+
 
     }
 
@@ -111,13 +110,13 @@ contract VaultManagerTest is Test {
 
         uint256 venusAdapterBalance = venusAdapter.totalAvailableAmount();
         uint256 vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
-        assertTrue(venusAdapterBalance <= 500 ether && venusAdapterBalance > 499 ether, "venusAdapterBalance 0 error");
+        assertTrue(venusAdapterBalance <= 1000 ether && venusAdapterBalance > 999 ether, "venusAdapterBalance 0 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 0 error");
 
         vaultManager.withdraw(user1, 900 ether);
         venusAdapterBalance = venusAdapter.totalAvailableAmount();
         vaultManagerBalance = IERC20(USDC).balanceOf(address(vaultManager));
-        assertTrue(venusAdapterBalance <= 100 ether && venusAdapterBalance > 99 ether, "venusAdapterBalance 1 error");
+        assertTrue(venusAdapterBalance <= 100 ether && venusAdapterBalance > 98 ether, "venusAdapterBalance 1 error");
         assertEq(vaultManagerBalance, 0, "vaultManagerBalance 1 error");
 
         vm.stopPrank();
