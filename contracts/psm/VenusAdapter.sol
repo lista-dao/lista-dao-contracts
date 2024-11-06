@@ -25,6 +25,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     event Withdraw(address account, uint256 amount);
     event Harvest(address account, uint256 amount);
     event SetFeeReceiver(address feeReceiver);
+    event EmergencyWithdraw(address token, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -206,6 +207,21 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
         feeReceiver = _feeReceiver;
         emit SetFeeReceiver(_feeReceiver);
+    }
+
+    /**
+      * @dev allows admin to withdraw tokens for emergency or recover any other mistaken tokens.
+      * @param _token token address
+      * @param _amount token amount
+    */
+    function emergencyWithdraw(address _token, uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_token == address(0)) {
+            (bool success, ) = payable(msg.sender).call{ value: _amount }("");
+            require(success, "Withdraw failed");
+        } else {
+            IERC20(_token).safeTransfer(msg.sender, _amount);
+        }
+        emit EmergencyWithdraw(_token, _amount);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
