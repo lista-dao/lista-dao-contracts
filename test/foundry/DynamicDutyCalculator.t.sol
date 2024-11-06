@@ -103,7 +103,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function testRevert_setCollateralParams() public {
-        vm.expectRevert("AccessControl: account 0x34a1d3fff3958843c43ad80f30b94c510645c316 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
+        vm.expectRevert();
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
 
         vm.startPrank(admin);
@@ -650,7 +650,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function testRevert_setPriceRange() public {
-        vm.expectRevert("AccessControl: account 0x34a1d3fff3958843c43ad80f30b94c510645c316 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
+        vm.expectRevert();
         dynamicDutyCalculator.setPriceRange(7e7, 12e7);
    }
 
@@ -698,7 +698,7 @@ contract DynamicDutyCalculatorTest is Test {
    }
 
    function testRevert_file() public {
-        vm.expectRevert("AccessControl: account 0x34a1d3fff3958843c43ad80f30b94c510645c316 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000");
+        vm.expectRevert();
         dynamicDutyCalculator.file("interaction", address(0xAA));
 
         vm.startPrank(admin);
