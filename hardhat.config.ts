@@ -11,10 +11,10 @@ import "hardhat-storage-layout";
 import "@openzeppelin/hardhat-upgrades";
 import * as fs from "fs";
 
-import '@typechain/hardhat'
-import '@nomicfoundation/hardhat-ethers'
-import '@nomicfoundation/hardhat-chai-matchers'
-import '@nomicfoundation/hardhat-foundry';
+import "@typechain/hardhat";
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-chai-matchers";
+import "@nomicfoundation/hardhat-foundry";
 
 const config: HardhatUserConfig = {
   solidity: {
