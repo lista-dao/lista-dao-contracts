@@ -5,5 +5,7 @@ coverage*
 gasReporterOutput.json
 lib/
 contracts/*
+!contracts/psm/
 scripts/*
 test/*
+!test/psm/
