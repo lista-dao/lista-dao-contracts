@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 contract VenusAdapterTest is Test {
   VenusAdapter venusAdapter;
   address admin = address(0x1);
-  address user1 = address(0x2);
+  address user1 = address(0x004319Fd76912890F7920aEE99Df27EBA05ef48D);
   address venusPool = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
   address vUSDC = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
@@ -56,7 +56,7 @@ contract VenusAdapterTest is Test {
     vm.stopPrank();
 
     vUSDCBalance = IERC20(vUSDC).balanceOf(address(venusAdapter));
-    uint256 gemAmount = venusAdapter.totalAvailableAmount();
+    uint256 gemAmount = IVBep20Delegate(venusPool).balanceOfUnderlying(address(venusAdapter));
     assertTrue(vUSDCBalance > 0, "vUSDC 1 error");
     assertTrue(gemAmount > 99 ether && gemAmount <= 100 ether, "Staked USDC 1 error");
 
@@ -66,10 +66,6 @@ contract VenusAdapterTest is Test {
 
     uint256 USDCBalance = IERC20(USDC).balanceOf(user1);
     assertEq(USDCBalance, 199 ether, "user1 USDC 2 error");
-    USDCBalance = IERC20(USDC).balanceOf(address(venusAdapter));
-    assertTrue(USDCBalance > 0 && USDCBalance <= 1 ether, "adapter USDC 2 error");
-    vUSDCBalance = IERC20(vUSDC).balanceOf(address(venusAdapter));
-    assertTrue(vUSDCBalance == 0 || vUSDCBalance == 1, "vUSDC 2 error");
 
     //        console.log("block1", block.number);
     //        vm.roll(block.number + 10000);

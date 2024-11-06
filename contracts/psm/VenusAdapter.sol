@@ -16,9 +16,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   uint256 public netDepositAmount; // user net deposit amount
   address public feeReceiver; // fee receiver address
 
-  uint256 public deltaAmount; // delta amount
-  uint256 public delta; // delta
-
   bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
 
   event Deposit(uint256 amount);
@@ -30,7 +27,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   event SetVenusPool(address venusPool);
   event SetVToken(address vToken);
   event SetToken(address token);
-  event SetDeltaAmount(uint256 deltaAmount);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -50,7 +46,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
    * @param _venusPool venus pool address
    * @param _token token address
    * @param _vToken vToken address
-   * @param _deltaAmount delta amount
    * @param _feeReceiver fee receiver address
    */
   function initialize(
@@ -60,7 +55,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     address _venusPool,
     address _token,
     address _vToken,
-    uint256 _deltaAmount,
     address _feeReceiver
   ) public initializer {
     require(_admin != address(0), "admin cannot be zero address");
@@ -81,14 +75,12 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     token = _token;
     venusPool = _venusPool;
     vToken = _vToken;
-    deltaAmount = _deltaAmount;
     feeReceiver = _feeReceiver;
 
     emit SetVaultManager(_vaultManager);
     emit SetVenusPool(_venusPool);
     emit SetToken(_token);
     emit SetVToken(_vToken);
-    emit SetDeltaAmount(_deltaAmount);
     emit SetFeeReceiver(_feeReceiver);
   }
 
@@ -118,41 +110,14 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     require(amount > 0, "withdraw amount cannot be zero");
     require(amount <= netDepositAmount, "withdraw amount exceeds net deposit");
 
-    // withdraw amount contains delta amount
-    uint256 withdrawAmount = amount + deltaAmount - delta;
-    if (withdrawAmount > netDepositAmount) {
-      withdrawAmount = netDepositAmount;
-    }
-
     netDepositAmount -= amount;
 
-    uint256 exchangeRate = IVBep20Delegate(venusPool).exchangeRateStored();
-    // calculate vToken amount
-    uint256 vTokenAmount = Math.mulDiv(withdrawAmount, 1e18, exchangeRate);
-
-    require(vTokenAmount > 0, "no vToken to withdraw");
-    require(IERC20(vToken).balanceOf(address(this)) >= vTokenAmount, "not enough vToken");
-
-    // withdraw from venus pool
-    uint256 tokenAmount = _withdrawFromVenus(vTokenAmount);
-
-    require(tokenAmount + delta >= amount, "not enough token");
-
-    delta = tokenAmount + delta - amount;
+    IVBep20Delegate(venusPool).redeemUnderlying(amount);
 
     // transfer token to account
     IERC20(token).safeTransfer(account, amount);
 
-    emit Withdraw(account, tokenAmount);
-  }
-
-  /**
-   * @dev get total available amount
-   */
-  function totalAvailableAmount() public view returns (uint256) {
-    uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
-    uint256 tokenAmount = Math.mulDiv(vTokenAmount, IVBep20Delegate(venusPool).exchangeRateStored(), 1e18);
-    return tokenAmount;
+    emit Withdraw(account, amount);
   }
 
   /**
@@ -169,7 +134,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
 
     if (vTokenAmount > 0) {
-      totalAmount += _withdrawFromVenus(vTokenAmount);
+      totalAmount = _withdrawFromVenus(vTokenAmount);
     }
     if (totalAmount > 0) {
       IERC20(token).safeTransfer(vaultManager, totalAmount);
@@ -179,37 +144,17 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   }
 
   /**
-   * @dev set delta amount
-   * @param _deltaAmount delta amount
-   */
-  function setDeltaAmount(uint256 _deltaAmount) external onlyRole(MANAGER) {
-    deltaAmount = _deltaAmount;
-
-    emit SetDeltaAmount(_deltaAmount);
-  }
-
-  /**
    * @dev harvest interest to fee receiver
    */
   function harvest() public {
-    uint256 totalAmount = totalAvailableAmount();
+    uint256 totalAmount = IVBep20Delegate(venusPool).balanceOfUnderlying(address(this));
     if (totalAmount > netDepositAmount) {
       // calculate interest and redeem amount
       uint256 interest = totalAmount - netDepositAmount;
-      uint256 exchangeRate = IVBep20Delegate(venusPool).exchangeRateStored();
-      uint256 interestVTokenAmount = Math.mulDiv(interest, 1e18, exchangeRate);
+      IVBep20Delegate(venusPool).redeemUnderlying(interest);
+      IERC20(token).safeTransfer(feeReceiver, interest);
 
-      if (interestVTokenAmount > 0) {
-        // redeem interest
-        uint256 fee = _withdrawFromVenus(interestVTokenAmount);
-
-        if (fee > 0) {
-          // transfer fee to fee receiver
-          IERC20(token).safeTransfer(feeReceiver, fee);
-
-          emit Harvest(feeReceiver, fee);
-        }
-      }
+      emit Harvest(feeReceiver, interest);
     }
   }
 
