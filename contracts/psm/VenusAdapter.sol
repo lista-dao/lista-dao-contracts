@@ -118,10 +118,13 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         require(amount > 0, "withdraw amount cannot be zero");
         require(amount <= netDepositAmount, "withdraw amount exceeds net deposit");
 
-        netDepositAmount -= amount;
-
         // withdraw amount contains delta amount
         uint256 withdrawAmount = amount + deltaAmount - delta;
+        if (withdrawAmount > netDepositAmount) {
+            withdrawAmount = netDepositAmount;
+        }
+
+        netDepositAmount -= amount;
 
         uint256 exchangeRate = IVBep20Delegate(venusPool).exchangeRateStored();
         // calculate vToken amount
@@ -162,15 +165,16 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
         // withdraw all token to vault manager
         netDepositAmount = 0;
 
-        uint256 totalAmount = delta;
+        uint256 totalAmount;
         uint256 vTokenAmount = IERC20(vToken).balanceOf(address(this));
 
         if (vTokenAmount > 0) {
             totalAmount += _withdrawFromVenus(vTokenAmount);
         }
-        IERC20(token).safeTransfer(vaultManager, totalAmount);
-
-        emit Withdraw(vaultManager, totalAmount);
+        if (totalAmount > 0) {
+            IERC20(token).safeTransfer(vaultManager, totalAmount);
+            emit Withdraw(vaultManager, totalAmount);
+        }
         return totalAmount;
     }
 
@@ -188,7 +192,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
      * @dev harvest interest to fee receiver
      */
     function harvest() public {
-        uint256 totalAmount = totalAvailableAmount() + delta;
+        uint256 totalAmount = totalAvailableAmount();
         if (totalAmount > netDepositAmount) {
             // calculate interest and redeem amount
             uint256 interest = totalAmount - netDepositAmount;
