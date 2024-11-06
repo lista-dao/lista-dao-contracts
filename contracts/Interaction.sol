@@ -97,7 +97,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             tokensBlacklist[tokens[i]] = 0;
     }
     function setListaDistributor(address distributor) external auth {
-        require(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor, "bad address");
+        require(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor, "invalid addr");
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
@@ -157,7 +157,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address clip,
         uint256 mat
     ) external auth {
-        require(collaterals[token].live == 0, "already-init");
+        require(collaterals[token].live == 0, "Interaction/token-already-init");
         vat.init(ilk);
         jug.init(ilk);
         spotter.file(ilk, "mat", mat);
@@ -183,7 +183,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     function removeCollateralType(address token) external auth {
-        require(collaterals[token].live != 0, "not-init");
+        require(collaterals[token].live != 0, "Interaction/token-not-init");
         collaterals[token].live = 2; //STOPPED
         address gemJoin = address(collaterals[token].gem);
         vat.deny(gemJoin);
