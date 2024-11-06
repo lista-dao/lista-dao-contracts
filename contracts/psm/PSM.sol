@@ -3,12 +3,10 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IVaultManager.sol";
-import "../interfaces/HayLike.sol";
 
 contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
@@ -42,6 +40,8 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     event SetMinBuy(uint256 minBuy);
     event SetVaultManager(address vaultManager);
     event EmergencyWithdraw(address token, uint256 amount);
+    event SetToken(address token);
+    event SetLisUSD(address lisUSD);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -63,6 +63,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     function initialize(
         address _admin,
         address _manager,
+        address _pauser,
         address _token,
         address _feeReceiver,
         address _lisUSD,
@@ -82,12 +83,12 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
         require(_dailyLimit >= minBuy, "dailyLimit must be greater or equal than minBuy");
 
         __AccessControl_init();
-        __ReentrancyGuard_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(MANAGER, _manager);
+        _setupRole(PAUSER, _pauser);
 
         token = _token;
         sellFee = _sellFee;
@@ -105,6 +106,8 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
         emit SetDailyLimit(_dailyLimit);
         emit SetMinSell(_minSell);
         emit SetMinBuy(_minBuy);
+        emit SetToken(_token);
+        emit SetLisUSD(_lisUSD);
     }
 
     /**

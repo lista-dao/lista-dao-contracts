@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/ILisUSDPool.sol";
 import "../interfaces/IPSM.sol";
-import "../interfaces/IStakeLisUSDListaDistributor.sol";
 
 contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
@@ -25,6 +22,8 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
 
     event SetLisUSDPool(address lisUSDPool);
     event SetLisUSD(address lisUSD);
+    event SetPSM(address token, address psm);
+    event RemovePSM(address token);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -41,6 +40,7 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
     function initialize(
         address _admin,
         address _manager,
+        address _pauser,
         address _lisUSDPool,
         address _lisUSD
     ) public initializer {
@@ -49,12 +49,12 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
         require(_lisUSDPool != address(0), "lisUSDPool cannot be zero address");
         require(_lisUSD != address(0), "lisUSD cannot be zero address");
         __AccessControl_init();
-        __ReentrancyGuard_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(MANAGER, _manager);
+        _setupRole(PAUSER, _pauser);
 
         lisUSDPool = _lisUSDPool;
         lisUSD = _lisUSD;
@@ -65,6 +65,7 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
 
     /**
      * @dev deposit token to earn pool
+     * @param token token address
      * @param amount token amount
      */
     function deposit(address token, uint256 amount) external whenNotPaused {
@@ -112,6 +113,8 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
         require(psm[_token] == address(0), "psm already set");
         require(IPSM(_psm).token() == _token, "psm token not match");
         psm[_token] = _psm;
+
+        emit SetPSM(_token, _psm);
     }
 
     /**
@@ -120,6 +123,8 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
      */
     function removePSM(address _token) external onlyRole(MANAGER) {
         delete psm[_token];
+
+        emit RemovePSM(_token);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
