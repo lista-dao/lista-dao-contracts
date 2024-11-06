@@ -135,7 +135,7 @@ contract InteractionTest is Test {
     function testRevert_setDutyCalculator() public {
         DynamicDutyCalculator dutyCalculator = new DynamicDutyCalculator();
 
-        vm.expectRevert("Interaction/invalid-dutyCalculator-interaction");
+        vm.expectRevert("invalid-dutyCalculator-var");
         interaction.setDutyCalculator(address(dutyCalculator));
     }
 
