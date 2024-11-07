@@ -66,6 +66,8 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
 
     bytes32 public constant INTERACTION = keccak256("INTERACTION");
 
+    bytes32 public constant BOT = keccak256("BOT");
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -109,19 +111,9 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         require(beta > 3e5 && beta < 1e8, "AggMonetaryPolicy/invalid-beta");
 
         ilks[collateral].beta = beta;
-        ilks[collateral].rate0 = rate0;
         ilks[collateral].enabled = enabled;
 
-        uint256 price = oracle.peek(lisUSD);
-        ilks[collateral].lastPrice = price;
-
-        uint256 duty = calculateRate(price, beta, rate0) + 1e27;
-        if (duty > maxDuty) duty = maxDuty;
-        if (duty < minDuty) duty = minDuty;
-
-        IDao(interaction).setCollateralDuty(collateral, duty);
-
-        emit CollateralParamsUpdated(collateral, beta, rate0, enabled);
+        _setCollateralRate0(collateral, beta, rate0, enabled, false);
     }
 
     /**
@@ -280,5 +272,42 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         } else {
             return 1e18;
         }
+    }
+
+    /**
+     * @dev Set rate0 for a collateral tokens.
+     * @param collaterals The collateral token address list.
+     * @param rates0 The rate list when the price is equal to PEG.
+     */
+    function setCollateralRate0(address[] memory collaterals, uint256[] memory rates0) external onlyRole(BOT) {
+        require(collaterals.length > 0 && collaterals.length == rates0.length, "AggMonetaryPolicy/invalid-params");
+
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            address collateral = collaterals[i];
+            require(collateral != address(0), "AggMonetaryPolicy/invalid-address");
+            require(ilks[collateral].beta > 3e5 && ilks[collateral].beta < 1e8, "AggMonetaryPolicy/invalid-beta");
+
+            _setCollateralRate0(collateral, ilks[collateral].beta, rates0[i], ilks[collateral].enabled, true);
+        }
+    }
+
+    function _setCollateralRate0(address collateral, uint256 beta, uint256 rate0, bool enabled, bool checkRange) private {
+        ilks[collateral].rate0 = rate0;
+
+        uint256 price = oracle.peek(lisUSD);
+        ilks[collateral].lastPrice = price;
+
+        uint256 duty = calculateRate(price, beta, rate0) + 1e27;
+        if (duty > maxDuty) {
+            require(!checkRange, "AggMonetaryPolicy/invalid-rate0");
+            duty = maxDuty;
+        }
+        if (duty < minDuty) {
+            require(!checkRange, "AggMonetaryPolicy/invalid-rate0");
+            duty = minDuty;
+        }
+
+        IDao(interaction).setCollateralDuty(collateral, duty);
+        emit CollateralParamsUpdated(collateral, beta, rate0, enabled);
     }
 }
