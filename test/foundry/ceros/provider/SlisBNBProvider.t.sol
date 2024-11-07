@@ -70,7 +70,8 @@ contract SlisBNBProviderTest is Test {
         vm.stopPrank();
 
         ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
-        vm.startPrank(address(0x08aE09467ff962aF105c23775B9Bc8EAa175D27F));
+        address adminOwner = proxyAdmin.owner();
+        vm.startPrank(address(adminOwner));
         Interaction newInteraction = new Interaction();
         ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(address(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4));
         proxyAdmin.upgrade(proxy, address(newInteraction));
