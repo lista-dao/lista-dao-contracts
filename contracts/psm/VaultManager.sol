@@ -122,18 +122,21 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     uint256 remain = amount;
 
     // withdraw token from adapters
+    uint256 startIdx = block.number % adapters.length;
+
     for (uint256 i = 0; i < adapters.length; i++) {
-      uint256 netDeposit = IAdapter(adapters[i].adapter).netDepositAmount();
+      uint256 idx = (startIdx + i) % adapters.length;
+      uint256 netDeposit = IAdapter(adapters[idx].adapter).netDepositAmount();
       if (netDeposit == 0) {
         continue;
       }
       if (netDeposit >= remain) {
-        IAdapter(adapters[i].adapter).withdraw(receiver, remain);
+        IAdapter(adapters[idx].adapter).withdraw(receiver, remain);
         remain = 0;
         break;
       } else {
         remain -= netDeposit;
-        IAdapter(adapters[i].adapter).withdraw(receiver, netDeposit);
+        IAdapter(adapters[idx].adapter).withdraw(receiver, netDeposit);
       }
     }
 
