@@ -113,7 +113,7 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         ilks[collateral].beta = beta;
         ilks[collateral].enabled = enabled;
 
-        _setCollateralRate0(collateral, beta, rate0, enabled, false);
+        _setCollateralRate0(collateral, beta, rate0, enabled);
     }
 
     /**
@@ -287,25 +287,19 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
             require(collateral != address(0), "AMO/invalid-address");
             require(ilks[collateral].enabled, "AMO/invalid-status");
 
-            _setCollateralRate0(collateral, ilks[collateral].beta, rates0[i], ilks[collateral].enabled, true);
+            _setCollateralRate0(collateral, ilks[collateral].beta, rates0[i], ilks[collateral].enabled);
         }
     }
 
-    function _setCollateralRate0(address collateral, uint256 beta, uint256 rate0, bool enabled, bool checkRange) private {
+    function _setCollateralRate0(address collateral, uint256 beta, uint256 rate0, bool enabled) private {
         ilks[collateral].rate0 = rate0;
 
         uint256 price = oracle.peek(lisUSD);
         ilks[collateral].lastPrice = price;
 
         uint256 duty = calculateRate(price, beta, rate0) + 1e27;
-        if (duty > maxDuty) {
-            require(!checkRange, "AMO/invalid-rate0");
-            duty = maxDuty;
-        }
-        if (duty < minDuty) {
-            require(!checkRange, "AMO/invalid-rate0");
-            duty = minDuty;
-        }
+        if (duty > maxDuty) duty = maxDuty;
+        if (duty < minDuty) duty = minDuty;
 
         IDao(interaction).setCollateralDuty(collateral, duty);
         emit CollateralParamsUpdated(collateral, beta, rate0, enabled);
