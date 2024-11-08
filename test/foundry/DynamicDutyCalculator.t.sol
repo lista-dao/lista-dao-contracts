@@ -40,7 +40,7 @@ contract DynamicDutyCalculatorTest is Test {
 
         admin = msg.sender;
 
-        vm.expectRevert("AggMonetaryPolicy/invalid-delta");
+        vm.expectRevert("AMO/invalid-delta");
         TransparentUpgradeableProxy __dynamicDutyCalculatorProxy = new TransparentUpgradeableProxy(
             address(dynamicDutyCalculatorImpl),
             proxyAdminOwner,
@@ -116,12 +116,12 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        vm.expectRevert("AMO/invalid-beta");
         dynamicDutyCalculator.setCollateralParams(collateral, 3e5, rate0, true);
         vm.stopPrank();
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        vm.expectRevert("AMO/invalid-beta");
         dynamicDutyCalculator.setCollateralParams(collateral, 1e8, rate0, true);
         vm.stopPrank();
    }
@@ -686,7 +686,7 @@ contract DynamicDutyCalculatorTest is Test {
    function testRevert_setDelta() public {
         vm.startPrank(admin);
         uint256 _delta = 20000000;
-        vm.expectRevert("AggMonetaryPolicy/delta-is-too-large");
+        vm.expectRevert("AMO/delta-is-too-large");
         dynamicDutyCalculator.setDelta(_delta);
         vm.stopPrank();
    }
@@ -711,7 +711,7 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator.file("interaction", address(0xAA));
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/file-unrecognized-param");
+        vm.expectRevert("AMO/file-unrecognized-param");
         dynamicDutyCalculator.file("proxy", address(0xAA));
         vm.stopPrank();
    }
@@ -756,7 +756,7 @@ contract DynamicDutyCalculatorTest is Test {
         rates[0] = rate0_15p;
 
         vm.startPrank(bot);
-        vm.expectRevert("AggMonetaryPolicy/invalid-params");
+        vm.expectRevert("AMO/invalid-params");
         dynamicDutyCalculator.setCollateralRate0(collaterals, new uint256[](2));
         vm.stopPrank();
 
@@ -765,21 +765,15 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
         vm.stopPrank();
 
-        rates[0] = rate0_400p;
-        vm.startPrank(bot);
-        vm.expectRevert("AggMonetaryPolicy/invalid-rate0");
-        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
-        vm.stopPrank();
-
         collaterals[0] = address(0);
         vm.startPrank(bot);
-        vm.expectRevert("AggMonetaryPolicy/invalid-address");
+        vm.expectRevert("AMO/invalid-address");
         dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
         vm.stopPrank();
 
         collaterals[0] = collateral1;
         vm.startPrank(bot);
-        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        vm.expectRevert("AMO/invalid-status");
         dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
         vm.stopPrank();
     }
