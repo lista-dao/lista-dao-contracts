@@ -175,20 +175,5 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     emit SetFeeReceiver(_feeReceiver);
   }
 
-  /**
-   * @dev allows admin to withdraw tokens for emergency or recover any other mistaken tokens.
-   * @param _token token address
-   * @param _amount token amount
-   */
-  function emergencyWithdraw(address _token, uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    if (_token == address(0)) {
-      (bool success, ) = payable(msg.sender).call{ value: _amount }("");
-      require(success, "Withdraw failed");
-    } else {
-      IERC20(_token).safeTransfer(msg.sender, _amount);
-    }
-    emit EmergencyWithdraw(_token, _amount);
-  }
-
   function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
