@@ -747,6 +747,36 @@ contract DynamicDutyCalculatorTest is Test {
         assertEq(_lastPrice, 99500000);
     }
 
+    function test_setCollateralRate0_price_overflow() public {
+        test_setCollateralParams();
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(89000000)) // returns $0.89
+        );
+
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
+
+        vm.startPrank(bot);
+        address[] memory collaterals = new address[](1);
+        collaterals[0] = collateral;
+        uint256[] memory rates = new uint256[](1);
+        rates[0] = rate0_15p;
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+
+        (bool _enabled, uint256 _lastPrice, uint256 _rate0, uint256 _beta) = dynamicDutyCalculator.ilks(collateral);
+
+        assertEq(_beta, beta);
+        assertEq(_rate0, rate0_15p);
+        assertEq(_enabled, true);
+        assertEq(_lastPrice, 89000000);
+    }
+
     function test_setCollateralRate0_revert() public {
         test_setCollateralParams();
 
