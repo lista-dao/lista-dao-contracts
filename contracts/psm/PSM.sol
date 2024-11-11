@@ -81,7 +81,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     require(_lisUSD != address(0), "lisUSD cannot be zero address");
     require(_sellFee <= FEE_PRECISION, "sellFee must be less or equal than FEE_PRECISION");
     require(_buyFee <= FEE_PRECISION, "buyFee must be less or equal than FEE_PRECISION");
-    require(_dailyLimit >= minBuy, "dailyLimit must be greater or equal than minBuy");
+    require(_dailyLimit >= _minBuy, "dailyLimit must be greater or equal than minBuy");
 
     __AccessControl_init();
     __Pausable_init();
