@@ -90,6 +90,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
   }
 
   function _distribute(uint256 amount) private {
+    require(adapters.length > 0, "no adapter");
     uint256 remain = amount;
     uint256 totalPoint = getTotalPoint();
 
@@ -118,6 +119,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    */
   function withdraw(address receiver, uint256 amount) external nonReentrant onlyPSMOrManager {
     require(amount > 0, "withdraw amount cannot be zero");
+    require(adapters.length > 0, "no adapter");
 
     uint256 remain = amount;
 
@@ -204,6 +206,8 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    * @dev rebalance token to adapters, only bot can call this function
    */
   function rebalance() external onlyRole(BOT) {
+    require(adapters.length > 0, "no adapter");
+
     for (uint256 i = 0; i < adapters.length; i++) {
       IAdapter(adapters[i].adapter).withdrawAll();
     }
