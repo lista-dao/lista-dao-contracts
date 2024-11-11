@@ -18,6 +18,7 @@ let psms = {}
 let maxDuty = '1000000034836767751273470154'; // 200%
 let withdrawDelay = 5;
 let maxAmount = "10000000000000000000000000";
+let duty = '1000000003022265980097390211'; // 10%
 
 const distributors = {
     'USDC': '0x9d9cfDc14D22a4eC4a31D6AfeD892Ac07913705d',
@@ -227,6 +228,9 @@ async function deployPools() {
     LisUSDPoolContract.registerPool(fdusd, fdusd, distributors['FDUSD']);
     await Promise.delay(3000);
     LisUSDPoolContract.registerPool(lisUSD, lisUSD, distributors['lisUSD']);
+
+    //setDuty
+    LisUSDPoolContract.setDuty(duty);
 
     console.log("EarnPool deploy and setup done");
 }
