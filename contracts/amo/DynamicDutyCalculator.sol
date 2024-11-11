@@ -297,9 +297,16 @@ contract DynamicDutyCalculator is IDynamicDutyCalculator, Initializable, AccessC
         uint256 price = oracle.peek(lisUSD);
         ilks[collateral].lastPrice = price;
 
-        uint256 duty = calculateRate(price, beta, rate0) + 1e27;
-        if (duty > maxDuty) duty = maxDuty;
-        if (duty < minDuty) duty = minDuty;
+        uint256 duty;
+        if (price <= minPrice) {
+            duty = maxDuty;
+        } else if (price >= maxPrice) {
+            duty = minDuty;
+        } else {
+            duty = calculateRate(price, beta, rate0) + 1e27;
+            if (duty > maxDuty) duty = maxDuty;
+            if (duty < minDuty) duty = minDuty;
+        }
 
         IDao(interaction).setCollateralDuty(collateral, duty);
         emit CollateralParamsUpdated(collateral, beta, rate0, enabled);
