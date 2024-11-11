@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract VenusAdapterTest is Test {
   VenusAdapter venusAdapter;
-  address admin = address(0x1);
+  address admin = address(0x10);
   address user1 = address(0x004319Fd76912890F7920aEE99Df27EBA05ef48D);
   address venusPool = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
@@ -26,17 +26,7 @@ contract VenusAdapterTest is Test {
 
     ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(
-        venusAdapterImpl.initialize.selector,
-        admin,
-        admin,
-        user1,
-        venusPool,
-        USDC,
-        vUSDC,
-        quotaAmount,
-        admin
-      )
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, user1, venusPool, USDC, vUSDC, admin)
     );
 
     venusAdapter = VenusAdapter(address(venusAdapterProxy));
@@ -91,5 +81,99 @@ contract VenusAdapterTest is Test {
 
     USDCBalance = IERC20(USDC).balanceOf(user1);
     assertTrue(USDCBalance <= 1000 ether && USDCBalance >= 999 ether, "user1 USDC 1 error");
+  }
+
+  function test_initialize() public {
+    address zero = address(0x0);
+
+    VenusAdapter venusAdapterImpl = new VenusAdapter();
+
+    vm.expectRevert("admin cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, zero, admin, admin, venusPool, USDC, vUSDC, admin)
+    );
+
+    vm.expectRevert("manager cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, zero, admin, venusPool, USDC, vUSDC, admin)
+    );
+
+    vm.expectRevert("vaultManager cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, zero, venusPool, USDC, vUSDC, admin)
+    );
+
+    vm.expectRevert("venusPool cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, zero, USDC, vUSDC, admin)
+    );
+
+    vm.expectRevert("token cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, zero, vUSDC, admin)
+    );
+
+    vm.expectRevert("vToken cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, USDC, zero, admin)
+    );
+
+    vm.expectRevert("feeReceiver cannot be zero address");
+    new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, USDC, vUSDC, zero)
+    );
+  }
+
+  function test_harvest() public {
+    deal(USDC, user1, 100 ether);
+    vm.startPrank(user1);
+    IERC20(USDC).approve(address(venusAdapter), UINT256_MAX);
+    venusAdapter.deposit(100 ether);
+
+    assertEq(IERC20(USDC).balanceOf(user1), 0, "user1 0 USDC balance error");
+    assertEq(IERC20(USDC).balanceOf(admin), 0, "admin 0 USDC balance error");
+
+    vm.roll(block.number + 10000);
+    venusAdapter.harvest();
+    assertEq(IERC20(USDC).balanceOf(user1), 0, "user1 1 USDC balance error");
+    assertTrue(IERC20(USDC).balanceOf(admin) > 0, "admin 1 USDC balance error");
+
+    vm.roll(block.number + 10000);
+    venusAdapter.withdrawAll();
+    assertTrue(IERC20(USDC).balanceOf(user1) > 100 ether, "user1 2 USDC balance error");
+
+    vm.stopPrank();
+  }
+
+  function test_setFeeReceiver() public {
+    address feeReceiver = address(0x20);
+    address zero = address(0x0);
+
+    vm.startPrank(user1);
+    vm.expectRevert(
+      abi.encodePacked(
+        "AccessControl: account ",
+        StringsUpgradeable.toHexString(user1),
+        " is missing role ",
+        StringsUpgradeable.toHexString(uint256(venusAdapter.MANAGER()), 32)
+      )
+    );
+    venusAdapter.setFeeReceiver(feeReceiver);
+    vm.stopPrank();
+
+    vm.startPrank(admin);
+    vm.expectRevert("feeReceiver cannot be zero address");
+    venusAdapter.setFeeReceiver(zero);
+
+    venusAdapter.setFeeReceiver(feeReceiver);
+    vm.stopPrank();
+    assertEq(venusAdapter.feeReceiver(), feeReceiver, "feeReceiver set error");
   }
 }
