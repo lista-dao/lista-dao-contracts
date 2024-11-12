@@ -124,7 +124,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     uint256 realAmount = amount - fee;
 
     // check sell limit
-    require(amount <= IERC20(lisUSD).balanceOf(address(this)), "exceed sell limit");
+    require(amount <= getTotalSellLimit(), "exceed sell limit");
 
     // transfer token from user
     IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -279,6 +279,14 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
    */
   function getTotalBuyLimit() external view returns (uint256) {
     return IVaultManager(vaultManager).getTotalNetDepositAmount();
+  }
+
+  /**
+   * @dev get total sell limit
+   * @return total sell limit
+   */
+  function getTotalSellLimit() public view returns (uint256) {
+    return IERC20(lisUSD).balanceOf(address(this)) - fees;
   }
 
   /**
