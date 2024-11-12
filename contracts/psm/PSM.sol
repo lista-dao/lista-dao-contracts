@@ -25,6 +25,8 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
   uint256 public lastBuyDay; // last buy day
   uint256 public dayBuyUsed; // day buy used
 
+  uint256 public fees; // total fee
+
   uint256 public constant FEE_PRECISION = 10000;
 
   bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
@@ -136,7 +138,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
 
     // transfer fee to fee receiver
     if (fee > 0) {
-      IERC20(lisUSD).transfer(feeReceiver, fee);
+      fees += fee;
     }
     emit SellToken(msg.sender, realAmount, fee);
   }
@@ -155,13 +157,13 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
 
     // transfer lisUSD from user and withdraw token from vault manager
     if (realAmount > 0) {
-      IERC20(lisUSD).safeTransferFrom(msg.sender, address(this), realAmount);
+      IERC20(lisUSD).safeTransferFrom(msg.sender, address(this), amount);
       IVaultManager(vaultManager).withdraw(msg.sender, realAmount);
     }
 
     // transfer fee to fee receiver
     if (fee > 0) {
-      IERC20(lisUSD).safeTransferFrom(msg.sender, feeReceiver, fee);
+      fees += fee;
     }
     emit BuyToken(msg.sender, realAmount, fee);
   }
@@ -271,8 +273,23 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     emit SetMinBuy(_minBuy);
   }
 
+  /**
+   * @dev get total buy limit
+   * @return total buy limit
+   */
   function getTotalBuyLimit() external view returns (uint256) {
     return IVaultManager(vaultManager).getTotalNetDepositAmount();
+  }
+
+  /**
+   * @dev harvest fees
+   */
+  function harvest() external {
+    if (fees > 0) {
+      uint256 _fees = fees;
+      fees = 0;
+      IERC20(lisUSD).safeTransfer(feeReceiver, _fees);
+    }
   }
 
   /**
