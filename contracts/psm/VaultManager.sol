@@ -90,7 +90,6 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
   }
 
   function _distribute(uint256 amount) private {
-    require(adapters.length > 0, "no adapter");
     uint256 remain = amount;
     uint256 totalPoint = getTotalPoint();
 
