@@ -229,4 +229,58 @@ contract VaultManagerTest is Test {
       abi.encodeWithSelector(vaultManagerImpl.initialize.selector, admin, admin, admin, zero)
     );
   }
+
+  function test_gas() public {
+    deal(USDC, user1, 1000 ether);
+
+    address adapter1 = createAdapter();
+    address adapter2 = createAdapter();
+
+    vm.startPrank(admin);
+    vaultManager.addAdapter(adapter1, 100);
+    vaultManager.addAdapter(adapter2, 100);
+    vm.stopPrank();
+
+    vm.startPrank(user1);
+    IERC20(USDC).approve(address(vaultManager), MAX_UINT);
+
+    vaultManager.deposit(100 ether);
+
+    vaultManager.withdraw(user1, 50 ether);
+    vm.stopPrank();
+
+    vm.startPrank(admin);
+    uint256 startIdx = block.number % 2;
+    vaultManager.setAdapter(startIdx, false, 0);
+    vm.stopPrank();
+
+    vm.startPrank(user1);
+    vaultManager.withdraw(user1, 50 ether);
+    vm.stopPrank();
+  }
+
+  function createAdapter() private returns (address) {
+    vm.startPrank(admin);
+    VenusAdapter venusAdapterImpl = new VenusAdapter();
+
+    ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
+      address(venusAdapterImpl),
+      abi.encodeWithSelector(
+        venusAdapterImpl.initialize.selector,
+        admin,
+        admin,
+        address(vaultManager),
+        venusPool,
+        USDC,
+        vUSDC,
+        quotaAmount,
+        admin
+      )
+    );
+
+    address adapter = address(venusAdapterProxy);
+
+    vm.stopPrank();
+    return adapter;
+  }
 }
