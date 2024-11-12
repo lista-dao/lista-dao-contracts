@@ -14,7 +14,7 @@ contract PSMTest is Test {
   PSM psm;
   VaultManager vaultManager;
   VenusAdapter venusAdapter;
-  address admin = address(0x1);
+  address admin = address(0x10);
   address user1 = address(0x2);
   ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
   address lisUSD = 0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5;
@@ -455,5 +455,33 @@ contract PSMTest is Test {
     vm.stopPrank();
 
     assertEq(psm.minSell(), 100, "minSell error");
+  }
+
+  function test_harvest() public {
+    deal(USDC, user1, 100 ether);
+    deal(lisUSD, user1, 100 ether);
+
+    uint256 feeReceiverLisUSDBalance = IERC20(lisUSD).balanceOf(admin);
+
+    vm.startPrank(admin);
+    psm.setBuyFee(100);
+    psm.setSellFee(100);
+    vm.stopPrank();
+
+    vm.startPrank(user1);
+    IERC20(USDC).approve(address(psm), UINT256_MAX);
+    IERC20(lisUSD).approve(address(psm), UINT256_MAX);
+
+    psm.sell(100 ether);
+    assertEq(psm.fees(), 1 ether, "0 fees error");
+
+    psm.buy(100 ether);
+    assertEq(psm.fees(), 2 ether, "1 fees error");
+
+    psm.harvest();
+    assertEq(psm.fees(), 0, "2 fees error");
+
+    assertEq(IERC20(lisUSD).balanceOf(admin), feeReceiverLisUSDBalance + 2 ether, "0 feeReceiver lisUSD balance error");
+    vm.stopPrank();
   }
 }
