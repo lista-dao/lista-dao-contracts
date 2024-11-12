@@ -119,7 +119,6 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    */
   function withdraw(address receiver, uint256 amount) external nonReentrant onlyPSMOrManager {
     require(amount > 0, "withdraw amount cannot be zero");
-    require(adapters.length > 0, "no adapter");
 
     uint256 remain = amount;
     uint256 vaultBalance = IERC20(token).balanceOf(address(this));
@@ -135,6 +134,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     }
 
     if (remain > 0) {
+      require(adapters.length > 0, "no adapter");
       // withdraw token from adapters
       uint256 startIdx = block.number % adapters.length;
 
