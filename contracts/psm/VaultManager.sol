@@ -99,7 +99,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     }
     // deposit token to adapters by adapter point
     for (uint256 i = 0; i < adapters.length; i++) {
-      if (adapters[i].active) {
+      if (adapters[i].active && adapters[i].point > 0) {
         // only active adapter can be used
         //  adapterAmount = depositAmount * point / totalPoint
         uint256 amt = Math.mulDiv(amount, adapters[i].point, totalPoint);
@@ -122,23 +122,39 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     require(adapters.length > 0, "no adapter");
 
     uint256 remain = amount;
-
-    // withdraw token from adapters
-    uint256 startIdx = block.number % adapters.length;
-
-    for (uint256 i = 0; i < adapters.length; i++) {
-      uint256 idx = (startIdx + i) % adapters.length;
-      uint256 netDeposit = IAdapter(adapters[idx].adapter).netDepositAmount();
-      if (netDeposit == 0) {
-        continue;
+    uint256 vaultBalance = IERC20(token).balanceOf(address(this));
+    if (vaultBalance >= amount) {
+      // withdraw token from vault manager
+      IERC20(token).safeTransfer(receiver, amount);
+      remain = 0;
+    } else {
+      if (vaultBalance > 0) {
+        IERC20(token).safeTransfer(receiver, vaultBalance);
+        remain -= vaultBalance;
       }
-      if (netDeposit >= remain) {
-        IAdapter(adapters[idx].adapter).withdraw(receiver, remain);
-        remain = 0;
-        break;
-      } else {
-        remain -= netDeposit;
-        IAdapter(adapters[idx].adapter).withdraw(receiver, netDeposit);
+    }
+
+    if (remain > 0) {
+      // withdraw token from adapters
+      uint256 startIdx = block.number % adapters.length;
+
+      for (uint256 i = 0; i < adapters.length; i++) {
+        uint256 idx = (startIdx + i) % adapters.length;
+        // only active adapter can be used
+        if (adapters[idx].active) {
+          uint256 netDeposit = IAdapter(adapters[idx].adapter).netDepositAmount();
+          if (netDeposit == 0) {
+            continue;
+          }
+          if (netDeposit >= remain) {
+            IAdapter(adapters[idx].adapter).withdraw(receiver, remain);
+            remain = 0;
+            break;
+          } else {
+            remain -= netDeposit;
+            IAdapter(adapters[idx].adapter).withdraw(receiver, netDeposit);
+          }
+        }
       }
     }
 
@@ -172,6 +188,9 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    */
   function setAdapter(uint256 index, bool active, uint256 point) external onlyRole(MANAGER) {
     require(index < adapters.length, "index out of range");
+    if (!active) {
+      require(IAdapter(adapters[index].adapter).netDepositAmount() <= 10, "adapter has net deposit amount");
+    }
     adapters[index].active = active;
     adapters[index].point = point;
 
@@ -182,12 +201,13 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    * @dev get total net deposit amount
    */
   function getTotalNetDepositAmount() public view returns (uint256) {
-    uint256 amount;
+    uint256 amount = IERC20(token).balanceOf(address(this));
     for (uint256 i = 0; i < adapters.length; i++) {
       amount += IAdapter(adapters[i].adapter).netDepositAmount();
     }
     return amount;
   }
+
   /**
    * @dev get total point
    */
@@ -209,7 +229,9 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
     require(adapters.length > 0, "no adapter");
 
     for (uint256 i = 0; i < adapters.length; i++) {
-      IAdapter(adapters[i].adapter).withdrawAll();
+      if (adapters[i].active) {
+        IAdapter(adapters[i].adapter).withdrawAll();
+      }
     }
     uint256 amount = IERC20(token).balanceOf(address(this));
 
@@ -226,7 +248,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    */
   function emergencyWithdraw(uint256 index) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(index < adapters.length, "index out of range");
-    uint256 amount = IAdapter(adapters[index].adapter).withdrawAll();
+    uint256 amount = IAdapter(adapters[index].adapter).withdrawAll() + IERC20(token).balanceOf(address(this));
 
     IERC20(token).safeTransfer(msg.sender, amount);
 
