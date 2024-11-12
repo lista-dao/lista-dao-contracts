@@ -53,7 +53,6 @@ contract LisUSDAclTest is Test {
         vm.stopPrank();
 
         lisUSD = LisUSD(0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5);
-
     }
 
     function test_setUp() public {
