@@ -77,7 +77,8 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
-    address public constant DEFAULT_ADMIN = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
+    // default admin is TimeLock contract
+    address public constant DEFAULT_ADMIN = 0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253;
 
     function initialize(uint256 chainId_, string memory symbol_, uint256 supplyCap_) external initializer {
         wards[msg.sender] = 1;
