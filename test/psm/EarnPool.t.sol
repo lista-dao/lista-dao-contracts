@@ -22,9 +22,11 @@ contract EarnPoolTest is Test {
   uint256 duty = 1000000005781378656804590540;
   address USDT = 0x55d398326f99059fF775485246999027B3197955;
 
-  address lisUSDAuth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
+  address lisUSDAuth = 0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253;
 
   uint256 MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+
+  ProxyAdmin lisUSDProxyAdmin = ProxyAdmin(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C);
 
   function setUp() public {
     vm.createSelectFork("bsc-main");
@@ -92,8 +94,11 @@ contract EarnPoolTest is Test {
     vm.stopPrank();
 
     vm.startPrank(lisUSDAuth);
-    LisUSD(lisUSD).rely(address(psm));
-    LisUSD(lisUSD).rely(address(lisUSDPool));
+    LisUSD lisUSDImpl = new LisUSD();
+    lisUSDProxyAdmin.upgrade(ITransparentUpgradeableProxy(lisUSD), address(lisUSDImpl));
+
+    LisUSD(lisUSD).rely(address(psm), 1);
+    LisUSD(lisUSD).rely(address(lisUSDPool), 1);
     vm.stopPrank();
 
     vm.startPrank(admin);
