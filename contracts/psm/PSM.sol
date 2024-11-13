@@ -208,6 +208,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
    */
   function setVaultManager(address _vaultManager) external onlyRole(MANAGER) {
     require(_vaultManager != address(0), "VaultManager cannot be zero address");
+    require(_vaultManager != vaultManager, "VaultManager already set");
     vaultManager = _vaultManager;
     emit SetVaultManager(_vaultManager);
   }
@@ -287,6 +288,17 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
    */
   function getTotalSellLimit() public view returns (uint256) {
     return IERC20(lisUSD).balanceOf(address(this)) - fees;
+  }
+
+  /**
+   * @dev get day buy left
+   * @return day buy left
+   */
+  function getDayBuyLeft() external view returns (uint256) {
+    if (getDay() == lastBuyDay) {
+      return dailyLimit - dayBuyUsed;
+    }
+    return dailyLimit;
   }
 
   /**

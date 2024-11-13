@@ -19,7 +19,6 @@ contract PSMTest is Test {
   ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
   address lisUSD = 0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5;
   address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
-  address venusPool = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   address vUSDC = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   uint256 quotaAmount = 1e18;
 
@@ -76,7 +75,6 @@ contract PSMTest is Test {
         admin,
         admin,
         address(vaultManager),
-        venusPool,
         USDC,
         vUSDC,
         quotaAmount,
@@ -303,6 +301,7 @@ contract PSMTest is Test {
     vm.expectRevert("VaultManager cannot be zero address");
     psm.setVaultManager(zero);
 
+    vm.expectRevert("VaultManager already set");
     psm.setVaultManager(address(vaultManager));
     vm.stopPrank();
 

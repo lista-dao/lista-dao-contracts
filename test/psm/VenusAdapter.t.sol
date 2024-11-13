@@ -9,7 +9,6 @@ contract VenusAdapterTest is Test {
   VenusAdapter venusAdapter;
   address admin = address(0x10);
   address user1 = address(0x004319Fd76912890F7920aEE99Df27EBA05ef48D);
-  address venusPool = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
   address vUSDC = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
   ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
@@ -26,7 +25,7 @@ contract VenusAdapterTest is Test {
 
     ERC1967Proxy venusAdapterProxy = new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, user1, venusPool, USDC, vUSDC, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, user1, USDC, vUSDC, admin)
     );
 
     venusAdapter = VenusAdapter(address(venusAdapterProxy));
@@ -46,7 +45,7 @@ contract VenusAdapterTest is Test {
     vm.stopPrank();
 
     vUSDCBalance = IERC20(vUSDC).balanceOf(address(venusAdapter));
-    uint256 gemAmount = IVBep20Delegate(venusPool).balanceOfUnderlying(address(venusAdapter));
+    uint256 gemAmount = IVBep20Delegate(vUSDC).balanceOfUnderlying(address(venusAdapter));
     assertTrue(vUSDCBalance > 0, "vUSDC 1 error");
     assertTrue(gemAmount > 99 ether && gemAmount <= 100 ether, "Staked USDC 1 error");
 
@@ -91,43 +90,37 @@ contract VenusAdapterTest is Test {
     vm.expectRevert("admin cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, zero, admin, admin, venusPool, USDC, vUSDC, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, zero, admin, admin, USDC, vUSDC, admin)
     );
 
     vm.expectRevert("manager cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, zero, admin, venusPool, USDC, vUSDC, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, zero, admin, USDC, vUSDC, admin)
     );
 
     vm.expectRevert("vaultManager cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, zero, venusPool, USDC, vUSDC, admin)
-    );
-
-    vm.expectRevert("venusPool cannot be zero address");
-    new ERC1967Proxy(
-      address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, zero, USDC, vUSDC, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, zero, USDC, vUSDC, admin)
     );
 
     vm.expectRevert("token cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, zero, vUSDC, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, zero, vUSDC, admin)
     );
 
     vm.expectRevert("vToken cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, USDC, zero, admin)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, USDC, zero, admin)
     );
 
     vm.expectRevert("feeReceiver cannot be zero address");
     new ERC1967Proxy(
       address(venusAdapterImpl),
-      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, venusPool, USDC, vUSDC, zero)
+      abi.encodeWithSelector(venusAdapterImpl.initialize.selector, admin, admin, admin, USDC, vUSDC, zero)
     );
   }
 

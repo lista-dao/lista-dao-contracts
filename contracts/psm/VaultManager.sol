@@ -21,7 +21,6 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
 
   Adapter[] public adapters; // adapter list
 
-  uint256 public constant MAX_PRECISION = 10000;
   bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
   bytes32 public constant BOT = keccak256("BOT"); // bot role
 
@@ -76,7 +75,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
   }
 
   /**
-   * @dev deposit token to adapters, only PSM can call this function
+   * @dev deposit token to adapters, only PSM or manager can call this function
    * @param amount deposit amount
    */
   function deposit(uint256 amount) external nonReentrant onlyPSMOrManager {
@@ -112,7 +111,7 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
   }
 
   /**
-   * @dev withdraw token from adapters, only PSM can call this function
+   * @dev withdraw token from adapters, only PSM or manager can call this function
    * @param receiver receiver address
    * @param amount withdraw amount
    */
