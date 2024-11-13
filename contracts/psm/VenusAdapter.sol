@@ -10,7 +10,6 @@ import "../interfaces/IVBep20Delegate.sol";
 contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   using SafeERC20 for IERC20;
   address public vaultManager; // vault manager address
-  address public venusPool; // venus pool address
   address public token; // token address
   address public vToken; // vToken address
   uint256 public netDepositAmount; // user net deposit amount
@@ -24,7 +23,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   event SetFeeReceiver(address feeReceiver);
   event EmergencyWithdraw(address token, uint256 amount);
   event SetVaultManager(address vaultManager);
-  event SetVenusPool(address venusPool);
   event SetVToken(address vToken);
   event SetToken(address token);
 
@@ -43,7 +41,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
    * @param _admin admin address
    * @param _manager manager address
    * @param _vaultManager vault manager address
-   * @param _venusPool venus pool address
    * @param _token token address
    * @param _vToken vToken address
    * @param _feeReceiver fee receiver address
@@ -52,7 +49,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     address _admin,
     address _manager,
     address _vaultManager,
-    address _venusPool,
     address _token,
     address _vToken,
     address _feeReceiver
@@ -60,7 +56,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     require(_admin != address(0), "admin cannot be zero address");
     require(_manager != address(0), "manager cannot be zero address");
     require(_vaultManager != address(0), "vaultManager cannot be zero address");
-    require(_venusPool != address(0), "venusPool cannot be zero address");
     require(_token != address(0), "token cannot be zero address");
     require(_vToken != address(0), "vToken cannot be zero address");
     require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
@@ -73,12 +68,10 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
 
     vaultManager = _vaultManager;
     token = _token;
-    venusPool = _venusPool;
     vToken = _vToken;
     feeReceiver = _feeReceiver;
 
     emit SetVaultManager(_vaultManager);
-    emit SetVenusPool(_venusPool);
     emit SetToken(_token);
     emit SetVToken(_vToken);
     emit SetFeeReceiver(_feeReceiver);
@@ -91,12 +84,12 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   function deposit(uint256 amount) external onlyVaultManager {
     require(amount > 0, "deposit amount cannot be zero");
     IERC20(token).safeTransferFrom(vaultManager, address(this), amount);
-    IERC20(token).safeIncreaseAllowance(venusPool, amount);
+    IERC20(token).safeIncreaseAllowance(vToken, amount);
 
     netDepositAmount += amount;
 
     // deposit to venus pool
-    IVBep20Delegate(venusPool).mint(amount);
+    IVBep20Delegate(vToken).mint(amount);
 
     emit Deposit(amount);
   }
@@ -112,7 +105,7 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
 
     netDepositAmount -= amount;
 
-    IVBep20Delegate(venusPool).redeemUnderlying(amount);
+    IVBep20Delegate(vToken).redeemUnderlying(amount);
 
     // transfer token to account
     IERC20(token).safeTransfer(account, amount);
@@ -147,11 +140,11 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
    * @dev harvest interest to fee receiver
    */
   function harvest() public {
-    uint256 totalAmount = IVBep20Delegate(venusPool).balanceOfUnderlying(address(this));
+    uint256 totalAmount = IVBep20Delegate(vToken).balanceOfUnderlying(address(this));
     if (totalAmount > netDepositAmount) {
       // calculate interest and redeem amount
       uint256 interest = totalAmount - netDepositAmount;
-      IVBep20Delegate(venusPool).redeemUnderlying(interest);
+      IVBep20Delegate(vToken).redeemUnderlying(interest);
       IERC20(token).safeTransfer(feeReceiver, interest);
 
       emit Harvest(feeReceiver, interest);
@@ -160,8 +153,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
 
   function _withdrawFromVenus(uint256 vTokenAmount) private returns (uint256) {
     uint256 before = IERC20(token).balanceOf(address(this));
-    IERC20(vToken).safeIncreaseAllowance(venusPool, vTokenAmount);
-    IVBep20Delegate(venusPool).redeem(vTokenAmount);
+    IERC20(vToken).safeIncreaseAllowance(vToken, vTokenAmount);
+    IVBep20Delegate(vToken).redeem(vTokenAmount);
     return IERC20(token).balanceOf(address(this)) - before;
   }
 
@@ -173,21 +166,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     require(_feeReceiver != address(0), "feeReceiver cannot be zero address");
     feeReceiver = _feeReceiver;
     emit SetFeeReceiver(_feeReceiver);
-  }
-
-  /**
-   * @dev allows admin to withdraw tokens for emergency or recover any other mistaken tokens.
-   * @param _token token address
-   * @param _amount token amount
-   */
-  function emergencyWithdraw(address _token, uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    if (_token == address(0)) {
-      (bool success, ) = payable(msg.sender).call{ value: _amount }("");
-      require(success, "Withdraw failed");
-    } else {
-      IERC20(_token).safeTransfer(msg.sender, _amount);
-    }
-    emit EmergencyWithdraw(_token, _amount);
   }
 
   function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
