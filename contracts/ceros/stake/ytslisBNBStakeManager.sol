@@ -134,6 +134,11 @@ contract ytslisBNBStakeManager is
     {
         require(_certAmount > 0, "zero stake amount");
         require(_delegateTo != address(0), "delegateTo cannot be a zero address");
+        require(
+            delegation[msg.sender].delegateTo == _delegateTo ||
+            delegation[msg.sender].amount == 0, // first time, clear old delegatee
+            "delegateTo is differ from the current one"
+        );
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), _certAmount);
         _syncLpToken(msg.sender);
