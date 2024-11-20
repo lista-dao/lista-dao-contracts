@@ -228,6 +228,7 @@ async function deployPools() {
     LisUSDPoolContract.registerPool(fdusd, fdusd, distributors['FDUSD']);
     await Promise.delay(3000);
     LisUSDPoolContract.registerPool(lisUSD, lisUSD, distributors['lisUSD']);
+    await Promise.delay(3000);
 
     //setDuty
     LisUSDPoolContract.setDuty(duty);
