@@ -19,9 +19,9 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         uint256 snBnbAmount;
         uint256 triggerTime;
     }
-    mapping(uint256 => UserWithdrawRequest) private _withdrawRequests;
-    uint256 private _firstDistributeIdx;
-    uint256 private _nextWithdrawIdx;
+    mapping(uint256 => UserWithdrawRequest) public _withdrawRequests;
+    uint256 public _firstDistributeIdx;
+    uint256 public _nextWithdrawIdx;
 
     /**
      * @dev for storing the withdraw requests that can't be fulfilled via the automated mechanism because of gas limits
@@ -152,7 +152,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
     // Anybody can call. actual withdraw request to Snyclub, should be called max once a day
     function batchWithdraw() external nonReentrant {
         require(
-            block.timestamp - lastUnstakeTriggerTime >= 24 hours,
+            block.timestamp - lastUnstakeTriggerTime >= 1 hours,
             "Allowed once daily"
         );
         require(snBnbToUnstake > 0, "No SnBNB to unstake");
@@ -190,11 +190,15 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         ISnBnbStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
-        for (uint256 idx = 0; idx < requests.length; idx++) {
+        uint256 idx = 0;
+        for (uint256 times = 0; times < requests.length; times++) {
             (bool isClaimable, uint256 amount) = _stakeManager
                 .getUserRequestStatus(address(this), idx);
 
-            if (!isClaimable) continue;
+            if (!isClaimable) {
+                idx++;
+                continue;
+            }
             bnbToDistribute += amount; // amount here returned from Synclub will be a little more than requested to withdraw BNB:snBNB > 1 ?
             _stakeManager.claimWithdraw(idx);
             return true;
