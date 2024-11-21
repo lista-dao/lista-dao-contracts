@@ -401,6 +401,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     emit RemovePool(pool);
     address distributor = pools[pool].distributor;
     if (distributor != address(0)) {
+      pools[pool].distributor = address(0);
       emit RemoveDistributor(pool, distributor);
     }
   }
