@@ -186,9 +186,6 @@ contract VaultManager is ReentrancyGuardUpgradeable, AccessControlUpgradeable, U
    */
   function setAdapter(uint256 index, bool active, uint256 point) external onlyRole(MANAGER) {
     require(index < adapters.length, "index out of range");
-    if (!active) {
-      require(IAdapter(adapters[index].adapter).netDepositAmount() <= 10, "adapter has net deposit amount");
-    }
     adapters[index].active = active;
     adapters[index].point = point;
 
