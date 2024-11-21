@@ -86,6 +86,7 @@ contract EarnPoolTest is Test {
 
     earnPool.setPSM(USDC, address(psm));
 
+    lisUSDPool.grantRole(lisUSDPool.BOT(), admin);
     lisUSDPool.setEarnPool(address(earnPool));
     lisUSDPool.registerPool(USDC, USDC, address(0));
     lisUSDPool.setDuty(duty);

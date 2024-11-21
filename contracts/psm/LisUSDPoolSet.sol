@@ -45,6 +45,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
   bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
   bytes32 public constant PAUSER = keccak256("PAUSER"); // pause role
+  bytes32 public constant BOT = keccak256("BOT"); // bot role
   uint256 public constant RATE_SCALE = 10 ** 27;
 
   event Withdraw(address account, uint256 amount);
@@ -282,7 +283,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
    * @dev set duty
    * @param _duty duty
    */
-  function setDuty(uint256 _duty) public update onlyRole(MANAGER) {
+  function setDuty(uint256 _duty) public update onlyRole(BOT) {
     require(_duty <= maxDuty, "duty cannot exceed max duty");
 
     duty = _duty;
