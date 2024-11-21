@@ -72,7 +72,7 @@ contract EarnPoolTest is Test {
     LisUSDPoolSet lisUSDPoolImpl = new LisUSDPoolSet();
     ERC1967Proxy lisUSDPoolProxy = new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, lisUSD, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, admin, lisUSD, MAX_DUTY, 0)
     );
 
     lisUSDPool = LisUSDPoolSet(address(lisUSDPoolProxy));

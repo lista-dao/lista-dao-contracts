@@ -34,7 +34,7 @@ contract LisUSDPoolTest is Test {
     LisUSDPoolSet lisUSDPoolImpl = new LisUSDPoolSet();
     ERC1967Proxy lisUSDPoolProxy = new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, lisUSD, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, admin, lisUSD, MAX_DUTY, 0)
     );
 
     lisUSDPool = LisUSDPoolSet(address(lisUSDPoolProxy));
@@ -122,25 +122,31 @@ contract LisUSDPoolTest is Test {
     vm.expectRevert("admin cannot be zero address");
     new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, zero, admin, admin, lisUSD, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, zero, admin, admin, admin, lisUSD, MAX_DUTY, 0)
     );
 
     vm.expectRevert("manager cannot be zero address");
     new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, zero, admin, lisUSD, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, zero, admin, admin, lisUSD, MAX_DUTY, 0)
     );
 
     vm.expectRevert("pauser cannot be zero address");
     new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, zero, lisUSD, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, zero, admin, lisUSD, MAX_DUTY, 0)
+    );
+
+    vm.expectRevert("bot cannot be zero address");
+    new ERC1967Proxy(
+      address(lisUSDPoolImpl),
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, zero, lisUSD, MAX_DUTY, 0)
     );
 
     vm.expectRevert("lisUSD cannot be zero address");
     new ERC1967Proxy(
       address(lisUSDPoolImpl),
-      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, zero, MAX_DUTY, 0)
+      abi.encodeWithSelector(lisUSDPoolImpl.initialize.selector, admin, admin, admin, admin, zero, MAX_DUTY, 0)
     );
 
     assertEq(lisUSDPool.lisUSD(), lisUSD, "lisUSD error");
