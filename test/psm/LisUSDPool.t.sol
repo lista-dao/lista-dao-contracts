@@ -39,6 +39,7 @@ contract LisUSDPoolTest is Test {
 
     lisUSDPool = LisUSDPoolSet(address(lisUSDPoolProxy));
 
+    lisUSDPool.grantRole(lisUSDPool.BOT(), admin);
     lisUSDPool.setMaxAmount(1e18 * 1e9);
     lisUSDPool.setDuty(MAX_DUTY);
     lisUSDPool.registerPool(lisUSD, lisUSD, address(0));
