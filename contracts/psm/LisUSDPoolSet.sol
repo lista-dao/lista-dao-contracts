@@ -84,6 +84,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     address _admin,
     address _manager,
     address _pauser,
+    address _bot,
     address _lisUSD,
     uint256 _maxDuty,
     uint256 _withdrawDelay
@@ -91,6 +92,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     require(_admin != address(0), "admin cannot be zero address");
     require(_manager != address(0), "manager cannot be zero address");
     require(_pauser != address(0), "pauser cannot be zero address");
+    require(_bot != address(0), "bot cannot be zero address");
     require(_lisUSD != address(0), "lisUSD cannot be zero address");
     require(_maxDuty > RATE_SCALE, "maxDuty cannot be zero");
 
@@ -102,6 +104,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     _setupRole(MANAGER, _manager);
     _setupRole(PAUSER, _pauser);
+    _setupRole(BOT, _bot);
 
     lisUSD = _lisUSD;
 
