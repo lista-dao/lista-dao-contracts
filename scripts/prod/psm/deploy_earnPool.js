@@ -12,9 +12,8 @@ async function main() {
     const deployer = signers[0].address;
     const admin = deployer;
     const manager = deployer;
-    //todo
-    const lisUSDPoolAddress = "";
-    const psmAddress = "";
+    const lisUSDPoolAddress = "0x37DB1AE9B24055D1F9fE973Aea40B7EB2995D0Bf";
+    const psmAddress = "0xaa57F36DD5Ef2aC471863ec46277f976f272eC0c";
     const EarnPool = await hre.ethers.getContractFactory('EarnPool');
     const earnPoll = await upgrades.deployProxy(EarnPool, [
         admin,
