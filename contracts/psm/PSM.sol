@@ -44,6 +44,7 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
   event EmergencyWithdraw(address token, uint256 amount);
   event SetToken(address token);
   event SetLisUSD(address lisUSD);
+  event Harvest(uint256 fees);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -309,6 +310,8 @@ contract PSM is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
       uint256 _fees = fees;
       fees = 0;
       IERC20(lisUSD).safeTransfer(feeReceiver, _fees);
+
+      emit Harvest(_fees);
     }
   }
 
