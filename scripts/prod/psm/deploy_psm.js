@@ -3,11 +3,11 @@ const hre = require('hardhat')
 
 let usdt = '0x55d398326f99059fF775485246999027B3197955';
 let lisUSD = '0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5';
-let sellFee = 0;
-let buyFee = 500;
-let dailyLimit = '10000000000000000000000000' // 1e25;
-let minSell = '1000000000000000000'; // 1e18;
-let minBuy = '1000000000000000000'; // 1e18;
+let sellFee = 0; // 0%
+let buyFee = 200; // 2%
+let dailyLimit = '500000000000000000000000' // 500k;
+let minSell = '1000000000000000000'; // 1u;
+let minBuy = '1000000000000000000'; // 1u;
 const pauser = "0xEEfebb1546d88EA0909435DF6f615084DD3c5Bd8";
 const feeReceiver = "0x34B504A5CF0fF41F8A480580533b6Dda687fa3Da";
 

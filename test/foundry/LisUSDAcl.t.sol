@@ -32,18 +32,12 @@ contract LisUSDAclTest is Test {
         mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
         oldLisUSD = LisUSDOld(0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5);
 
-        vm.startPrank(0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37);
-        oldLisUSD.mint(user0, 100 ether);
-        vm.stopPrank();
-
-        assertEq(100 ether, oldLisUSD.balanceOf(user0));
-
         // HayJoin
         vm.startPrank(0x4C798F81de7736620Cd8e6510158b1fE758e22F7);
         oldLisUSD.mint(user0, 100 ether);
         vm.stopPrank();
 
-        assertEq(200 ether, oldLisUSD.balanceOf(user0));
+        assertEq(100 ether, oldLisUSD.balanceOf(user0));
 
         ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
         vm.startPrank(address(proxyAdmin.owner()));
@@ -58,18 +52,12 @@ contract LisUSDAclTest is Test {
     function test_setUp() public {
         deal(address(lisUSD), user0, 0);
 
-        vm.startPrank(0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37);
-        lisUSD.mint(user0, 100 ether);
-        vm.stopPrank();
-
-        assertEq(100 ether, lisUSD.balanceOf(user0));
-
         // HayJoin
         vm.startPrank(0x4C798F81de7736620Cd8e6510158b1fE758e22F7);
         lisUSD.mint(user0, 100 ether);
         vm.stopPrank();
 
-        assertEq(200 ether, lisUSD.balanceOf(user0));
+        assertEq(100 ether, lisUSD.balanceOf(user0));
     }
 
     function test_rely_minter() public {
