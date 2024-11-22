@@ -12,11 +12,11 @@ async function main() {
     const admin = '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253';
     const manager = '0x8d388136d578dCD791D081c6042284CED6d9B0c6';
 
-    const psmAddress = '0x7E88e1208C6c23891D84E740b9883B7bcD6e7293';
-    const vaultManagerAddress = '0x17A24F1b7e3ac0791721C98a8cC3c1d475d8c0eb';
-    const venusAdapterAddress = '0x49EC09a680a749Ad6F4c266dc313Ef0dd3Abf783';
-    const lisUSDPoolSetAddress = '0xA23FC5Cd5a1bC0fa7BcC90A89bdd1487ac8e3970';
-    const earnPoolAddress = '0x710B256c7B20F5F115D57602590B076bb21d8241';
+    const psmAddress = '';
+    const vaultManagerAddress = '';
+    const venusAdapterAddress = '';
+    const lisUSDPoolSetAddress = '';
+    const earnPoolAddress = '';
 
     const psmContract = await ethers.getContractAt('PSM', psmAddress);
     const vaultManagerContract = await ethers.getContractAt('VaultManager', vaultManagerAddress);
