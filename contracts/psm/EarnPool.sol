@@ -122,6 +122,7 @@ contract EarnPool is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradea
    * @param _token token address
    */
   function removePSM(address _token) external onlyRole(MANAGER) {
+    require(psm[_token] != address(0), "psm is not set");
     delete psm[_token];
 
     emit RemovePSM(_token);
