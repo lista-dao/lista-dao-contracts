@@ -21,7 +21,6 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   event Withdraw(address account, uint256 amount);
   event Harvest(address account, uint256 amount);
   event SetFeeReceiver(address feeReceiver);
-  event EmergencyWithdraw(address token, uint256 amount);
   event SetVaultManager(address vaultManager);
   event SetVToken(address vToken);
   event SetToken(address token);
