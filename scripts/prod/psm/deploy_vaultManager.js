@@ -9,8 +9,7 @@ async function main() {
     const admin = deployer;
     const manager = deployer;
     const token = usdt;
-    // todo
-    const psmAddress = "";
+    const psmAddress = "0xaa57F36DD5Ef2aC471863ec46277f976f272eC0c";
     const VaultManager = await hre.ethers.getContractFactory('VaultManager');
     const vaultManager = await upgrades.deployProxy(VaultManager, [
         admin,

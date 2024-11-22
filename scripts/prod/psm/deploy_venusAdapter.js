@@ -3,7 +3,7 @@ const hre = require('hardhat')
 
 let usdt = '0x55d398326f99059fF775485246999027B3197955';
 let vusdt = "0xfD5840Cd36d94D7229439859C0112a4185BC0255";
-let feeReceiver = "0x34B504A5CF0fF41F8A480580533b6Dda687fa3Da";
+let feeReceiver = "0x8d388136d578dCD791D081c6042284CED6d9B0c6";
 
 async function main() {
     const signers = await hre.ethers.getSigners();
@@ -12,8 +12,7 @@ async function main() {
     const manager = deployer;
     const token = usdt;
     const vToken = vusdt;
-    // todo
-    const vaultManagerAddress = "";
+    const vaultManagerAddress = "0x5763DDeB60c82684F3D0098aEa5076C0Da972ec7";
     const VenusAdapter = await hre.ethers.getContractFactory('VenusAdapter');
     const venusAdapter = await upgrades.deployProxy(VenusAdapter, [
         admin,
