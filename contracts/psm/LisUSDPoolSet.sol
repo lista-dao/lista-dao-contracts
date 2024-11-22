@@ -45,6 +45,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
 
   bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
   bytes32 public constant PAUSER = keccak256("PAUSER"); // pause role
+  bytes32 public constant BOT = keccak256("BOT"); // bot role
   uint256 public constant RATE_SCALE = 10 ** 27;
 
   event Withdraw(address account, uint256 amount);
@@ -83,6 +84,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     address _admin,
     address _manager,
     address _pauser,
+    address _bot,
     address _lisUSD,
     uint256 _maxDuty,
     uint256 _withdrawDelay
@@ -90,6 +92,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     require(_admin != address(0), "admin cannot be zero address");
     require(_manager != address(0), "manager cannot be zero address");
     require(_pauser != address(0), "pauser cannot be zero address");
+    require(_bot != address(0), "bot cannot be zero address");
     require(_lisUSD != address(0), "lisUSD cannot be zero address");
     require(_maxDuty > RATE_SCALE, "maxDuty cannot be zero");
 
@@ -101,6 +104,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     _setupRole(MANAGER, _manager);
     _setupRole(PAUSER, _pauser);
+    _setupRole(BOT, _bot);
 
     lisUSD = _lisUSD;
 
@@ -282,7 +286,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
    * @dev set duty
    * @param _duty duty
    */
-  function setDuty(uint256 _duty) public update onlyRole(MANAGER) {
+  function setDuty(uint256 _duty) public update onlyRole(BOT) {
     require(_duty <= maxDuty, "duty cannot exceed max duty");
 
     duty = _duty;
@@ -310,6 +314,7 @@ contract LisUSDPoolSet is AccessControlUpgradeable, ReentrancyGuardUpgradeable, 
     } else {
       IERC20(_token).safeTransfer(msg.sender, _amount);
     }
+
     emit EmergencyWithdraw(_token, _amount);
   }
   /**
