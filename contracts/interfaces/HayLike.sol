@@ -8,4 +8,8 @@ interface HayLike is IERC20{
     function transferFrom(address, address, uint256) external returns (bool);
 
     function approve(address, uint256) external returns (bool);
+
+    function mint(address, uint256) external;
+
+    function burn(address, uint256) external;
 }
