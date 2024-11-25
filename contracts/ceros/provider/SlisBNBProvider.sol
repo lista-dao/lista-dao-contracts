@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -69,6 +65,7 @@ contract SlisBNBProvider is BaseTokenProvider {
 
         __Pausable_init();
         __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MANAGER, _manager);
@@ -232,7 +229,7 @@ contract SlisBNBProvider is BaseTokenProvider {
     }
 
     function changeUserLpRate(uint128 _userLpRate) external onlyRole(MANAGER) {
-        require(_userLpRate > 0 && _userLpRate <= 1e18, "userLpRate invalid");
+        require(_userLpRate <= 1e18, "userLpRate invalid");
 
         userLpRate = _userLpRate;
         emit ChangeUserLpRate(userLpRate);
