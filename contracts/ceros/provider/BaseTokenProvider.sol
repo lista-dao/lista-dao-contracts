@@ -270,7 +270,6 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
     {
         require(_account != address(0));
         _syncLp(_account);
-        _burnLp(_account, _amount);
     }
 
     /**
