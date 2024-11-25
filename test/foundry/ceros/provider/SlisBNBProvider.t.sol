@@ -422,6 +422,7 @@ contract SlisBNBProviderTest is Test {
         test_provide();
 
         vm.startPrank(address(interaction));
+        vm.mockCall(address(interaction), abi.encodeWithSelector(Interaction.locked.selector), abi.encode(uint256(0)));
         slisBNBLpProvider.daoBurn(user, 121e18);
         vm.stopPrank();
 
@@ -435,6 +436,7 @@ contract SlisBNBProviderTest is Test {
         test_provide_delegate();
 
         vm.startPrank(address(interaction));
+        vm.mockCall(address(interaction), abi.encodeWithSelector(Interaction.locked.selector), abi.encode(uint256(0)));
         slisBNBLpProvider.daoBurn(user, 121e18);
         vm.stopPrank();
 
