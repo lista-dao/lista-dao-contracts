@@ -446,4 +446,104 @@ contract SlisBNBLpProviderTest is Test {
         (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
         assertEq(0, deposit);
     }
+
+    function test_provider_compati_mode_0() public {
+        // enable compatibility mode
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider), true);
+        vm.stopPrank();
+
+        deal(address(slisBnb), user, 201 ether);
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), 200 ether);
+        slisBNBLpProvider.provide(200 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        slisBnb.approve(address(interaction), 1 ether);
+        interaction.deposit(user, address(slisBnb), 1 ether);
+        vm.stopPrank();
+
+        uint256 allCollateral = 200 ether * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+        assertEq(0, slisBnb.balanceOf(user));
+        assertEq(userExpect, clisBnb.balanceOf(user));
+        assertEq(userExpect, slisBNBLpProvider.userLp(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedLp(user));
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(201 ether, deposit);
+
+        // withdraw all from interaction
+        vm.startPrank(user);
+        interaction.withdraw(user, address(slisBnb), 201 ether);
+        vm.stopPrank();
+
+        assertEq(201 ether, slisBnb.balanceOf(user));
+        assertEq(userExpect, clisBnb.balanceOf(user));
+        assertEq(userExpect, slisBNBLpProvider.userLp(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedLp(user));
+
+        (uint256 deposit1, ) = vat.urns(slisBNBIlk, user);
+        assertEq(0, deposit1);
+
+        // correct user's collateral
+        slisBNBLpProvider.syncUserLp(user);
+        assertEq(0, clisBnb.balanceOf(user));
+        assertEq(0, slisBNBLpProvider.userLp(user));
+        assertEq(0, clisBnb.balanceOf(reserveAddress));
+        assertEq(0, slisBNBLpProvider.userReservedLp(user));
+    }
+
+    function test_provider_compati_mode_1() public {
+        // enable compatibility mode
+        vm.startPrank(proxyAdminOwner);
+        interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider), true);
+        vm.stopPrank();
+
+        deal(address(slisBnb), user, 201 ether);
+        vm.startPrank(user);
+        slisBnb.approve(address(interaction), 1 ether);
+        interaction.deposit(user, address(slisBnb), 1 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), 200 ether);
+        slisBNBLpProvider.provide(200 ether);
+        vm.stopPrank();
+
+        uint256 allCollateral = 201 ether * exchangeRate / 1e18;
+        uint256 userExpect = allCollateral * userCollateralRate / 1e18;
+        assertEq(0, slisBnb.balanceOf(user));
+        assertEq(userExpect, clisBnb.balanceOf(user));
+        assertEq(userExpect, slisBNBLpProvider.userLp(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedLp(user));
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(201 ether, deposit);
+
+        // withdraw all from interaction
+        vm.startPrank(user);
+        interaction.withdraw(user, address(slisBnb), 201 ether);
+        vm.stopPrank();
+
+        assertEq(201 ether, slisBnb.balanceOf(user));
+        assertEq(userExpect, clisBnb.balanceOf(user));
+        assertEq(userExpect, slisBNBLpProvider.userLp(user));
+        assertEq(allCollateral - userExpect, clisBnb.balanceOf(reserveAddress));
+        assertEq(allCollateral - userExpect, slisBNBLpProvider.userReservedLp(user));
+
+        (uint256 deposit1, ) = vat.urns(slisBNBIlk, user);
+        assertEq(0, deposit1);
+
+        // correct user's collateral
+        slisBNBLpProvider.syncUserLp(user);
+        assertEq(0, clisBnb.balanceOf(user));
+        assertEq(0, slisBNBLpProvider.userLp(user));
+        assertEq(0, clisBnb.balanceOf(reserveAddress));
+        assertEq(0, slisBNBLpProvider.userReservedLp(user));
+    }
 }
