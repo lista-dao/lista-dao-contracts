@@ -149,6 +149,16 @@ contract SlisBNBProviderTest is Test {
         vm.stopPrank();
     }
 
+    function test_provide_delegate_self_revert() public {
+        deal(address(slisBnb), user, 123e18);
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), 121e18);
+        vm.expectRevert("delegateTo cannot be self");
+        uint256 actual = slisBNBLpProvider.provide(121e18, user);
+        vm.stopPrank();
+    }
+
     function test_delegateAllTo_new() public {
         test_provide();
 
@@ -502,5 +512,37 @@ contract SlisBNBProviderTest is Test {
         uint128 tokenExchangeRate = 1.1 ether;
         assertEq(interaction.locked(address(slisBnb), user), amount, "interaction.locked user final");
         assertEq(clisBnb.balanceOf(reserveAddress) - receiverBalanceBefore, (1 ether - userCollateralRate) * amount * tokenExchangeRate / 10 ** 36, "clisBnb.balanceOf reserveAddress final");
+    }
+
+    function test_release_dos() public {
+        vm.startPrank(manager);
+        slisBNBLpProvider.changeExchangeRate(1e18);
+        slisBNBLpProvider.changeUserLpRate(1e16);
+        vm.stopPrank();
+        console.log("changeExchangeRate ok");
+
+        deal(address(slisBnb), user, 200e18);
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), 200e18);
+        uint256 actual = slisBNBLpProvider.provide(200e18);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        slisBNBLpProvider.release(user, 99999999999999999999);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        slisBNBLpProvider.release(user, 100000000000000000001);
+        vm.stopPrank();
+
+        assertEq(200e18, slisBnb.balanceOf(user));
+        assertEq(0, clisBnb.balanceOf(user));
+        assertEq(0, slisBNBLpProvider.userLp(user));
+        assertEq(0, clisBnb.balanceOf(reserveAddress));
+        assertEq(0, slisBNBLpProvider.userReservedLp(user));
+
+        (uint256 deposit, ) = vat.urns(slisBNBIlk, user);
+        assertEq(0, deposit);
     }
 }
