@@ -232,7 +232,7 @@ contract SlisBNBProvider is BaseTokenProvider {
     }
 
     function changeUserLpRate(uint128 _userLpRate) external onlyRole(MANAGER) {
-        require(_userLpRate > 0 && _userLpRate <= 1e18, "userLpRate invalid");
+        require(_userLpRate <= 1e18, "userLpRate invalid");
 
         userLpRate = _userLpRate;
         emit ChangeUserLpRate(userLpRate);
