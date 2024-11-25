@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@chainlink/contracts": "^0.4.1",
+    "@nomicfoundation/hardhat-foundry": "^1.1.2",
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-truffle5": "^2.0.5",
@@ -20,7 +21,8 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "4.8.3",
     "@openzeppelin/contracts-upgradeable": "4.8.3",
-    "@pythnetwork/pyth-sdk-solidity": "^3.1.0"
+    "@pythnetwork/pyth-sdk-solidity": "^3.1.0",
+    "bluebird": "^3.7.2"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
