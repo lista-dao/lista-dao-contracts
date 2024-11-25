@@ -86,6 +86,7 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
     {
         require(_amount > 0, "zero deposit amount");
         require(_delegateTo != address(0), "delegateTo cannot be zero address");
+        require(_delegateTo != msg.sender, "delegateTo cannot be self");
         require(
             delegation[msg.sender].delegateTo == _delegateTo ||
             delegation[msg.sender].amount == 0, // first time, clear old delegatee

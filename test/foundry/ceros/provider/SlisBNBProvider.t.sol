@@ -149,6 +149,16 @@ contract SlisBNBProviderTest is Test {
         vm.stopPrank();
     }
 
+    function test_provide_delegate_self_revert() public {
+        deal(address(slisBnb), user, 123e18);
+
+        vm.startPrank(user);
+        slisBnb.approve(address(slisBNBLpProvider), 121e18);
+        vm.expectRevert("delegateTo cannot be self");
+        uint256 actual = slisBNBLpProvider.provide(121e18, user);
+        vm.stopPrank();
+    }
+
     function test_delegateAllTo_new() public {
         test_provide();
 
