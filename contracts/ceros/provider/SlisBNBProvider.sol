@@ -65,6 +65,7 @@ contract SlisBNBProvider is BaseTokenProvider {
 
         __Pausable_init();
         __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MANAGER, _manager);
