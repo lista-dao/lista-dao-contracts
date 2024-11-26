@@ -16,8 +16,8 @@ async function main() {
         certToken = '0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B'
         daoAddress = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
         collateralReserveAddress = '' // fixme
-        exchangeRate = 1022e15.toFixed()
-        userCollateralRate = 95e16.toFixed()
+        exchangeRate = 1021e15.toFixed()
+        userCollateralRate = 97e16.toFixed()
     } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
         manager = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
         pauser = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
@@ -26,8 +26,8 @@ async function main() {
         certToken = '0xCc752dC4ae72386986d011c2B485be0DAd98C744'
         daoAddress = '0x70C4880A3f022b32810a4E9B9F26218Ec026f279'
         collateralReserveAddress = '0xeA71Ec772B5dd5aF1D15E31341d6705f9CB86232'
-        exchangeRate = 1022e15.toFixed()
-        userCollateralRate = 95e16.toFixed()
+        exchangeRate = 1021e15.toFixed()
+        userCollateralRate = 97e16.toFixed()
     }
 
     // testnet address 241017: 0x11f6aDcb73473FD7bdd15f32df65Fa3ECdD0Bc20
