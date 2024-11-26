@@ -9,13 +9,13 @@ async function main() {
     let certToken = '', collateralToken = '', daoAddress = '', collateralReserveAddress = ''
     let userCollateralRate = '', exchangeRate = ''
     if (hre.network.name === "bsc") {
-        manager = ''
+        manager = '0x8d388136d578dCD791D081c6042284CED6d9B0c6'
         pauser = '0xEEfebb1546d88EA0909435DF6f615084DD3c5Bd8'
         proxy = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4' // interaction
         collateralToken = '0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6'
         certToken = '0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B'
         daoAddress = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
-        collateralReserveAddress = '' // fixme
+        collateralReserveAddress = '0xD57E5321e67607Fab38347D96394e0E58509C506'
         exchangeRate = 1021e15.toFixed()
         userCollateralRate = 97e16.toFixed()
     } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
