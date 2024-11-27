@@ -19,9 +19,9 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         uint256 snBnbAmount;
         uint256 triggerTime;
     }
-    mapping(uint256 => UserWithdrawRequest) public _withdrawRequests;
-    uint256 public _firstDistributeIdx;
-    uint256 public _nextWithdrawIdx;
+    mapping(uint256 => UserWithdrawRequest) private _withdrawRequests;
+    uint256 private _firstDistributeIdx;
+    uint256 private _nextWithdrawIdx;
 
     /**
      * @dev for storing the withdraw requests that can't be fulfilled via the automated mechanism because of gas limits
