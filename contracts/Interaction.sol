@@ -226,7 +226,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         deposits[token] += dink;
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
-        takeSnapshot(token, msg.sender, ink, 0, true, false);
+        takeSnapshot(token, participant, ink, 0, true, false);
 
         emit Deposit(participant, token, dink, locked(token, participant));
         return dink;
@@ -387,7 +387,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         deposits[token] -= dink;
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
-        takeSnapshot(token, msg.sender, ink, 0, true, false);
+        takeSnapshot(token, participant, ink, 0, true, false);
 
         emit Withdraw(participant, dink);
         return dink;
