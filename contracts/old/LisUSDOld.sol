@@ -26,34 +26,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
-contract LisUSD is Initializable, IERC20MetadataUpgradeable {
-    enum Role {
-        NONE, // 0
-        MINTER, // 1
-        MANAGER, // 2
-        ADMIN // 3
-    }
-
+contract LisUSDOld is Initializable, IERC20MetadataUpgradeable {
     // --- Auth ---
     mapping (address => uint) public wards;
-    function rely(address guy, uint role) external onlyAdmin {
-        require(role > 0 && role <= uint(type(Role).max), "LisUSD/invalid-role");
-        wards[guy] = role;
-    }
-    function deny(address guy) external onlyAdmin { wards[guy] = 0; }
-
-    modifier onlyMinter() {
-        require(wards[msg.sender] == uint(Role.MINTER), "LisUSD/not-authorized-minter");
-        _;
-    }
-
-    modifier onlyManager() {
-        require(wards[msg.sender] == uint(Role.MANAGER), "LisUSD/not-authorized-manager");
-        _;
-    }
-
-    modifier onlyAdmin() {
-        require(wards[msg.sender] == uint(Role.ADMIN) || msg.sender == DEFAULT_ADMIN, "LisUSD/not-authorized-admin");
+    function rely(address guy) external auth { wards[guy] = 1; }
+    function deny(address guy) external auth { wards[guy] = 0; }
+    modifier auth {
+        require(wards[msg.sender] == 1, "LisUSD/not-authorized");
         _;
     }
 
@@ -77,9 +56,6 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
-    // default admin is TimeLock contract
-    address public constant DEFAULT_ADMIN = 0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253;
-
     function initialize(uint256 chainId_, string memory symbol_, uint256 supplyCap_) external initializer {
         wards[msg.sender] = 1;
         DOMAIN_SEPARATOR = keccak256(abi.encode(
@@ -91,6 +67,11 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
         ));
         symbol = symbol_;
         supplyCap = supplyCap_;
+    }
+
+    function resetSymbol() external auth {
+        require(keccak256(abi.encodePacked(symbol)) != keccak256(abi.encodePacked("lisUSD")), "LisUSD/symbol-already-reset");
+        symbol = "lisUSD";
     }
 
     // --- Token ---
@@ -110,7 +91,7 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
         emit Transfer(src, dst, wad);
         return true;
     }
-    function mint(address usr, uint wad) external onlyMinter {
+    function mint(address usr, uint wad) external auth {
         require(usr != address(0), "LisUSD/mint-to-zero-address");
         require(totalSupply + wad <= supplyCap, "LisUSD/cap-reached");
         balanceOf[usr] += wad;
@@ -148,19 +129,19 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
 
     // --- Approve by signature ---
     function permit(address holder, address spender, uint256 nonce, uint256 expiry,
-                    bool allowed, uint8 v, bytes32 r, bytes32 s) external
+        bool allowed, uint8 v, bytes32 r, bytes32 s) external
     {
         bytes32 digest =
-            keccak256(abi.encodePacked(
+                        keccak256(abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
                 keccak256(abi.encode(PERMIT_TYPEHASH,
-                                     holder,
-                                     spender,
-                                     nonce,
-                                     expiry,
-                                     allowed))
-        ));
+                    holder,
+                    spender,
+                    nonce,
+                    expiry,
+                    allowed))
+            ));
 
         require(holder != address(0), "LisUSD/invalid-address-0");
         require(holder == ecrecover(digest, v, r, s), "LisUSD/invalid-permit");
@@ -199,14 +180,14 @@ contract LisUSD is Initializable, IERC20MetadataUpgradeable {
         return true;
     }
 
-    function setSupplyCap(uint256 wad) public onlyManager {
+    function setSupplyCap(uint256 wad) public auth {
         require(wad >= totalSupply, "LisUSD/more-supply-than-cap");
         uint256 oldCap = supplyCap;
         supplyCap = wad;
         emit SupplyCapSet(oldCap, supplyCap);
     }
 
-    function updateDomainSeparator(uint256 chainId_) external onlyManager {
+    function updateDomainSeparator(uint256 chainId_) external auth {
         DOMAIN_SEPARATOR = keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
             keccak256(bytes(name)),

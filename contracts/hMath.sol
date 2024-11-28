@@ -28,4 +28,12 @@ library hMath {
             }
         }
     }
+
+    function rmul(uint x, uint y) internal pure returns (uint z) {
+        unchecked {
+            z = x * y;
+            require(y == 0 || z / y == x);
+            z = z / hMath.ONE;
+        }
+    }
 }

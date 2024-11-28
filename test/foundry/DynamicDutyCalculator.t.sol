@@ -20,10 +20,15 @@ contract DynamicDutyCalculatorTest is Test {
     uint256 delta = 200000;
 
     address public proxyAdminOwner = address(0x2A11AA);
+    address public bot = address(0x3A11AA);
 
     address public collateral = address(0x5A11AA);  // random address
+    address public collateral1 = address(0x6A11AA);  // random address
+
     uint256 beta = 1e6;
     uint256 rate0 = 3309234382829741600; // 11% APY
+    uint256 rate0_15p = 4431822000000000000; // 15% APY
+    uint256 rate0_400p = 51034942716352291304; // 400% APY
 
     address admin;
 
@@ -35,7 +40,7 @@ contract DynamicDutyCalculatorTest is Test {
 
         admin = msg.sender;
 
-        vm.expectRevert("AggMonetaryPolicy/invalid-delta");
+        vm.expectRevert("AMO/invalid-delta");
         TransparentUpgradeableProxy __dynamicDutyCalculatorProxy = new TransparentUpgradeableProxy(
             address(dynamicDutyCalculatorImpl),
             proxyAdminOwner,
@@ -54,6 +59,10 @@ contract DynamicDutyCalculatorTest is Test {
             )
         );
         dynamicDutyCalculator = DynamicDutyCalculator(address(dynamicDutyCalculatorProxy));
+
+        vm.startPrank(msg.sender);
+        dynamicDutyCalculator.grantRole(dynamicDutyCalculator.BOT(), bot);
+        vm.stopPrank();
     }
 
     function testRevert_initialize() public {
@@ -107,12 +116,12 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator.setCollateralParams(collateral, beta, rate0, true);
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        vm.expectRevert("AMO/invalid-beta");
         dynamicDutyCalculator.setCollateralParams(collateral, 3e5, rate0, true);
         vm.stopPrank();
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/invalid-beta");
+        vm.expectRevert("AMO/invalid-beta");
         dynamicDutyCalculator.setCollateralParams(collateral, 1e8, rate0, true);
         vm.stopPrank();
    }
@@ -677,7 +686,7 @@ contract DynamicDutyCalculatorTest is Test {
    function testRevert_setDelta() public {
         vm.startPrank(admin);
         uint256 _delta = 20000000;
-        vm.expectRevert("AggMonetaryPolicy/delta-is-too-large");
+        vm.expectRevert("AMO/delta-is-too-large");
         dynamicDutyCalculator.setDelta(_delta);
         vm.stopPrank();
    }
@@ -702,9 +711,101 @@ contract DynamicDutyCalculatorTest is Test {
         dynamicDutyCalculator.file("interaction", address(0xAA));
 
         vm.startPrank(admin);
-        vm.expectRevert("AggMonetaryPolicy/file-unrecognized-param");
+        vm.expectRevert("AMO/file-unrecognized-param");
         dynamicDutyCalculator.file("proxy", address(0xAA));
         vm.stopPrank();
    }
+
+    function test_setCollateralRate0() public {
+        test_setCollateralParams();
+
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(99500000)) // returns $0.995
+        );
+
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
+
+        vm.startPrank(bot);
+        address[] memory collaterals = new address[](1);
+        collaterals[0] = collateral;
+        uint256[] memory rates = new uint256[](1);
+        rates[0] = rate0_15p;
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+
+        (bool _enabled, uint256 _lastPrice, uint256 _rate0, uint256 _beta) = dynamicDutyCalculator.ilks(collateral);
+
+        assertEq(_beta, beta);
+        assertEq(_rate0, rate0_15p);
+        assertEq(_enabled, true);
+        assertEq(_lastPrice, 99500000);
+    }
+
+    function test_setCollateralRate0_price_overflow() public {
+        test_setCollateralParams();
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(ResilientOracle.peek.selector, lisUSD),
+            abi.encode(uint256(89000000)) // returns $0.89
+        );
+
+        vm.mockCall(
+            address(interaction),
+            abi.encodeWithSelector(Interaction.setCollateralDuty.selector),
+            abi.encode(uint256(0))
+        );
+
+        vm.startPrank(bot);
+        address[] memory collaterals = new address[](1);
+        collaterals[0] = collateral;
+        uint256[] memory rates = new uint256[](1);
+        rates[0] = rate0_15p;
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+
+        (bool _enabled, uint256 _lastPrice, uint256 _rate0, uint256 _beta) = dynamicDutyCalculator.ilks(collateral);
+
+        assertEq(_beta, beta);
+        assertEq(_rate0, rate0_15p);
+        assertEq(_enabled, true);
+        assertEq(_lastPrice, 89000000);
+    }
+
+    function test_setCollateralRate0_revert() public {
+        test_setCollateralParams();
+
+        address[] memory collaterals = new address[](1);
+        collaterals[0] = collateral;
+        uint256[] memory rates = new uint256[](1);
+        rates[0] = rate0_15p;
+
+        vm.startPrank(bot);
+        vm.expectRevert("AMO/invalid-params");
+        dynamicDutyCalculator.setCollateralRate0(collaterals, new uint256[](2));
+        vm.stopPrank();
+
+        vm.startPrank(address(1));
+        vm.expectRevert("AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0x902cbe3a02736af9827fb6a90bada39e955c0941e08f0c63b3a662a7b17a4e2b");
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+
+        collaterals[0] = address(0);
+        vm.startPrank(bot);
+        vm.expectRevert("AMO/invalid-address");
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+
+        collaterals[0] = collateral1;
+        vm.startPrank(bot);
+        vm.expectRevert("AMO/invalid-status");
+        dynamicDutyCalculator.setCollateralRate0(collaterals, rates);
+        vm.stopPrank();
+    }
 }
 
