@@ -3,7 +3,7 @@ const {deployImplementation, verifyImpContract} = require('./utils/upgrade_utils
 
 const oldContractAddress = ''
 const oldContractName = ''
-const contractName = 'DynamicDutyCalculator'
+const contractName = 'SnBnbYieldConverterStrategy'
 
 
 async function main() {

@@ -159,12 +159,8 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         );
         require(snBnbToUnstake > 0, "No SnBNB to unstake");
 
-        uint256 snBnbToUnstake_ = snBnbToUnstake + 100;
-        uint256 snBnbBalance_ = balanceOfToken();
-        if (snBnbToUnstake_ > snBnbBalance_) {
-            snBnbToUnstake_ = snBnbBalance_;
-        }
-        snBnbToUnstake = 0; // To prevent reentrancy
+        uint256 snBnbToUnstake_ = snBnbToUnstake; // To prevent reentrancy
+        snBnbToUnstake = 0;
         lastUnstakeTriggerTime = block.timestamp;
         _stakeManager.requestWithdraw(snBnbToUnstake_);
     }
@@ -313,18 +309,6 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
 
     function assessDepositFee(uint256 amount) public pure returns (uint256) {
         return amount;
-    }
-
-    /// @dev only owner can change stakeManager address
-    /// @param stakeManager new stakeManager address
-    function changeStakeManager(address stakeManager) external onlyOwner {
-        require(stakeManager != address(0), "zero address");
-        require(address(_stakeManager) != stakeManager, "old address provided");
-
-        _snBnbToken.safeApprove(address(_stakeManager), 0);
-        _stakeManager = ISnBnbStakeManager(stakeManager);
-        _snBnbToken.safeApprove(address(_stakeManager), type(uint256).max);
-        emit SnBnbStakeManagerChanged(stakeManager);
     }
 
     /// @dev get the withdraw requests of the user
