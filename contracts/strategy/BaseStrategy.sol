@@ -83,11 +83,11 @@ ReentrancyGuardUpgradeable {
         );
     }
 
-    function pause() external onlyStrategist {
+    function pause() external onlyOwner {
         depositPaused = true;
     }
 
-    function unpause() external onlyStrategist {
+    function unpause() external onlyOwner {
         depositPaused = false;
     }
 
