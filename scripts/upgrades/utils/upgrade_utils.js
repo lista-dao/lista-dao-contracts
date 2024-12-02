@@ -16,7 +16,7 @@ async function upgradeProxy(proxyAddress, impAddress) {
 async function deployImplementation(contractName, args) {
     let contractFactory = await ethers.getContractFactory(contractName, args);
     let contractImpl = await contractFactory.deploy();
-    await contractImpl.deploymentTransaction();
+    await contractImpl.deploymentTransaction().wait(6);
     const address = await contractImpl.getAddress();
     console.log(`${contractName}Imp:  `, address)
     return address;
