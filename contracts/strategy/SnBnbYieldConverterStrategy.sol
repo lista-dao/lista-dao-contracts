@@ -249,8 +249,6 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later
                 manualWithdrawAmount[recipient] += amount;
-                bnbToDistribute += amount;
-
                 emit AddManualWithdrawAmount(recipient, amount);
             }
         }
@@ -262,7 +260,6 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         uint256 amount = manualWithdrawAmount[recipient];
         require(amount > 0, "!distributeManual");
 
-        bnbToDistribute -= amount;
         delete manualWithdrawAmount[recipient];
 
         (
