@@ -155,7 +155,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
     function batchWithdraw() external nonReentrant {
         require(
             block.timestamp - lastUnstakeTriggerTime >= 1 hours,
-            "Allowed once daily"
+            "Allowed once per hour"
         );
         require(snBnbToUnstake > 0, "No SnBNB to unstake");
 
