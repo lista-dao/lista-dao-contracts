@@ -14,14 +14,14 @@ async function main() {
     let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
     let PROXY_ADMIN_OWNER = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
 
-    const symbol = 'USDX'
-    let tokenAddress = '0xf3527ef8dE265eAa3716FB312c12847bFBA66Cef' // USDX token address on BSC Mainnet
+    const symbol = 'sUSDX'
+    let tokenAddress = '0x7788A3538C5fc7F9c7C8A74EAC4c898fC8d87d92' // sUSDX token address on BSC Mainnet
 
     if (hre.network.name === 'bsc_testnet') {
         NEW_OWNER = process.env.OWNER || deployer.address
         PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
         // deploy token
-        tokenAddress = '0x9985D80F64293370a504580DC85C7142Ed42B459'
+        tokenAddress = '0xdb66d7e8edF8a16aD5e802704D2cA4EFca9e8a46'
     }
 
     // add collateral
