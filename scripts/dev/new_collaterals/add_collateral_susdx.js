@@ -8,11 +8,11 @@ async function main() {
 
     const [deployer] = await ethers.getSigners()
     const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-        "symbol": "USDX",
-        "tokenAddress": "0xB6557A8530BdaE151F37a6077225911d78fD65ea",
-        "ilk": "0x5553445800000000000000000000000000000000000000000000000000000000",
-        "gemJoin": "0xCa649e6B6Ddc0CB281C8846d6CCA6A45FF397f56",
-        "clipper": "0x92CE5DE2fb4d212A2e4235c23f4A2603d3a0F46C",
+        "symbol": "sUSDX",
+        "tokenAddress": "0xdb66d7e8edF8a16aD5e802704D2cA4EFca9e8a46",
+        "ilk": "0x7355534458000000000000000000000000000000000000000000000000000000",
+        "gemJoin": "0xC18912A4a53cddf27dD477816A087B77fC5a0Ef5",
+        "clipper": "0xE2042950Db8f944C61a259cFB491F08acBEcc792",
         "oracle": "0x1e285901bAa1129B7926F35C8241D36f0Afe6ba3",
     }
 
