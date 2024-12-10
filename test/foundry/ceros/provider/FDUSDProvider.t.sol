@@ -80,7 +80,6 @@ contract FDUSDProviderTest is Test {
 
         vm.startPrank(proxyAdminOwner);
         interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider), false);
-        interaction.setListaDistributor(address(0x74E17e6996f0DDAfdA9B500ab15a3AD7c2f69307));
         vm.stopPrank();
 
         (, bytes32 ilk, ,) = interaction.collaterals(address(FDUSD));

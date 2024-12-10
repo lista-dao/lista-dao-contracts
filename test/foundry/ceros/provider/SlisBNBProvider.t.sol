@@ -79,7 +79,6 @@ contract SlisBNBProviderTest is Test {
 
         vm.startPrank(proxyAdminOwner);
         interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider), true);
-        interaction.setListaDistributor(address(0x74E17e6996f0DDAfdA9B500ab15a3AD7c2f69307));
         vm.stopPrank();
 
         (, bytes32 ilk, ,) = interaction.collaterals(address(slisBnb));
