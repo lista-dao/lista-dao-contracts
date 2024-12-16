@@ -151,7 +151,8 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    // Anybody can call. actual withdraw request to Snyclub, should be called max once a day
+    // Anybody can call.
+    // actual withdraw request to Snyclub, should be called max once a hour
     function batchWithdraw() external nonReentrant {
         require(
             block.timestamp - lastUnstakeTriggerTime >= 1 hours,
@@ -264,7 +265,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
 
         (
             bool sent, /*memory data*/
-        ) = payable(recipient).call{value: amount}("");
+        ) = payable(recipient).call{value: amount, gas: 5000}("");
         require(sent, "!sent");
 
         emit ManualWithdraw(recipient, amount);
