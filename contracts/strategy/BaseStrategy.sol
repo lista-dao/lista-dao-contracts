@@ -82,12 +82,12 @@ abstract contract BaseStrategy is
         );
     }
 
-    function pause() external onlyStrategist {
+    function pause() external onlyOwner {
         depositPaused = true;
         emit DepositPaused();
     }
 
-    function unpause() external onlyStrategist {
+    function unpause() external onlyOwner {
         depositPaused = false;
         emit DepositUnpaused();
     }

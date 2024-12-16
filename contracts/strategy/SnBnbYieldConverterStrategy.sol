@@ -36,6 +36,8 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
     uint256 public lastUnstakeTriggerTime; // last time when batchWithdraw was invoked
 
     event SnBnbStakeManagerChanged(address stakeManager);
+    event AddManualWithdrawAmount(address recipient, uint256 amount);
+    event ManualWithdraw(address recipient, uint256 amount);
 
     /// @dev initialize function - Constructor for Upgradable contract, can be only called once during deployment
     /// @param destination Address of the stakeManager contract
@@ -119,7 +121,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
     }
 
     // calculate the total(snBNB) in the strategy contract
-    function balanceOfToken() external view returns(uint256){
+    function balanceOfToken() public view returns(uint256){
         return _snBnbToken.balanceOf(address(this));
     }
 
@@ -149,11 +151,12 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         return amount;
     }
 
-    // Anybody can call. actual withdraw request to Snyclub, should be called max once a day
+    // Anybody can call.
+    // actual withdraw request to Snyclub, should be called max once a hour
     function batchWithdraw() external nonReentrant {
         require(
-            block.timestamp - lastUnstakeTriggerTime >= 24 hours,
-            "Allowed once daily"
+            block.timestamp - lastUnstakeTriggerTime >= 1 hours,
+            "Allowed once per hour"
         );
         require(snBnbToUnstake > 0, "No SnBNB to unstake");
 
@@ -190,11 +193,15 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         ISnBnbStakeManager.WithdrawalRequest[] memory requests = _stakeManager
             .getUserWithdrawalRequests(address(this));
 
-        for (uint256 idx = 0; idx < requests.length; idx++) {
+        uint256 idx = 0;
+        for (uint256 times = 0; times < requests.length; times++) {
             (bool isClaimable, uint256 amount) = _stakeManager
                 .getUserRequestStatus(address(this), idx);
 
-            if (!isClaimable) continue;
+            if (!isClaimable) {
+                idx++;
+                continue;
+            }
             bnbToDistribute += amount; // amount here returned from Synclub will be a little more than requested to withdraw BNB:snBNB > 1 ?
             _stakeManager.claimWithdraw(idx);
             return true;
@@ -237,13 +244,13 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
             (
                 bool sent, /*memory data*/
 
-            ) = payable(recipient).call{value: amount}("");
+            ) = payable(recipient).call{value: amount, gas: 5000}("");
 
             if (!sent) {
                 // the recipient didn't accept direct funds within the specified gas, so save the whole request to be
                 // withdrawn by the recipient manually later
                 manualWithdrawAmount[recipient] += amount;
-                bnbToDistribute += amount;
+                emit AddManualWithdrawAmount(recipient, amount);
             }
         }
     }
@@ -254,13 +261,14 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         uint256 amount = manualWithdrawAmount[recipient];
         require(amount > 0, "!distributeManual");
 
-        bnbToDistribute -= amount;
         delete manualWithdrawAmount[recipient];
 
         (
             bool sent, /*memory data*/
-        ) = payable(recipient).call{value: amount}("");
+        ) = payable(recipient).call{value: amount, gas: 5000}("");
         require(sent, "!sent");
+
+        emit ManualWithdraw(recipient, amount);
     }
 
     /// @dev claims yield from Synclub in SnBNB and transfers to rewardsAddr
@@ -285,7 +293,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
 
         // yield = snBnbHoldingBalance - snBnbEqAmount
         // snHoldingBalance = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake
-        yield = _snBnbToken.balanceOf(address(this)) - snBnbToUnstake - snBnbEqAmount;
+        yield = balanceOfToken() - snBnbToUnstake - snBnbEqAmount;
     }
 
     // returns the total amount of tokens in the destination contract
@@ -299,18 +307,6 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
 
     function assessDepositFee(uint256 amount) public pure returns (uint256) {
         return amount;
-    }
-
-    /// @dev only owner can change stakeManager address
-    /// @param stakeManager new stakeManager address
-    function changeStakeManager(address stakeManager) external onlyOwner {
-        require(stakeManager != address(0), "zero address");
-        require(address(_stakeManager) != stakeManager, "old address provided");
-
-        _snBnbToken.safeApprove(address(_stakeManager), 0);
-        _stakeManager = ISnBnbStakeManager(stakeManager);
-        _snBnbToken.safeApprove(address(_stakeManager), type(uint256).max);
-        emit SnBnbStakeManagerChanged(stakeManager);
     }
 
     /// @dev get the withdraw requests of the user
