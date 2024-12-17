@@ -11,4 +11,8 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
+
+    function decimals() public pure override returns (uint8) {
+        return 8;
+    }
 }
