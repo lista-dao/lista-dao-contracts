@@ -14,6 +14,7 @@ import { IDao } from "../interfaces/IDao.sol";
 import { IHelioProviderV2 } from "../interfaces/IHelioProviderV2.sol";
 import { ILpToken } from "../interfaces/ILpToken.sol";
 //import {IHelioTokenProvider} from "../interfaces/IHelioTokenProvider.sol";
+import { ICertToken } from "../interfaces/ICertToken.sol";
 
 contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
   using SafeERC20 for IERC20;
@@ -27,11 +28,13 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
 
   // original token, pumpBTC
   address public token;
+  // ceToken, cePumpBTC
+  address public ceToken;
   // clisToken, clisPumpBTC
   ILpToken public lpToken;
 
   // scale factor for token to lpToken conversion
-  // pumpBTC has 8 decimals, clisPumpBTC has 18 decimals
+  // pumpBTC has 8 decimals, cePumpBTC has 18 decimals
   // scale = 10 ** (18 - 8) = 10 ** 10
   uint256 public scale;
 
@@ -47,6 +50,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     address _manager,
     address _pauser,
     address _lpToken,
+    address _ceToken,
     address _token,
     address _daoAddress
   ) public initializer {
@@ -54,6 +58,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     require(_manager != address(0), "manager is the zero address");
     require(_pauser != address(0), "pauser is the zero address");
     require(_lpToken != address(0), "lpToken is the zero address");
+    require(_ceToken != address(0), "ceToken is the zero address");
     require(_token != address(0), "token is the zero address");
     require(_daoAddress != address(0), "daoAddress is the zero address");
 
@@ -67,17 +72,20 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     _grantRole(PROXY, _daoAddress);
 
     token = _token;
+    ceToken = _ceToken;
     lpToken = ILpToken(_lpToken);
     dao = IDao(_daoAddress);
 
-    require(
-      lpToken.decimals() > IERC20Metadata(token).decimals(),
-      "lpToken decimals should be greater than token decimals"
-    );
-    uint256 diff = uint256(lpToken.decimals() - IERC20Metadata(token).decimals());
+    uint8 tokenDecimals = IERC20Metadata(token).decimals();
+    uint8 ceTokenDecimals = IERC20Metadata(ceToken).decimals();
+    uint8 lpTokenDecimals = lpToken.decimals();
+
+    require(ceTokenDecimals == lpTokenDecimals && ceTokenDecimals > tokenDecimals, "invalid decimals");
+
+    uint256 diff = uint256(ceTokenDecimals - tokenDecimals);
     scale = 10 ** diff;
 
-    IERC20(token).approve(_daoAddress, type(uint256).max);
+    IERC20(ceToken).approve(_daoAddress, type(uint256).max);
   }
 
   /**
@@ -88,9 +96,17 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   function provide(uint256 _amount) external virtual whenNotPaused nonReentrant returns (uint256) {
     require(_amount > 0, "zero deposit amount");
 
+    // 1. transfer bumpBTC to provider
     IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+
+    // 2. calculate lpToken amount; cePumpBTC amount is equal to lpToken amount
     uint256 lpAmount = _amount * scale;
-    dao.deposit(msg.sender, token, lpAmount);
+
+    // 3. mint cePumpBTC and deposit to dao
+    ICertToken(ceToken).mint(address(this), lpAmount);
+    dao.deposit(msg.sender, ceToken, lpAmount);
+
+    // 4. mint lpToken to caller
     lpToken.mint(msg.sender, lpAmount);
 
     emit Deposit(msg.sender, _amount, lpAmount);
@@ -108,10 +124,17 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     require(_recipient != address(0));
     require(_amount > 0, "zero withdrawal amount");
 
+    // 1. calculate lpToken amount; cePumpBTC amount is equal to lpToken amount
     uint256 lpAmount = _amount * scale;
-    dao.withdraw(msg.sender, address(token), lpAmount);
+
+    // 2. transfer cePumpBTC from dao to provider and burn
+    dao.withdraw(msg.sender, address(ceToken), lpAmount);
+    ICertToken(ceToken).burn(address(this), lpAmount);
+
+    // 3. burn cePumpBTC
     lpToken.burn(msg.sender, lpAmount);
 
+    // 4. transfer pumpBTC to recipient
     IERC20(token).safeTransfer(_recipient, _amount);
 
     emit Withdrawal(msg.sender, _recipient, _amount, lpAmount);
@@ -119,8 +142,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   }
 
   /**
-   * DAO FUNCTIONALITY
-   * transfer given amount of token to recipient
+   * @dev transfer given amount of token to recipient
    * called by AuctionProxy.buyFromAuction
    *
    * @param _recipient recipient address
@@ -130,6 +152,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     address _recipient,
     uint256 _lpAmount
   ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+    // FIXME: validate liquidation process
     require(_recipient != address(0));
     uint256 _amount = _lpAmount / scale;
     IERC20(token).safeTransfer(_recipient, _amount);
@@ -138,13 +161,14 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   }
 
   /**
-   * burn given amount of collateral token from account
+   * @dev burn given amount of collateral token from account
    * called by AuctionProxy.startAuction
    *
    * @param _account collateral token holder
    * @param _lpAmount lpToken amount to burn
    */
   function daoBurn(address _account, uint256 _lpAmount) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+    // FIXME: validate liquidation process
     require(_account != address(0));
     lpToken.burn(_account, _lpAmount);
   }
