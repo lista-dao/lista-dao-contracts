@@ -8,30 +8,42 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../../../../contracts/interfaces/VatLike.sol";
+import "../../../../contracts/interfaces/GemJoinLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
 import "../../../../contracts/ceros/CeToken.sol";
 import "../../../../contracts/ceros/provider/PumpBTCProvider.sol";
 import "../../../../contracts/Interaction.sol";
+
+import { Clipper } from "../../../../contracts/clip.sol";
+import { Spotter } from "../../../../contracts/spot.sol";
+import { GemJoin } from "../../../../contracts/join.sol";
+import { Dog } from "../../../../contracts/dog.sol";
+import { BtcOracle } from "../../../../contracts/oracle/BtcOracle.sol";
+
+import { ERC20UpgradeableMock } from "../../../../contracts/mock/ERC20UpgradeableMock.sol";
 
 contract PumpBTCProviderTest is Test {
   address admin = address(0x1A11AA);
   address manager = address(0x2A11AA);
   address pauser = address(0x2A11AB);
   address user = address(0x3A11AA);
-  address recipient = address(0x4A11AA);
-  address proxyAdminOwner = 0x8d388136d578dCD791D081c6042284CED6d9B0c6;
 
-  address sender;
-
-  uint256 mainnet;
-
-  Interaction interaction;
-
-  VatLike vat;
+  address wards = 0x8d388136d578dCD791D081c6042284CED6d9B0c6;
+  address auth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
 
   bytes32 ilk = 0x70756d7042544300000000000000000000000000000000000000000000000000;
+  uint mat = 2000000000000000000000000000;
 
-  IERC20 pumpBTC;
+  Interaction interaction;
+  GemJoin gemJoin;
+  Clipper clip;
+  VatLike vat;
+  Spotter spotter;
+  Dog dog;
+
+  BtcOracle oracle;
+
+  ERC20UpgradeableMock pumpBTC;
 
   CeToken cePumpBTC; // ceToken
 
@@ -40,18 +52,28 @@ contract PumpBTCProviderTest is Test {
   PumpBTCProvider pumpBTCProvider;
 
   function setUp() public {
-    sender = msg.sender;
-    mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
+    //sender = msg.sender;
+    vm.createSelectFork("https://bsc-dataseed.binance.org");
 
     vat = VatLike(0x33A34eAB3ee892D40420507B820347b1cA2201c4);
+    spotter = Spotter(0x49bc2c4E5B035341b7d92Da4e6B267F7426F3038);
     interaction = Interaction(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4);
+    dog = Dog(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+    oracle = BtcOracle(0x2eeDc4723b1ED2f24afCD9c0e3665061bD2D5642);
 
-    cePumpBTC = CeToken(address(new CeToken()));
+    // token
+    pumpBTC = new ERC20UpgradeableMock();
+    pumpBTC.initialize("pumpBTC", "pumpBTC");
 
+    // ceToken
+    cePumpBTC = new CeToken();
+    cePumpBTC.initialize("cePumpBTC", "cePumpBTC");
+
+    // lpToken
     clisPumpBTC = new ClisToken();
     clisPumpBTC.initialize("clisPumpBTC", "clisPumpBTC");
 
-    pumpBTCProvider = PumpBTCProvider(address(providerProxy));
+    // provider
     pumpBTCProvider = new PumpBTCProvider();
     pumpBTCProvider.initialize(
       admin,
@@ -63,134 +85,130 @@ contract PumpBTCProviderTest is Test {
       address(interaction)
     );
 
+    // deploy gemJoin
+    gemJoin = new GemJoin();
+    gemJoin.initialize(address(vat), ilk, address(cePumpBTC));
+
+    // gemJoin: rely on interaction
+    gemJoin.rely(address(interaction));
+
+    // deploy clip
+    clip = new Clipper();
+    clip.initialize(address(vat), address(spotter), address(dog), ilk);
+
+    // ceToken: set provider as minter
     cePumpBTC.changeVault(address(pumpBTCProvider));
 
-    vm.startPrank(admin);
+    // lpToken: set provider as minter
     clisPumpBTC.addMinter(address(pumpBTCProvider));
+
+    vm.startPrank(auth);
+    // vat: rely on clip
+    vat.rely(address(clip));
+    // vat: rely on gemJoin
+    vat.rely(address(gemJoin));
+    // vat: set ceiling for ilk
+    vat.file(ilk, "line", 50000000000000000000000000000000000000000000000000);
+    // spotter: configure oracle
+    spotter.file(ilk, "pip", address(oracle));
     vm.stopPrank();
 
-    vm.startPrank(proxyAdminOwner);
-    interaction.setHelioProvider(address(pumpBTC), address(pumpBTCProvider), false);
+    vm.startPrank(wards);
+    // interaction: set provider of cePumpBTC
+    interaction.setHelioProvider(address(cePumpBTC), address(pumpBTCProvider), false);
+
+    interaction.setCollateralType(address(cePumpBTC), address(gemJoin), ilk, address(clip), mat);
     vm.stopPrank();
   }
 
   function test_provide() public {
-    deal(address(pumpBTC), user, 123e18);
+    uint scale = pumpBTCProvider.scale();
+    uint amount = 2 * 1e8; // 2 pumpBTC
+    deal(address(pumpBTC), user, amount);
 
     vm.startPrank(user);
-    pumpBTC.approve(address(pumpBTCProvider), 121e18);
-    uint256 actual = pumpBTCProvider.provide(121e18);
+    uint amt1 = amount / 2;
+    pumpBTC.approve(address(pumpBTCProvider), amt1);
+    uint256 lpAmount = pumpBTCProvider.provide(amt1);
     vm.stopPrank();
 
-    assertEq(121e18, actual);
-    assertEq(2e18, pumpBTC.balanceOf(user));
-    assertEq(121e18, clisPumpBTC.balanceOf(user));
+    assertEq(lpAmount, amt1 * scale);
+    assertEq(pumpBTC.balanceOf(user), 1e8);
+    assertEq(pumpBTC.balanceOf(address(pumpBTCProvider)), 1e8);
+    assertEq(clisPumpBTC.balanceOf(user), lpAmount);
+    assertEq(cePumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(address(gemJoin)), lpAmount);
+    assertEq(cePumpBTC.totalSupply(), lpAmount);
 
     (uint256 deposit, ) = vat.urns(ilk, user);
-    assertEq(121e18, deposit);
+    assertEq(deposit, lpAmount);
+  }
+
+  function test_release_full() public {
+    test_provide();
+    uint amt1 = 1e8; // 1 pumpBTC
+
+    vm.startPrank(user);
+    uint256 tokenAmount = pumpBTCProvider.release(user, amt1);
+    vm.stopPrank();
+
+    assertEq(tokenAmount, amt1);
+    assertEq(pumpBTC.balanceOf(user), 2e8);
+    assertEq(pumpBTC.balanceOf(address(pumpBTCProvider)), 0);
+    assertEq(clisPumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(address(gemJoin)), 0);
+    assertEq(cePumpBTC.totalSupply(), 0);
+
+    (uint256 deposit, ) = vat.urns(ilk, user);
+    assertEq(deposit, 0);
+  }
+
+  function test_release_partial() public {
+    test_provide();
+    uint amt2 = 5e7; // 0.5 pumpBTC
+
+    vm.startPrank(user);
+    uint256 tokenAmount = pumpBTCProvider.release(user, amt2);
+    vm.stopPrank();
+
+    assertEq(tokenAmount, amt2);
+    assertEq(pumpBTC.balanceOf(user), 1e8 + amt2);
+    assertEq(pumpBTC.balanceOf(address(pumpBTCProvider)), amt2);
+    assertEq(clisPumpBTC.balanceOf(user), amt2 * pumpBTCProvider.scale());
+    assertEq(cePumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(address(gemJoin)), amt2 * pumpBTCProvider.scale());
+    assertEq(cePumpBTC.totalSupply(), amt2 * pumpBTCProvider.scale());
+
+    (uint256 deposit, ) = vat.urns(ilk, user);
+    assertEq(deposit, amt2 * pumpBTCProvider.scale());
+  }
+
+  function test_borrow() public {
+    test_provide();
+    uint amt2 = 5e7; // 0.5 pumpBTC
+
+    uint lisusd = 100 * 1e18; // 100 lisusd
+
+    vm.startPrank(user);
+    interaction.borrow(address(cePumpBTC), lisusd);
+
+    uint256 tokenAmount = pumpBTCProvider.release(user, amt2);
+    vm.stopPrank();
+
+    assertEq(tokenAmount, amt2);
+    assertEq(pumpBTC.balanceOf(user), 1e8 + amt2);
+    assertEq(pumpBTC.balanceOf(address(pumpBTCProvider)), amt2);
+    assertEq(clisPumpBTC.balanceOf(user), amt2 * pumpBTCProvider.scale());
+    assertEq(cePumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(address(gemJoin)), amt2 * pumpBTCProvider.scale());
+    assertEq(cePumpBTC.totalSupply(), amt2 * pumpBTCProvider.scale());
+
+    (uint256 deposit, ) = vat.urns(ilk, user);
+    assertEq(deposit, amt2 * pumpBTCProvider.scale());
   }
 
   /*
-    function test_release_full() public {
-        test_provide();
-
-        vm.startPrank(user);
-        uint256 actual = fdusdLpProvider.release(user, 121e18);
-        vm.stopPrank();
-
-        assertEq(121e18, actual);
-        assertEq(123e18, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userLp(user));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(0, deposit);
-    }
-
-    function test_release_full_delegated() public {
-        test_provide_delegate();
-
-        vm.startPrank(user);
-        uint256 actual = fdusdLpProvider.release(user, 121e18);
-        vm.stopPrank();
-
-        assertEq(121e18, actual);
-        assertEq(123e18, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(delegateTo));
-        assertEq(0, fdusdLpProvider.userLp(user));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(0, deposit);
-    }
-
-    function test_release_full_recipient() public {
-        test_provide();
-
-        vm.startPrank(user);
-        uint256 actual = fdusdLpProvider.release(recipient, 121e18);
-        vm.stopPrank();
-
-        assertEq(121e18, actual);
-        assertEq(2e18, FDUSD.balanceOf(user));
-        assertEq(121e18, FDUSD.balanceOf(recipient));
-        assertEq(0, clisFDUSD.balanceOf(user));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(0, deposit);
-    }
-
-    function test_release_partial() public {
-        test_provide();
-
-        vm.startPrank(user);
-        uint256 actual = fdusdLpProvider.release(user, 21e18);
-        vm.stopPrank();
-
-        assertEq(21e18, actual);
-        assertEq(23e18, FDUSD.balanceOf(user));
-        assertEq(100e18, clisFDUSD.balanceOf(user));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(100e18, deposit);
-    }
-
-    function test_release_less_collateral() public {
-        deal(address(FDUSD), user, 123e18);
-
-        vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(0), true);
-        vm.stopPrank();
-
-        vm.startPrank(user);
-        FDUSD.approve(address(interaction), 121e18);
-        interaction.deposit(user, address(FDUSD), 121e18);
-        vm.stopPrank();
-
-        assertEq(2 ether, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userLp(user));
-
-        (uint256 deposit0, ) = vat.urns(fdusdIlk, user);
-        assertEq(121 ether, deposit0);
-
-        vm.startPrank(proxyAdminOwner);
-        interaction.setHelioProvider(address(FDUSD), address(fdusdLpProvider), false);
-        vm.stopPrank();
-        console.log("part 1 ok");
-
-        vm.startPrank(user);
-        uint256 actual = fdusdLpProvider.release(user, 121e18);
-        vm.stopPrank();
-
-        assertEq(121e18, actual);
-        assertEq(123e18, FDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(user));
-
-        (uint256 deposit, ) = vat.urns(fdusdIlk, user);
-        assertEq(0, deposit);
-    }
-
     function test_daoBurn() public {
         test_provide();
 
