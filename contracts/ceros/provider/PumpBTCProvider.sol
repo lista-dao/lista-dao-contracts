@@ -151,12 +151,18 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     lpToken.burn(_account, _lpAmount);
   }
 
+  /**
+   * @dev pause the contract
+   */
   function pause() external onlyRole(PAUSER) {
     _pause();
   }
 
-  function togglePause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-    paused() ? _unpause() : _pause();
+  /**
+   * @dev unpause the contract
+   */
+  function unpause() external onlyRole(MANAGER) {
+    _unpause();
   }
 
   function _authorizeUpgrade(address _newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
