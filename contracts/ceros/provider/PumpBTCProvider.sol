@@ -142,17 +142,14 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   }
 
   /**
-   * @dev transfer given amount of token to recipient
-   * called by AuctionProxy.buyFromAuction
-   *
+   * @dev transfer given amount of token to recipient, called by AuctionProxy.buyFromAuction
    * @param _recipient recipient address
-   * @param _lpAmount lp token amount to liquidate
+   * @param _lpAmount lp amount to liquidate
    */
   function liquidation(
     address _recipient,
     uint256 _lpAmount
   ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
-    // FIXME: validate liquidation process
     require(_recipient != address(0));
     uint256 _amount = _lpAmount / scale;
     IERC20(token).safeTransfer(_recipient, _amount);
@@ -161,14 +158,11 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   }
 
   /**
-   * @dev burn given amount of collateral token from account
-   * called by AuctionProxy.startAuction
-   *
+   * @dev burn lp token from account called by AuctionProxy.startAuction
    * @param _account collateral token holder
    * @param _lpAmount lpToken amount to burn
    */
   function daoBurn(address _account, uint256 _lpAmount) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
-    // FIXME: validate liquidation process
     require(_account != address(0));
     lpToken.burn(_account, _lpAmount);
   }
