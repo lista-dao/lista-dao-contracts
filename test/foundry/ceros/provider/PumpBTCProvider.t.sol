@@ -208,29 +208,22 @@ contract PumpBTCProviderTest is Test {
     assertEq(deposit, amt2 * pumpBTCProvider.scale());
   }
 
-  /*
-    function test_daoBurn() public {
-        test_provide();
+  function test_daoBurn() public {
+    test_provide();
 
-        vm.startPrank(address(interaction));
-        vm.mockCall(address(interaction), abi.encodeWithSelector(Interaction.locked.selector), abi.encode(uint256(0)));
-        fdusdLpProvider.daoBurn(user, 121e18);
-        vm.stopPrank();
+    vm.startPrank(address(interaction));
+    vm.mockCall(address(interaction), abi.encodeWithSelector(Interaction.locked.selector), abi.encode(uint256(0)));
+    pumpBTCProvider.daoBurn(user, 1e8 * pumpBTCProvider.scale());
+    vm.stopPrank();
 
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, fdusdLpProvider.userLp(user));
-    }
+    assertEq(pumpBTC.balanceOf(user), 1e8);
+    assertEq(pumpBTC.balanceOf(address(pumpBTCProvider)), 1e8);
 
-    function test_daoBurn_delegated() public {
-        test_provide_delegate();
+    assertEq(clisPumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(user), 0);
+    assertEq(cePumpBTC.balanceOf(address(gemJoin)), 1e8 * pumpBTCProvider.scale());
 
-        vm.startPrank(address(interaction));
-        vm.mockCall(address(interaction), abi.encodeWithSelector(Interaction.locked.selector), abi.encode(uint256(0)));
-        fdusdLpProvider.daoBurn(user, 121e18);
-        vm.stopPrank();
-
-        assertEq(0, clisFDUSD.balanceOf(user));
-        assertEq(0, clisFDUSD.balanceOf(delegateTo));
-    }
-    */
+    assertEq(cePumpBTC.totalSupply(), 1e8 * pumpBTCProvider.scale());
+    assertEq(clisPumpBTC.totalSupply(), 0);
+  }
 }
