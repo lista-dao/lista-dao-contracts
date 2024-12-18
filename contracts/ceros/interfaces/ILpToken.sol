@@ -19,4 +19,6 @@ interface ILpToken is IERC20 {
     function ratio() external view returns (uint256);
 
     function bondsToShares(uint256 amount) external view returns (uint256);
+
+    function decimals() external view returns (uint8);
 }
