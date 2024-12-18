@@ -37,8 +37,6 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
 
   // interaction address
   IDao public dao;
-  // user account > sum lpTokens of user including delegated part
-  mapping(address => uint256) public userLp;
 
   event Deposit(address indexed account, uint256 amount, uint256 lpAmount);
   event Withdrawal(address indexed account, address indexed recipient, uint256 amount, uint256 lpAmount);
