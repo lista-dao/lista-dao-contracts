@@ -40,7 +40,7 @@ module.exports.addCollateral = async function (opts) {
   let NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
 
   // Fetch factories
-  this.GemJoin = await hre.ethers.getContractFactory('GemJoin5')
+  this.GemJoin = await hre.ethers.getContractFactory('GemJoin')
   this.Clipper = await hre.ethers.getContractFactory('Clipper')
   this.Oracle = await hre.ethers.getContractFactory(oracleName)
 
@@ -56,7 +56,7 @@ module.exports.addCollateral = async function (opts) {
   const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, tokenAddress])
   await gemJoin.waitForDeployment()
   let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.target)
-  console.log('Deployed: gemJoin5    : ' + gemJoin.target)
+  console.log('Deployed: gemJoin    : ' + gemJoin.target)
   console.log('Imp                  : ' + gemJoinImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
