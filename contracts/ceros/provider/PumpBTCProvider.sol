@@ -66,6 +66,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     _grantRole(MANAGER, _manager);
     _grantRole(PAUSER, _pauser);
+    _grantRole(PROXY, _daoAddress);
 
     token = _token;
     lpToken = ILpToken(_lpToken);
