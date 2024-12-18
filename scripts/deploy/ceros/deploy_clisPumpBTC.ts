@@ -2,24 +2,22 @@ import hre from "hardhat";
 import {ethers, upgrades} from "hardhat";
 
 async function main() {
-    console.log("deploy clisFDUSD start network: ", hre.network.name);
+    console.log("deploy clisPumpBTC start network: ", hre.network.name);
 
-    const name = 'Lista Collateral FDUSD'
-    const symbol = 'clisFDUSD'
+    const name = 'Lista Collateral pumpBTC'
+    const symbol = 'clisPumpBTC'
 
     /**
      *         string name,
      *         string symbol,
      */
-    // testnet address 241016: 0x13829fDFFd98a8337A8a10b01A1aD0904E35167B
+    // testnet address : 0x40c41c209432Fb5620106c3c91485a807AD99DcD
     let contractFactory = await hre.ethers.getContractFactory("ClisToken");
-    const ytslisBNBStakeVault = await upgrades.deployProxy(contractFactory, [
+    const clisPumpBTC = await upgrades.deployProxy(contractFactory, [
         name, symbol
     ], {initializer: "initialize"})
 
-    console.log("Deployed: clisFDUSD: " + await ytslisBNBStakeVault.getAddress())
-
-    // todo: set minter
+    console.log("Deployed: clisPumpBTC: " + await clisPumpBTC.getAddress())
 }
 
 main()

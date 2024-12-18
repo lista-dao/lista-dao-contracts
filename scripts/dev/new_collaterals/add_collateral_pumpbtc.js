@@ -8,12 +8,12 @@ async function main() {
 
     const [deployer] = await ethers.getSigners()
     const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-        "symbol": "pumpBTC",
-        "tokenAddress": "0x6858f3fe341f8A8D3bC922D52EBe12C0ee5d1C59",
-        "ilk": "0x70756d7042544300000000000000000000000000000000000000000000000000",
-        "gemJoin": "0xE62c99df4C6EA91f3b44B84Df3C175F054dd0a4D",
-        "clipper": "0x8Ac1B4D5a982e53dB9Aa0ec051d4aCDb8099dAA9",
-        "oracle": "0x4725CCEAbA3dd65A865C0B10a87375425c6088e9",
+        "symbol": "cePumpBTC",
+        "tokenAddress": "0xF95144b8aeFeeD7cBea231D24Be53766223Ad5f0", // cePumpBTC
+        "ilk": "0x636550756d704254430000000000000000000000000000000000000000000000", // cePumpBTC
+        "gemJoin": "0xa3C8a21D7455CcE76Bb7F96C4b812d6C0319287f",
+        "clipper": "0x88943bd34b7c902B204169894F7BA2A2A4e1Ea05",
+        "oracle": "0xaB9D6Fe5f7C275a95655DdDBfB1bb1D8F2b995B3",
     }
 
     // core parameters
