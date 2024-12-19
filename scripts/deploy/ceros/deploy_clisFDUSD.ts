@@ -18,8 +18,6 @@ async function main() {
     ], {initializer: "initialize"})
 
     console.log("Deployed: clisFDUSD: " + await ytslisBNBStakeVault.getAddress())
-
-    // todo: set minter
 }
 
 main()

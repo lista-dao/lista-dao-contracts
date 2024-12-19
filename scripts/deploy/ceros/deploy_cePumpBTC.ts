@@ -18,8 +18,6 @@ async function main() {
     ], {initializer: "initialize"})
 
     console.log("Deployed: cePumpBTC: " + await cePumpBTC.getAddress())
-
-    // todo: set minter
 }
 
 main()
