@@ -19,7 +19,7 @@ async function main() {
     let oracleInitializer = 'initialize';
 
     const symbol = 'cePumpBTC'
-    let tokenAddress = '' // cePumpBTC token address on BSC Mainnet
+    let tokenAddress = '0xc6F28a668b7c18F921ccBA4adc3D8db72BFF0FE2' // cePumpBTC token address on BSC Mainnet
 
     if (hre.network.name === 'bsc_testnet') {
         NEW_OWNER = process.env.OWNER || deployer.address

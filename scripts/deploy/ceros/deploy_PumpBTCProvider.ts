@@ -12,9 +12,9 @@ async function main() {
         manager = '0x8d388136d578dCD791D081c6042284CED6d9B0c6'
         pauser = '0xEEfebb1546d88EA0909435DF6f615084DD3c5Bd8'
         daoAddress = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
-//        pumpBTC =
-//        ceToken =
-//        lpToken =
+        pumpBTC = '0xf9C4FF105803A77eCB5DAE300871Ad76c2794fa4'
+        ceToken = '0xc6F28a668b7c18F921ccBA4adc3D8db72BFF0FE2' // cePumpBTC
+        lpToken = '0x8A314300088ec75AAEFc53B92F73819050182CC6' // clisPumpBTC
     } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
         manager = '0x6616EF47F4d997137a04C2AD7FF8e5c228dA4f06'
         pauser = '0x6616EF47F4d997137a04C2AD7FF8e5c228dA4f06'

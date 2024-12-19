@@ -60,10 +60,13 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + gemJoinImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait 5 seconds for the proxy to be deployed
+    await new Promise(r => setTimeout(r, 5000));
     await transferProxyAdminOwner(gemJoin.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of gemJoin Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
-
+// wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK])
   await clipper.waitForDeployment()
   let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target)
@@ -71,10 +74,14 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + clipperImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait 5 seconds for the proxy to be deployed
+    await new Promise(r => setTimeout(r, 5000));
     await transferProxyAdminOwner(clipper.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of clipCE Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   let oracle
   if (oracleInitializer.length > 0) {
     oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer});
@@ -87,33 +94,69 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + oracleImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait 5 seconds for the proxy to be deployed
+    await new Promise(r => setTimeout(r, 5000));
     await transferProxyAdminOwner(oracle.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of Oracle Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   // Initialize
   await gemJoin.rely(INTERACTION)
 
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper.rely(DOG)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper.rely(INTERACTION)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('buf'), clipperBuf) // 10%
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tail'), clipperTail) // 3h reset time
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('cusp'), clipperCusp) // 60% reset ratio
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('chip'), clipperChip) // 0.01% from vow incentive
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tip'), clipperTip) // 10$ flat fee incentive
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('stopped'), clipperStopped)
 
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('spotter'), SPOT)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('dog'), DOG)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('vow'), VOW)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('calc'), ABACI)
 
   // Transfer Ownerships
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await gemJoin.rely(NEW_OWNER)
+  // wait 5 seconds for the proxy to be deployed
+  await new Promise(r => setTimeout(r, 5000));
   await clipper.rely(NEW_OWNER)
 
   if (deployer.address !== NEW_OWNER) {
+    // wait 5 seconds for the proxy to be deployed
+    await new Promise(r => setTimeout(r, 5000));
     await gemJoin.deny(deployer.address)
+    // wait 5 seconds for the proxy to be deployed
+    await new Promise(r => setTimeout(r, 5000));
     await clipper.deny(deployer.address)
   }
 
