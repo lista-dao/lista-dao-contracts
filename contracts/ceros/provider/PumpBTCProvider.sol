@@ -9,11 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import { IVault } from "../interfaces/IVault.sol";
 import { IDao } from "../interfaces/IDao.sol";
-import { IHelioProviderV2 } from "../interfaces/IHelioProviderV2.sol";
 import { ILpToken } from "../interfaces/ILpToken.sol";
-//import {IHelioTokenProvider} from "../interfaces/IHelioTokenProvider.sol";
 import { ICertToken } from "../interfaces/ICertToken.sol";
 
 contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
