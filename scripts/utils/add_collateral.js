@@ -6,6 +6,7 @@ const contractAddresses = require('../deploy/contract_address.json');
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
+const delay = async (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 module.exports.addCollateral = async function (opts) {
   const {
@@ -33,9 +34,9 @@ module.exports.addCollateral = async function (opts) {
     ABACI,
     JUG
   } = (hre.network.name === 'bsc_testnet') ? contractAddresses["testnet"] : contractAddresses["mainnet"];
+  const waitingTime = hre.network.name === 'bsc' ? 5000 : 0
 
-
-  [deployer] = await ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   let NEW_OWNER = owner || '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
   let NEW_PROXY_ADMIN_OWNER = proxyAdminOwner || '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
 
@@ -60,10 +61,13 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + gemJoinImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait a few seconds for the tx to be mined
+    await delay(waitingTime);
     await transferProxyAdminOwner(gemJoin.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of gemJoin Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
-
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK])
   await clipper.waitForDeployment()
   let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target)
@@ -71,10 +75,14 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + clipperImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait a few seconds for the tx to be mined
+    await delay(waitingTime);
     await transferProxyAdminOwner(clipper.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of clipCE Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   let oracle
   if (oracleInitializer.length > 0) {
     oracle = await upgrades.deployProxy(this.Oracle, oracleInitializeArgs, {initializer: oracleInitializer});
@@ -87,33 +95,69 @@ module.exports.addCollateral = async function (opts) {
   console.log('Imp                  : ' + oracleImplementation)
   // transfer proxy admin ownership
   if (deployer.address !== NEW_PROXY_ADMIN_OWNER) {
+    // wait a few seconds for the tx to be mined
+    await delay(waitingTime);
     await transferProxyAdminOwner(oracle.target, NEW_PROXY_ADMIN_OWNER)
     console.log('Proxy Admin Ownership Of Oracle Transferred to: ' + NEW_PROXY_ADMIN_OWNER)
   }
 
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   // Initialize
   await gemJoin.rely(INTERACTION)
 
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper.rely(DOG)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper.rely(INTERACTION)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('buf'), clipperBuf) // 10%
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tail'), clipperTail) // 3h reset time
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('cusp'), clipperCusp) // 60% reset ratio
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('chip'), clipperChip) // 0.01% from vow incentive
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('tip'), clipperTip) // 10$ flat fee incentive
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,uint256)'](ethers.encodeBytes32String('stopped'), clipperStopped)
 
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('spotter'), SPOT)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('dog'), DOG)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('vow'), VOW)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper['file(bytes32,address)'](ethers.encodeBytes32String('calc'), ABACI)
 
   // Transfer Ownerships
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await gemJoin.rely(NEW_OWNER)
+  // wait a few seconds for the tx to be mined
+  await delay(waitingTime);
   await clipper.rely(NEW_OWNER)
 
   if (deployer.address !== NEW_OWNER) {
+    // wait a few seconds for the tx to be mined
+    await delay(waitingTime);
     await gemJoin.deny(deployer.address)
+    // wait a few seconds for the tx to be mined
+    await delay(waitingTime);
     await clipper.deny(deployer.address)
   }
 
