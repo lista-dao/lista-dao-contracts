@@ -30,9 +30,21 @@ async function main() {
         deployer, manager, pauser, lpToken, ceToken, pumpBTC, daoAddress
     ], {initializer: "initialize"})
 
-    console.log("Deployed: PumpBTCProvider: " + await pumpBTCProvider.getAddress())
+    const pumpBTCProviderAddress = await pumpBTCProvider.getAddress()
 
-    // todo: set minter
+    console.log("Deployed: PumpBTCProvider: " + pumpBTCProviderAddress)
+
+    // ceToken add minter
+    const CeToken = await ethers.getContractFactory("CeToken");
+    const ceTokenIntance = CeToken.attach(ceToken);
+    await ceTokenIntance.changeVault(pumpBTCProviderAddress);
+    console.log("CeToken: added minter " + pumpBTCProviderAddress);
+
+    // lpToken add minter
+    const LpToken = await ethers.getContractFactory("ClisToken");
+    const lpTokenIntance = LpToken.attach(lpToken);
+    await lpTokenIntance.addMinter(pumpBTCProviderAddress);
+    console.log("LpToken: added minter " + pumpBTCProviderAddress);
 }
 
 main()
