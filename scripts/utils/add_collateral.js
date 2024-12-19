@@ -11,7 +11,7 @@ module.exports.addCollateral = async function (opts) {
   const {
     symbol,
     tokenAddress,
-    oracleName = 'sUsdxOracle',
+    oracleName = 'PumpBtcOracle',
     oracleInitializeArgs = [],
     oracleInitializer = 'initialize',
     owner,
