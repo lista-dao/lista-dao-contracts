@@ -125,7 +125,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     uint256 lpAmount = _amount * scale;
 
     // 2. transfer cePumpBTC from dao to provider and burn
-    dao.withdraw(msg.sender, address(ceToken), lpAmount);
+    dao.withdraw(msg.sender, ceToken, lpAmount);
     ICertToken(ceToken).burn(address(this), lpAmount);
 
     // 3. burn cePumpBTC

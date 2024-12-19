@@ -6,10 +6,8 @@ import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IResilientOracle.sol";
 
 contract PumpBtcOracle is Initializable {
-  // FIXME
-  IResilientOracle public constant resilientOracle = IResilientOracle(0x79e9675cDe605Ef9965AbCE185C5FD08d0DE16B1);
-  // FIXME
-  address public constant BTC_TOKEN = 0x4BB2f2AA54c6663BFFD37b54eCd88eD81bC8B3ec;
+  IResilientOracle public constant resilientOracle = IResilientOracle(0xf3afD82A4071f272F403dC176916141f44E6c750);
+  address public constant BTC_TOKEN = 0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c; // BTCB token address
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
