@@ -39,25 +39,24 @@ contract SnBnbYieldConverterStrategyTest is Test {
 //        vm.startPrank(address(0x91fC4BA20685339781888eCA3E9E1c12d40F0e13));
 //        strategy.depositAll();
 //        vm.stopPrank();
-
-        console.log("balance", address(strategy).balance);
-        console.log("bnbToDistribute", strategy.bnbToDistribute());
-
-        uint256 _firstDistributeIdx = strategy._firstDistributeIdx();
-        uint256 _nextWithdrawIdx = strategy._nextWithdrawIdx();
-        console.log("_firstDistributeIdx", _firstDistributeIdx);
-        console.log("_nextWithdrawIdx", _nextWithdrawIdx);
-        console.log("snBnbToUnstake", strategy.snBnbToUnstake());
-
-
-        uint256 sum = 0;
-        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
-            (,uint256 amount,,) = strategy._withdrawRequests(i);
-            sum += amount;
-            console.log("loop sum", i, amount, sum);
-        }
-
-        console.log("sum", sum, sum / 1 ether);
+//        console.log("balance", address(strategy).balance);
+//        console.log("bnbToDistribute", strategy.bnbToDistribute());
+//
+//        uint256 _firstDistributeIdx = strategy._firstDistributeIdx();
+//        uint256 _nextWithdrawIdx = strategy._nextWithdrawIdx();
+//        console.log("_firstDistributeIdx", _firstDistributeIdx);
+//        console.log("_nextWithdrawIdx", _nextWithdrawIdx);
+//        console.log("snBnbToUnstake", strategy.snBnbToUnstake());
+//
+//
+//        uint256 sum = 0;
+//        for (uint256 i = _firstDistributeIdx; i < _nextWithdrawIdx; i++) {
+//            (,uint256 amount,,) = strategy._withdrawRequests(i);
+//            sum += amount;
+//            console.log("loop sum", i, amount, sum);
+//        }
+//
+//        console.log("sum", sum, sum / 1 ether);
 
 //        console.log("bnbDepositBalance", strategy.bnbDepositBalance() / 1 ether);
 //        console.log("snBnbToUnstake", strategy.snBnbToUnstake() / 1 ether);
@@ -66,30 +65,4 @@ contract SnBnbYieldConverterStrategyTest is Test {
 //        console.log("bnb balance", address(strategy).balance);
     }
 
-    function test_withdraw() public {
-        ISnBnbStakeManager.WithdrawalRequest[] memory requests = stakeManager
-            .getUserWithdrawalRequests(address(strategy));
-
-        uint256 total = 0;
-        for (uint256 times = 0; times < requests.length; times++) {
-            (bool isClaimable, uint256 amount) = stakeManager
-                .getUserRequestStatus(address(strategy), times);
-
-            console.log("loop", times, amount, amount / 1 ether);
-            total += amount;
-        }
-
-        console.log("total", total, total / 1 ether);
-
-//        uint256 snAmount0 = stakeManager.convertBnbToSnBnb(1 ether);
-//        uint256 snAmount1 = stakeManager.convertBnbToSnBnb(1 ether);
-//        console.log("SnBnb sum", snAmount0 + snAmount1);
-//        console.log("convertSnBnbToBnb sum", stakeManager.convertSnBnbToBnb(snAmount0 + snAmount1));
-//        console.log("convertSnBnbToBnb sum", stakeManager.convertSnBnbToBnb(snAmount0 + snAmount1));
-
-//        console.log("convertBnbToSnBnb", snAmount0);
-//        console.log("convertSnBnbToBnb", stakeManager.convertSnBnbToBnb(snAmount0));
-//        console.log("convertSnBnbToBnb added", snAmount0 + 1 wei);
-//        console.log("convertSnBnbToBnb fixed", stakeManager.convertSnBnbToBnb(snAmount0 + 1 wei));
-    }
 }
