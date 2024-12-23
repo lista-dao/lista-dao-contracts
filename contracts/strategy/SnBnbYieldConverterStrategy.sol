@@ -265,7 +265,7 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
 
         (
             bool sent, /*memory data*/
-        ) = payable(recipient).call{value: amount, gas: 5000}("");
+        ) = payable(recipient).call{value: amount}("");
         require(sent, "!sent");
 
         emit ManualWithdraw(recipient, amount);
