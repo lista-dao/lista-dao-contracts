@@ -337,7 +337,8 @@ contract SnBnbYieldConverterStrategy is BaseStrategy {
         );
 
         if (msg.sender == destination) {
-            // amount transferred from Synclub will be a little more than requested to withdraw BNB:snBNB > 1 ?
+            // The amount transferred from Synclub may be a little more than the users' withdrawal requests
+            // due to possible increases in the snBNB:BNB exchange rate.
             bnbToDistribute += msg.value;
         }
     }
