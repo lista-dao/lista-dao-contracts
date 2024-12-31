@@ -40,7 +40,7 @@ contract InteractionMainnetTest is Test {
         mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
 
         ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
-        vm.startPrank(address(0x08aE09467ff962aF105c23775B9Bc8EAa175D27F));
+        vm.startPrank(address(0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253));
         Interaction newInteraction = new Interaction();
         ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(address(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4));
         proxyAdmin.upgrade(proxy, address(newInteraction));
