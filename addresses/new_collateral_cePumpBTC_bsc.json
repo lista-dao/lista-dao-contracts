@@ -1,0 +1,14 @@
+{
+  "symbol": "cePumpBTC",
+  "tokenAddress": "0xc6F28a668b7c18F921ccBA4adc3D8db72BFF0FE2",
+  "ilk": "0x636550756d704254430000000000000000000000000000000000000000000000",
+  "gemJoin": "0xdCFE50533faB1271E13a973260C2454e0412007E",
+  "gemJoinImplementation": "0x3e75d7edacc97645033eF8073D025069B0a0976D",
+  "clipper": "0x6dc0abfdAd33f01E847e45BcC9e0acb9dD119B5A",
+  "clipperImplementation": "0x9B878823cF06FAC1EdB02B44eADa8bB4274AB7EA",
+  "oracle": "0x420a16F03e7F623556cCEe452d4cAaFE1fdDe28B",
+  "oracleImplementation": "0xD06233C390f8522C993D61Cbd260a7eEF9544C6f",
+  "oracleInitializeArgs": [],
+  "owner": "0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37",
+  "proxyAdminOwner": "0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253"
+}

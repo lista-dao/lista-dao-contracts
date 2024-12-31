@@ -34,6 +34,8 @@ contract Dao is IDao {
 
   function setCollateralDuty(address token, uint256 duty) external {}
 
+  function setHelioProvider(address token, address helioProvider) external {}
+
   function collaterals(address token) external view returns (GemJoinLike gem, bytes32 ilk, uint32 live, address clip) {}
 
   function locked(address token, address usr) public view returns (uint256) {
