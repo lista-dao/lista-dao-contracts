@@ -88,7 +88,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     netDepositAmount += amount;
 
     // deposit to venus pool
-    IVBep20Delegate(vToken).mint(amount);
+    uint256 code = IVBep20Delegate(vToken).mint(amount);
+    require(code == 0, "venus mint failed");
 
     emit Deposit(amount);
   }
@@ -104,7 +105,12 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
 
     netDepositAmount -= amount;
 
-    IVBep20Delegate(vToken).redeemUnderlying(amount);
+    uint256 before = IERC20(token).balanceOf(address(this));
+    uint256 code = IVBep20Delegate(vToken).redeemUnderlying(amount);
+    uint256 withdrawAmount = IERC20(token).balanceOf(address(this)) - before;
+
+    require(code == 0, "venus redeemUnderlying failed");
+    require(withdrawAmount == amount, "withdraw amount error");
 
     // transfer token to account
     IERC20(token).safeTransfer(account, amount);
@@ -143,7 +149,14 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
     if (totalAmount > netDepositAmount) {
       // calculate interest and redeem amount
       uint256 interest = totalAmount - netDepositAmount;
-      IVBep20Delegate(vToken).redeemUnderlying(interest);
+
+      uint256 before = IERC20(token).balanceOf(address(this));
+      uint256 code = IVBep20Delegate(vToken).redeemUnderlying(interest);
+      uint256 harvestAmount = IERC20(token).balanceOf(address(this)) - before;
+
+      require(code == 0, "venus redeemUnderlying failed");
+      require(harvestAmount == interest, "harvest interest error");
+
       IERC20(token).safeTransfer(feeReceiver, interest);
 
       emit Harvest(feeReceiver, interest);
@@ -153,7 +166,8 @@ contract VenusAdapter is AccessControlUpgradeable, UUPSUpgradeable {
   function _withdrawFromVenus(uint256 vTokenAmount) private returns (uint256) {
     uint256 before = IERC20(token).balanceOf(address(this));
     IERC20(vToken).safeIncreaseAllowance(vToken, vTokenAmount);
-    IVBep20Delegate(vToken).redeem(vTokenAmount);
+    uint256 code = IVBep20Delegate(vToken).redeem(vTokenAmount);
+    require(code == 0, "venus redeem failed");
     return IERC20(token).balanceOf(address(this)) - before;
   }
 
