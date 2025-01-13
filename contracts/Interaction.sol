@@ -100,8 +100,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             tokensBlacklist[tokens[i]] = 0;
     }
     function setListaDistributor(address distributor) external auth {
-        require(distributor != address(0), "Interaction/lista-distributor-zero-address");
-        require(address(borrowLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
+        require(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor, "invalid addr");
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
@@ -263,13 +262,28 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     // Burn user's HAY.
     // N.B. User collateral stays the same.
     function payback(address token, uint256 hayAmount) external nonReentrant returns (int256) {
+        return _payback(token, hayAmount, msg.sender);
+    }
+
+    /**
+     * Burn caller's HAY and payback the debt of the borrower.
+     *
+     * @param token Collateral token address
+     * @param hayAmount Amount of HAY to payback
+     * @param borrower Borrower address
+     */
+    function paybackFor(address token, uint256 hayAmount, address borrower) external nonReentrant returns (int256) {
+        return _payback(token, hayAmount, borrower);
+    }
+
+    function _payback(address token, uint256 hayAmount, address borrower) internal returns (int256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
         poke(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
+        (,uint256 art) = vat.urns(collateralType.ilk, borrower);
 
         int256 dart;
         uint256 realAmount = hayAmount;
@@ -284,18 +298,18 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         }
 
         IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), realAmount);
-        hayJoin.join(msg.sender, realAmount);
+        hayJoin.join(borrower, realAmount);
 
         require(dart >= 0, "Interaction/too-much-requested");
 
-        vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
+        vat.frob(collateralType.ilk, borrower, borrower, borrower, 0, - dart);
 
-        (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
+        (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, borrower);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        takeSnapshot(token, msg.sender, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
+        takeSnapshot(token, borrower, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
 
-        emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
+        emit Payback(borrower, token, realAmount, userDebt, liqPrice);
         return dart;
     }
 
@@ -631,9 +645,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     function setDutyCalculator(address _dutyCalculator) external auth {
-        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "Interaction/invalid-dutyCalculator-address");
+        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "invalid-address");
         dutyCalculator = IDynamicDutyCalculator(_dutyCalculator);
-        require(dutyCalculator.interaction() == address(this), "Interaction/invalid-dutyCalculator-interaction");
+        require(dutyCalculator.interaction() == address(this), "invalid-dutyCalculator-var");
     }
 
     /**
