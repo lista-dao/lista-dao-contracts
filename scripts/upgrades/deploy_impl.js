@@ -3,7 +3,7 @@ const {deployImplementation, verifyImpContract} = require('./utils/upgrade_utils
 
 const oldContractAddress = ''
 const oldContractName = ''
-const contractName = 'EthOracle'
+const contractName = 'mwBETHOracle'
 
 
 async function main() {
