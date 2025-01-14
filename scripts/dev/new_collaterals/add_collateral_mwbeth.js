@@ -2,32 +2,23 @@ const {ethers, upgrades} = require('hardhat')
 const hre = require('hardhat')
 // Global Variables
 let ray = '000000000000000000000000000', // 27 Decimals
-  rad = '000000000000000000000000000000000000000000000' // 45 Decimals
+    rad = '000000000000000000000000000000000000000000000' // 45 Decimals
 
 async function main() {
 
-  [deployer] = await ethers.getSigners()
-
+  const [deployer] = await ethers.getSigners()
   const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
     "symbol": "mwBETH",
-    "tokenAddress": "0x5b8E97Cbf8b623737bBf9F3842e3895d23a1F98E",
-    "ilk": "0x6d77424554480000000000000000000000000000000000000000000000000000",
-    "gemJoin": "0x79f4B51dd1a50fC0A9Cff67774F0165DFE833454",
-    "gemJoinImplementation": "0xB64BDeBdC7572D48fb29fDB1352080abD9bc2fc8",
-    "clipper": "0x3A3B7bA9fB7655EaD86b95342a1f3b1a92b62673",
-    "clipperImplementation": "0x21f8Ff25c0cE07521dF5c10c2E04f13F86325988",
-    "oracle": "0x8E0eAc465dE01c7D84Ba6e31d7CD49d5C344b757",
-    "oracleImplementation": "0x2FED3a32D478f3eE124D4b9c597c473922EB3cBe",
-    "oracleInitializeArgs": [
-      ""
-    ],
-    "owner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093",
-    "proxyAdminOwner": "0x0C6f6b0C6f78950445133FADe7DECD64c0bDd093"
+    "tokenAddress": "0x410E153F72Fa68D1e0A2aAF7e4be75CD0513E63E",
+    "ilk": "0x4d57424554480000000000000000000000000000000000000000000000000000",
+    "gemJoin": "0x9A94f1307e5Ab0f6b51Be54b560401EbEE3597a0",
+    "clipper": "0xC5C206eFD10FFC1cF311852d601B52cc1eAC09f8",
+    "oracle": "0x2941e78beAd5AA73b2dA57dFCC83D0A2603046Fd",
   }
 
   // core parameters
   const mat = '2000000000000000000000000000' // Liquidation Ratio
-  const line = '500000' + rad // Debt Ceiling
+  const line = '10000' + rad // Debt Ceiling
   const dust = '15' + rad // Debt Floor
   const hole = '5000000' + rad // Liquidation
   const chop = '1100000000000000000' // Liquidation
@@ -54,10 +45,9 @@ async function main() {
     }
   }
 
-
-  console.log('symbol: ' + symbol)
-  console.log('tokenAddress: ' + tokenAddress)
-  console.log('ilk: ' + ilk)
+  console.log('symbol:        ' + symbol)
+  console.log('tokenAddress:  ' + tokenAddress)
+  console.log('ilk:           ' + ilk)
 
   // configure the collateral
   console.log('interaction...')
@@ -92,18 +82,17 @@ async function main() {
   await dog['file(bytes32,bytes32,address)'](ilk, ethers.encodeBytes32String('clip'), clipper)
 
 
-  await interaction.setCollateralDuty(tokenAddress, '1000000003734875566854894262'); //apr 15%
+  await interaction.setCollateralDuty(tokenAddress, '1000000002293273137447729405'); //apr 7.5%
   console.log("set duty...");
 
   await interaction.poke(tokenAddress, { gasLimit: 1000000 })
   await interaction.drip(tokenAddress, { gasLimit: 1000000 })
-
   console.log('Finished')
 }
 
 main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error)
-    process.exit(1)
-  })
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
