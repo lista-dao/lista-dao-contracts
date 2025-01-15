@@ -6,7 +6,7 @@ import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IResilientOracle.sol";
 
 
-contract MwbEthOracle is Initializable {
+contract mwBETHOracle is Initializable {
     IResilientOracle constant public resilientOracle = IResilientOracle(0xf3afD82A4071f272F403dC176916141f44E6c750);
     address constant public TOKEN = 0x7dC91cBD6CB5A3E6A95EED713Aa6bF1d987146c8;
 
@@ -14,6 +14,8 @@ contract MwbEthOracle is Initializable {
     constructor() {
         _disableInitializers();
     }
+
+    function initialize() external initializer {}
 
     /**
      * Returns the latest price
