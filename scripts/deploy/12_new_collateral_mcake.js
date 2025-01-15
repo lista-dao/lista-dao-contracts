@@ -14,12 +14,12 @@ async function main() {
     const [deployer] = await ethers.getSigners()
     let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
     let PROXY_ADMIN_OWNER = '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
-    let oracleName = 'mCakeOracle';
+    let oracleName = 'mCAKEOracle';
     let oracleInitializeArgs = [];
     let oracleInitializer = 'initialize';
 
-    const symbol = 'mCake'
-    let tokenAddress = '0x581fa684d0ec11ccb46b1d92f1f24c8a3f95c0ca' // mCake token address on BSC Mainnet
+    const symbol = 'mCAKE'
+    let tokenAddress = '0x581fa684d0ec11ccb46b1d92f1f24c8a3f95c0ca' // mCAKE token address on BSC Mainnet
 
     if (hre.network.name === 'bsc_testnet') {
         NEW_OWNER = process.env.OWNER || deployer.address
