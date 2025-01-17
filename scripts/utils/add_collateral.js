@@ -54,9 +54,9 @@ module.exports.addCollateral = async function (opts) {
   }
 
   // Deploy contracts
-  const gemJoin = await upgrades.deployProxy(this.GemJoin, [VAT, ILK, tokenAddress])
-  await gemJoin.waitForDeployment()
-  let gemJoinImplementation = await upgrades.erc1967.getImplementationAddress(gemJoin.target)
+  const gemJoin = await this.GemJoin.attach('0x3F3e0A03A9E123e5861044d436862dFA1468CC10')
+  // await gemJoin.waitForDeployment()
+  let gemJoinImplementation = '0x3e75d7edacc97645033eF8073D025069B0a0976D'
   console.log('Deployed: gemJoin    : ' + gemJoin.target)
   console.log('Imp                  : ' + gemJoinImplementation)
   // transfer proxy admin ownership
@@ -68,9 +68,9 @@ module.exports.addCollateral = async function (opts) {
   }
   // wait a few seconds for the tx to be mined
   await delay(waitingTime);
-  const clipper = await upgrades.deployProxy(this.Clipper, [VAT, SPOT, DOG, ILK])
-  await clipper.waitForDeployment()
-  let clipperImplementation = await upgrades.erc1967.getImplementationAddress(clipper.target)
+  const clipper = await this.Clipper.attach('0x334e4F80cC2985D0F8196Cc562DD8aedDdA1b704')
+  // await clipper.waitForDeployment()
+  let clipperImplementation = '0x9B878823cF06FAC1EdB02B44eADa8bB4274AB7EA'
   console.log('Deployed: clipCE     : ' + clipper.target)
   console.log('Imp                  : ' + clipperImplementation)
   // transfer proxy admin ownership
