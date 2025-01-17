@@ -13,8 +13,8 @@ async function main() {
         pauser = '0xEEfebb1546d88EA0909435DF6f615084DD3c5Bd8'
         daoAddress = '0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4'
         mBTC = '0x7c1cCA5b25Fa0bC9AF9275Fb53cBA89DC172b878'
-        ceToken = '' // ceMBTC
-        lpToken = '' // clisMBTC
+        ceToken = '' // cemBTC
+        lpToken = '' // clismBTC
     } else if (hre.network.name === "bsc_testnet" || hre.network.name === "bscLocal") {
         manager = '0x6616EF47F4d997137a04C2AD7FF8e5c228dA4f06'
         pauser = '0x6616EF47F4d997137a04C2AD7FF8e5c228dA4f06'
