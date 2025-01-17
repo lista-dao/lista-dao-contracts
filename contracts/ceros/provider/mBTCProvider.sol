@@ -93,7 +93,7 @@ contract mBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reentran
   function provide(uint256 _amount) external virtual whenNotPaused nonReentrant returns (uint256) {
     require(_amount > 0, "zero deposit amount");
 
-    // 1. transfer bumpBTC to provider
+    // 1. transfer mBTC to provider
     IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
     // 2. calculate lpToken amount; cemBTC amount is equal to lpToken amount
