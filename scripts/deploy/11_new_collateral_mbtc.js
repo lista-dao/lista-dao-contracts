@@ -19,7 +19,7 @@ async function main() {
     let oracleInitializer = 'initialize';
 
     const symbol = 'cemBTC'
-    let tokenAddress = '' // ceMBTC token address on BSC Mainnet
+    let tokenAddress = '0x4510aa2b3efd13bBFD78C9BfdE764F224ecc7f50' // ceMBTC token address on BSC Mainnet
 
     if (hre.network.name === 'bsc_testnet') {
         NEW_OWNER = process.env.OWNER || deployer.address
