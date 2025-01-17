@@ -8,7 +8,7 @@ async function main() {
 
     const [deployer] = await ethers.getSigners()
     const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
-        "symbol": "mBTC",
+        "symbol": "cemBTC",
         "tokenAddress": "0x6F805B6548EaF0dC412fD4FA531183b8dD809145",
         "ilk": "0x63656d4254430000000000000000000000000000000000000000000000000000",
         "gemJoin": "0xA01966dA69e071Df8b805342D93eaADaf27d162C",
