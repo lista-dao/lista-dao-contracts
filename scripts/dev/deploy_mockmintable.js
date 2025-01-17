@@ -5,8 +5,8 @@ async function main() {
 
     let MockMintable = await hre.ethers.getContractFactory("MockMintable");
 
-    const name = 'mwBETH'
-    const symbol = 'mwBETH'
+    const name = 'mBTC'
+    const symbol = 'mBTC'
 
     let mockMintable = await MockMintable.deploy(name, symbol)
 
