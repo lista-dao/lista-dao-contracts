@@ -9,11 +9,11 @@ async function main() {
     const [deployer] = await ethers.getSigners()
     const {symbol, tokenAddress, ilk, gemJoin, clipper, oracle} = {
         "symbol": "mBTC",
-        "tokenAddress": "0x2deB430701DE0BB24ADD0c815C464e6DC6BB2634",
-        "ilk": "0x6d42544300000000000000000000000000000000000000000000000000000000",
-        "gemJoin": "0x5D324E90D099cc1c9c2E5359759b8df77efdAC52",
-        "clipper": "0xbB1d00c8E522E4FBf0a94E61582D5F03D935DcCF",
-        "oracle": "0x8bC0889135e4Fe0d0d163ec2180c615998028090",
+        "tokenAddress": "0x6F805B6548EaF0dC412fD4FA531183b8dD809145",
+        "ilk": "0x63656d4254430000000000000000000000000000000000000000000000000000",
+        "gemJoin": "0xA01966dA69e071Df8b805342D93eaADaf27d162C",
+        "clipper": "0xDED604DE7F3dDd3445Ad640A6B663aC1a38172b9",
+        "oracle": "0x6c61fa95EB8C868ceAF32bc396a6907886048F24",
     }
 
     // core parameters

@@ -18,14 +18,14 @@ async function main() {
     let oracleInitializeArgs = [];
     let oracleInitializer = 'initialize';
 
-    const symbol = 'mBTC'
-    let tokenAddress = '0x7c1cCA5b25Fa0bC9AF9275Fb53cBA89DC172b878' // mBTC token address on BSC Mainnet
+    const symbol = 'cemBTC'
+    let tokenAddress = '' // ceMBTC token address on BSC Mainnet
 
     if (hre.network.name === 'bsc_testnet') {
         NEW_OWNER = process.env.OWNER || deployer.address
         PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
         // testnet token address
-        tokenAddress = '0x2deB430701DE0BB24ADD0c815C464e6DC6BB2634'
+        tokenAddress = '0x9693C67B4bdAAcC27eba9b68F21a3601FEB64D97'
     }
 
     // add collateral
