@@ -161,10 +161,12 @@ contract SlisBNBProvider is BaseTokenProvider {
     /**
      * @dev withdraw leftover collateral from Interaction contract; to support historical liquidated slisBnb urns
      */
-    function withdrawLeftover() external {
+    function withdrawLeftover() external whenNotPaused nonReentrant {
         uint256 leftover = dao.free(token, msg.sender);
         require(leftover > 0, "no leftover");
-        dao.withdraw(msg.sender, token, leftover);
+        uint256 amount = dao.withdraw(msg.sender, token, leftover);
+
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     /**
