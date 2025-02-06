@@ -554,16 +554,8 @@ contract SlisBNBLpProviderTest is Test {
         uint256 leftover = interaction.free(address(slisBnb), usr_A);
         uint256 locked = interaction.locked(address(slisBnb), usr_A);
 
-        vm.expectRevert("not enough leftover");
         vm.startPrank(usr_A);
-        slisBNBLpProvider.withdrawLeftover(leftover + 1 ether);
-
-        slisBNBLpProvider.withdrawLeftover(leftover - 1000);
-        leftover = interaction.free(address(slisBnb), usr_A);
-        assertEq(leftover, 1000);
-        assertEq(locked, interaction.locked(address(slisBnb), usr_A));
-
-        slisBNBLpProvider.withdrawLeftover(leftover);
+        slisBNBLpProvider.withdrawLeftover();
         leftover = interaction.free(address(slisBnb), usr_A);
         assertEq(leftover, 0);
         assertEq(locked, interaction.locked(address(slisBnb), usr_A));
