@@ -647,4 +647,18 @@ contract SlisBNBProviderTest is Test {
         assertEq(0, clisBnb.balanceOf(reserveAddress));
         assertEq(0, slisBNBLpProvider.userReservedLp(user));
     }
+
+    function test_withdrawLeftover() external {
+        address usr_A = 0xa0e7f96D7E9Cb3E150139343404C2b9a3ff1D1e6;
+        uint256 leftover = interaction.free(address(slisBnb), usr_A);
+        uint256 locked = interaction.locked(address(slisBnb), usr_A);
+
+        vm.startPrank(usr_A);
+        uint256 balance = slisBnb.balanceOf(usr_A);
+        slisBNBLpProvider.withdrawLeftover();
+        assertEq(balance + leftover, slisBnb.balanceOf(usr_A));
+        leftover = interaction.free(address(slisBnb), usr_A);
+        assertEq(leftover, 0);
+        assertEq(locked, interaction.locked(address(slisBnb), usr_A));
+    }
 }
