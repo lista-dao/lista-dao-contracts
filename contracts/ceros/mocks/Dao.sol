@@ -42,4 +42,7 @@ contract Dao is IDao {
     return 0;
   }
 
+  function free(address token, address usr) public view returns (uint256) {
+    return 0;
+  }
 }
