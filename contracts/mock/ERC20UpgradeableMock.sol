@@ -13,6 +13,6 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
     }
 
     function decimals() public pure override returns (uint8) {
-        return 8;
+        return 18;
     }
 }
