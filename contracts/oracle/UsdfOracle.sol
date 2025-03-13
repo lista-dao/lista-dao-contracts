@@ -7,7 +7,7 @@ import "./interfaces/IResilientOracle.sol";
 contract UsdfOracle is Initializable {
 
   IResilientOracle public resilientOracle;
-  address constant USDF_TOKEN_ADDR = 0x40326b7d4B52B750E98456388a24603E977eC56B;
+  address constant USDF_TOKEN_ADDR = 0x5A110fC00474038f6c02E89C707D638602EA44B5;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
