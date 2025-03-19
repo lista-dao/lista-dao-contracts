@@ -1,13 +1,13 @@
 name: Report gas diff
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+on: [push, pull_request]
+  # push:
+    # branches:
+      # - main
+  # pull_request:
     # Optionally configure to run only for changes in specific files. For example:
-      paths:
-      - contracts/**
+    # paths:
+    # - contracts/**
     # - test/**
     # - foundry.toml
     # - remappings.txt
@@ -16,10 +16,17 @@ on:
 jobs:
   compare_gas_reports:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Run install
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install # will run `yarn install` command
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -28,7 +35,7 @@ jobs:
 
       # Add any step generating a gas report to a temporary file named gasreport.ansi. For example:
       - name: Run tests
-        run: forge test --gas-report > gasreport.ansi # <- this file name should be unique in your repository!
+        run: forge test --isolate --gas-report > gasreport.ansi # <- this file name should be unique in your repository!
         env:
           # make fuzzing semi-deterministic to avoid noisy gas cost estimation
           # due to non-deterministic fuzzing (but still use pseudo-random fuzzing seeds)
