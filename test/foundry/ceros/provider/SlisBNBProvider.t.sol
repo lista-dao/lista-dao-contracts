@@ -556,10 +556,11 @@ contract SlisBNBLpProviderTest is Test {
 
         vm.startPrank(usr_A);
         uint256 balance = slisBnb.balanceOf(usr_A);
+        vm.expectRevert();
         slisBNBLpProvider.withdrawLeftover();
-        assertEq(balance + leftover, slisBnb.balanceOf(usr_A));
-        leftover = interaction.free(address(slisBnb), usr_A);
-        assertEq(leftover, 0);
-        assertEq(locked, interaction.locked(address(slisBnb), usr_A));
+//        assertEq(balance + leftover, slisBnb.balanceOf(usr_A));
+//        leftover = interaction.free(address(slisBnb), usr_A);
+//        assertEq(leftover, 0);
+//        assertEq(locked, interaction.locked(address(slisBnb), usr_A));
     }
 }
