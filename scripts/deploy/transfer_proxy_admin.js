@@ -18,7 +18,7 @@ const main = async () => {
     '0xf3afD82A4071f272F403dC176916141f44E6c750', // ResilientOracle
     '0x873339A8214657175D9B128dDd57A2f2c23256FA', // DynamicDutyCalculator
   ]
-  const newOwner = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
+  const newOwner = '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
   // transfer proxy admin ownership
   for (let i = 0; i < proxyAddresses.length; i++) {
     await transferProxyAdminOwner(proxyAddresses[i], newOwner)
