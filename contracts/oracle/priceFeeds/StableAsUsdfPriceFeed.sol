@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../interfaces/IResilientOracle.sol";
 import "../interfaces/IAsUsdfEarn.sol";
 import "../libraries/FullMath.sol";
@@ -12,7 +11,7 @@ import "../libraries/FullMath.sol";
   *      multiplying the price of USDF from the Resilient Oracle
   *      and the exchange rate of asUSDF<>USDF from the asUSDFEarn contract
   */
-contract StableAsUsdfPriceFeed is Initializable {
+contract StableAsUsdfPriceFeed {
 
   IResilientOracle public resilientOracle;
   IAsUsdfEarn public asUsdfEarn;
@@ -21,12 +20,7 @@ contract StableAsUsdfPriceFeed is Initializable {
   // ported from AsUsdfEarn contract
   uint256 public constant EXCHANGE_PRICE_DECIMALS = 1e18;
 
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
-
-  function initialize(address _resilientOracle, address _asUsdfEarn) external initializer {
+  constructor(address _resilientOracle, address _asUsdfEarn) {
     require(_resilientOracle != address(0) && _asUsdfEarn != address(0), "Zero address provided");
     resilientOracle = IResilientOracle(_resilientOracle);
     asUsdfEarn = IAsUsdfEarn(_asUsdfEarn);
