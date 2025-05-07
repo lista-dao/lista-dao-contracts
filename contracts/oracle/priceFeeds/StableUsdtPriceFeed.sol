@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../interfaces/IResilientOracle.sol";
 
 /**
@@ -9,7 +8,7 @@ import "../interfaces/IResilientOracle.sol";
   * @dev This contract is used to get the price of USDT from a Resilient Oracle
   *      and bounds the price to a certain range.
   */
-contract StableUsdtPriceFeed is Initializable {
+contract StableUsdtPriceFeed {
 
   IResilientOracle public resilientOracle;
 
@@ -17,12 +16,7 @@ contract StableUsdtPriceFeed is Initializable {
   uint256 public constant UPPER_BOUND = 102000000; // 1.02 USD
   uint256 public constant LOWER_BOUND = 98000000; // 0.98 USD
 
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
-
-  function initialize(address _resilientOracle) external initializer {
+  constructor(address _resilientOracle) {
     require(_resilientOracle != address(0), "Zero address provided");
     resilientOracle = IResilientOracle(_resilientOracle);
   }
