@@ -10,7 +10,7 @@ async function main() {
 
   [deployer] = await ethers.getSigners()
   let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
-  let PROXY_ADMIN_OWNER = '0x08aE09467ff962aF105c23775B9Bc8EAa175D27F'
+  let PROXY_ADMIN_OWNER = '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
 
   // Fetch factories
   this.GemJoin = await hre.ethers.getContractFactory('GemJoin')

@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const {ethers, upgrades} = require('hardhat')
-const {addCollateral} = require('../utils/add_collateral')
+const {addCollateral_Origin} = require('../utils/add_collateral')
 
 // Global Variables
 let rad = '000000000000000000000000000000000000000000000' // 45 Decimals
@@ -12,9 +12,9 @@ async function main() {
   let NEW_OWNER = '0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37'
   let PROXY_ADMIN_OWNER = '0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253'
 
-  const symbol = 'FDUSD'
-  let tokenAddress = '0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409' // FDUSD token address on BSC Mainnet
-  let oracleName = 'FdUsdOracle';
+  const symbol = 'USD1'
+  let tokenAddress = '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d' // USD1 token address on BSC Mainnet
+  let oracleName = 'Usd1Oracle';
   let oracleInitializeArgs = ['0xf3afD82A4071f272F403dC176916141f44E6c750'];
   let oracleInitializer = 'initialize';
 
@@ -22,22 +22,13 @@ async function main() {
     NEW_OWNER = process.env.OWNER || deployer.address
     PROXY_ADMIN_OWNER = process.env.PROXY_ADMIN_OWNER || deployer.address
     console.log('Deploying on BSC Testnet', hre.network.name, 'Network', deployer.address)
-    // deploy token
-    const ERC20UpgradeableMock = await hre.ethers.getContractFactory('ERC20UpgradeableMock')
-    const tokenMock = await upgrades.deployProxy(ERC20UpgradeableMock, [symbol, symbol])
-    await tokenMock.waitForDeployment();
-    const tokenMockImplementation = await upgrades.erc1967.getImplementationAddress(tokenMock.target)
-    console.log('Deployed: tokenMock     : ' + tokenMock.target)
-    console.log('Imp                  : ' + tokenMockImplementation)
-    tokenAddress = tokenMock.target
-    await hre.run('verify:verify', {address: tokenAddress})
-    // mint 10000000 tokens to deployer
-    await tokenMock.mint(deployer.address, ethers.parseEther('10000000'))
     oracleInitializeArgs = ['0x79e9675cDe605Ef9965AbCE185C5FD08d0DE16B1'];
+    // USD1 testnet token address
+    tokenAddress = '0x3189e817d80048321f1809523F1eB75D1cF16020'
   }
 
   // add collateral
-  await addCollateral({
+  await addCollateral_Origin({
     symbol,
     tokenAddress,
     oracleName,
