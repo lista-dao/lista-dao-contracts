@@ -15,10 +15,7 @@ async function main() {
   const admin = deployer;
 
   const AsBnbOracle = await hre.ethers.getContractFactory('AsBnbOracle');
-  const asBnbOracle = await upgrades.deployProxy(AsBnbOracle, [
-    ADMIN,
-    ASBNB_MINTER,
-  ]);
+  const asBnbOracle = await upgrades.deployProxy(AsBnbOracle, [ADMIN]);
   await asBnbOracle.waitForDeployment(3);
 
   const proxyAddress = await asBnbOracle.getAddress();
