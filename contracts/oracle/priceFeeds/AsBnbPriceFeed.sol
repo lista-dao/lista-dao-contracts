@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "../interfaces/IResilientOracle.sol";
-import { ISnBnbStakeManager } from "../../snbnb/interfaces/ISnBnbStakeManager.sol";
+import { IResilientOracle } from "../interfaces/IResilientOracle.sol";
+import { IAsBnbMinter } from "../interfaces/IAsBnbMinter.sol";
 
-/**
-  * @title slisBnbPriceFeed
-  * @dev The contract obtains WBNB price from the Resilient Oracle and converts it to slisBNB using the SnBnbStakeManager.
-  */
-contract SlisBnbPriceFeed {
-
+contract AsBnbPriceFeed {
+  // @dev AsBnb Minter
+  IAsBnbMinter public asBnbMinter;
+  // @dev Resilient oracle
   IResilientOracle public resilientOracle;
-  ISnBnbStakeManager public stakeManager;
+  // @dev slisBNB token address
+  address constant public SLISBNB_TOKEN_ADDR = 0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B;
 
-  address public constant WBNB_TOKEN_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-
-  constructor(address _resilientOracle, address _stakeManager) {
-    require(_resilientOracle != address(0) && _stakeManager != address (0), "Zero address provided");
+  /**
+   * @dev initialize the contract
+   * @param _resilientOracle Resilient oracle address
+   * @param _abBnbMinter AsBnb Minter address
+   */
+  constructor(address _resilientOracle, address _abBnbMinter) {
+    require(_resilientOracle != address(0) && _abBnbMinter != address (0), "Zero address provided");
     resilientOracle = IResilientOracle(_resilientOracle);
-    stakeManager = ISnBnbStakeManager(_stakeManager);
+    asBnbMinter = IAsBnbMinter(_abBnbMinter);
   }
 
   function decimals() external pure returns (uint8) {
@@ -26,7 +28,7 @@ contract SlisBnbPriceFeed {
   }
 
   function description() external pure returns (string memory) {
-    return "slisBNB Price Feed";
+    return "asBNB Price Feed";
   }
 
   function version() external pure returns (uint256) {
@@ -66,14 +68,13 @@ contract SlisBnbPriceFeed {
   }
 
   /**
-    * @dev Get the WBNB price from the Resilient Oracle, and multiply it by the conversion rate
-    * @return price The price of slisBNB in 8 decimals
+    * @dev Get the slisBNB price from the Resilient Oracle, and multiply it by the conversion rate
+    * @return price The price of asBNB in 8 decimals
     */
   function getPrice() private view returns (uint256 price) {
-    // get BNB price from resilient oracle (8 Decimal place)
+    // get slisBNB price from resilient oracle (8 Decimal place)
     // in case price is zero, resilient oracle will revert
-    price = resilientOracle.peek(WBNB_TOKEN_ADDR);
-    price = stakeManager.convertSnBnbToBnb(price);
+    price = resilientOracle.peek(SLISBNB_TOKEN_ADDR);
+    price = asBnbMinter.convertToTokens(price);
   }
-
 }
