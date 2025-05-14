@@ -76,7 +76,7 @@ contract sUSDePriceFeed {
     * @return price The price of sUSDe/USD in 8 decimals
     */
   function getPrice() private view returns (uint256 price) {
-    // sUSDe/USDe in 8 DPs
+    // sUSDe/USDe in 18 DPs
     (
     /*uint80 roundID*/,
       int sUSDe_USDe_Price,
@@ -100,7 +100,7 @@ contract sUSDePriceFeed {
     require(USDe_Usd_Price > 0, "USDe_USD_PriceFeed/price-not-valid");
     require(block.timestamp - updatedAt2 < (24 * 3600 + 300), "USDe_USD_PriceFeed/timestamp-too-old");
 
-    return FullMath.mulDiv(uint256(sUSDe_USDe_Price), uint256(USDe_Usd_Price), 1e8);
+    return FullMath.mulDiv(uint256(sUSDe_USDe_Price), uint256(USDe_Usd_Price), 1e18);
   }
 
 }
