@@ -14,6 +14,11 @@ contract sUSDePriceFeed {
   AggregatorV3Interface public sUSDe_USDe_PriceFeed;
   AggregatorV3Interface public USDe_USD_PriceFeed;
 
+  /**
+    * @dev Constructor
+    * @param _sUSDe_USDe_PriceFeed The address of the sUSDe/USDe price feed contract (ChainLink)
+    * @param _USDe_USD_PriceFeed The address of the USDe/USD price feed contract (ChainLink)
+    */
   constructor(address _sUSDe_USDe_PriceFeed, address _USDe_USD_PriceFeed) {
     require(_sUSDe_USDe_PriceFeed != address(0) && _USDe_USD_PriceFeed != address(0), "Zero address provided");
     sUSDe_USDe_PriceFeed = AggregatorV3Interface(_sUSDe_USDe_PriceFeed);
