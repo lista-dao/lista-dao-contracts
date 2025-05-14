@@ -77,7 +77,7 @@ contract StonePriceFeed {
     * @return price The price of Stone in 8 decimals
     */
   function getPrice() private view returns (uint256 price) {
-    // Stone/ETH in 8 DPs
+    // Stone/ETH in 18 DPs
     (int224 stoneEthPrice, uint32 updatedAt) = stoneEthPriceFeed.read();
     require(stoneEthPrice > 0, "stoneEthPriceFeed/price-not-valid");
     require(block.timestamp - uint256(updatedAt) < (24 * 3600 + 300), "stoneEthPriceFeed/timestamp-too-old");
@@ -85,7 +85,7 @@ contract StonePriceFeed {
     // ETH/USD in 8 DPs
     uint256 ethPrice = resilientOracle.peek(ETH_TOKEN_ADDR);
 
-    return FullMath.mulDiv(uint256(int256(stoneEthPrice)), ethPrice, 1e8);
+    return FullMath.mulDiv(uint256(int256(stoneEthPrice)), ethPrice, 1e18);
   }
 
 }
