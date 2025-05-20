@@ -1,8 +1,9 @@
 const {ethers, upgrades} = require('hardhat')
 const hre = require('hardhat')
 
-let RESILIENT_ORACLE = "0xf3afD82A4071f272F403dC176916141f44E6c750"
-let STONE_ETH_PRICE_FEED = "0x109A9AC63e6161B1818Faa2e902850997391bc1e"
+const RESILIENT_ORACLE = "0xf3afD82A4071f272F403dC176916141f44E6c750"
+// https://data.chain.link/feeds/bsc/mainnet/stone-eth-exchange-rate
+const STONE_ETH_PRICE_FEED = "0xC6A1314E89d01517a90AE4b0d9d5e499A324B283"
 
 async function main() {
   console.log(`[Stone Price Feed] Deploying...`)
