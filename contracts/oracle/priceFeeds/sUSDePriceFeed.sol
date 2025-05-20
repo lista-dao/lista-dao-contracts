@@ -11,18 +11,19 @@ import "../libraries/FullMath.sol";
   */
 contract sUSDePriceFeed {
 
+  IResilientOracle public resilientOracle;
   AggregatorV3Interface public sUSDe_USDe_PriceFeed;
-  AggregatorV3Interface public USDe_USD_PriceFeed;
+  address public constant USDe_TOKEN_ADDR = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
 
   /**
     * @dev Constructor
+    * @param _resilientOracle The address of the Resilient Oracle contract
     * @param _sUSDe_USDe_PriceFeed The address of the sUSDe/USDe price feed contract (ChainLink)
-    * @param _USDe_USD_PriceFeed The address of the USDe/USD price feed contract (ChainLink)
     */
-  constructor(address _sUSDe_USDe_PriceFeed, address _USDe_USD_PriceFeed) {
-    require(_sUSDe_USDe_PriceFeed != address(0) && _USDe_USD_PriceFeed != address(0), "Zero address provided");
+  constructor(address _resilientOracle, address _sUSDe_USDe_PriceFeed) {
+    require(_resilientOracle != address(0) && _sUSDe_USDe_PriceFeed != address(0), "Zero address provided");
+    resilientOracle = IResilientOracle(_resilientOracle);
     sUSDe_USDe_PriceFeed = AggregatorV3Interface(_sUSDe_USDe_PriceFeed);
-    USDe_USD_PriceFeed = AggregatorV3Interface(_USDe_USD_PriceFeed);
   }
 
   function decimals() external pure returns (uint8) {
@@ -76,7 +77,7 @@ contract sUSDePriceFeed {
     * @return price The price of sUSDe/USD in 8 decimals
     */
   function getPrice() private view returns (uint256 price) {
-    // sUSDe/USDe in 18 DPs
+    // (1) sUSDe/USDe in 18 DPs
     (
     /*uint80 roundID*/,
       int sUSDe_USDe_Price,
@@ -88,19 +89,10 @@ contract sUSDePriceFeed {
     require(sUSDe_USDe_Price > 0, "sUSDe_USDe_PriceFeed/price-not-valid");
     require(block.timestamp - updatedAt1 < (24 * 3600 + 300), "sUSDe_USDe_PriceFeed/timestamp-too-old");
 
-    // USDe/USD in 8 DPs
-    (
-    /*uint80 roundID*/,
-      int USDe_Usd_Price,
-    /*uint startedAt*/,
-      uint updatedAt2,
-    /*uint80 answeredInRound*/
-    ) = USDe_USD_PriceFeed.latestRoundData();
+    // (2) USDe/USD in 8 DPs
+    uint256 USDe_Usd_Price = resilientOracle.peek(USDe_TOKEN_ADDR);
 
-    require(USDe_Usd_Price > 0, "USDe_USD_PriceFeed/price-not-valid");
-    require(block.timestamp - updatedAt2 < (24 * 3600 + 300), "USDe_USD_PriceFeed/timestamp-too-old");
-
-    return FullMath.mulDiv(uint256(sUSDe_USDe_Price), uint256(USDe_Usd_Price), 1e18);
+    return FullMath.mulDiv(uint256(sUSDe_USDe_Price), USDe_Usd_Price, 1e18);
   }
 
 }

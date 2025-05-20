@@ -2,17 +2,17 @@
 pragma solidity ^0.8.10;
 
 import "../interfaces/IResilientOracle.sol";
-import { IAPI3Proxy } from "../interfaces/OracleInterface.sol";
+import "../interfaces/AggregatorV3Interface.sol";
 import "../libraries/FullMath.sol";
 
 /**
   * @title StonePriceFeed
-  * @dev This contract is used to get the price of Stone/ETH from API3 and ETH/USD from ChainLink
+  * @dev This contract is used to get the price of Stone/ETH from ChainLink and ETH/USD from ChainLink
   */
 contract StonePriceFeed {
 
   IResilientOracle public resilientOracle;
-  IAPI3Proxy public stoneEthPriceFeed;
+  AggregatorV3Interface public stoneEthPriceFeed;
   address public constant ETH_TOKEN_ADDR = 0x2170Ed0880ac9A755fd29B2688956BD959F933F8;
 
   /**
@@ -23,7 +23,7 @@ contract StonePriceFeed {
   constructor(address _resilientOracle, address _stoneEthPriceFeed) {
     require(_resilientOracle != address(0) && _stoneEthPriceFeed != address(0), "Zero address provided");
     resilientOracle = IResilientOracle(_resilientOracle);
-    stoneEthPriceFeed = IAPI3Proxy(_stoneEthPriceFeed);
+    stoneEthPriceFeed = AggregatorV3Interface(_stoneEthPriceFeed);
   }
 
   function decimals() external pure returns (uint8) {
@@ -31,7 +31,7 @@ contract StonePriceFeed {
   }
 
   function description() external pure returns (string memory) {
-    return "Stone Price Feed";
+    return "Stone/USD Price Feed";
   }
 
   function version() external pure returns (uint256) {
@@ -72,20 +72,26 @@ contract StonePriceFeed {
 
   /**
     * @dev Get the price of Stone in 8 DPs
-    *      Stone/ETH from API3 and ETH/USD from ChainLink
+    *      Stone/ETH from ChainLink and ETH/USD from Resilient Oracle
     *      multiply them and divide by 1e8
     * @return price The price of Stone in 8 decimals
     */
   function getPrice() private view returns (uint256 price) {
     // Stone/ETH in 18 DPs
-    (int224 stoneEthPrice, uint32 updatedAt) = stoneEthPriceFeed.read();
+    (
+    /*uint80 roundID*/,
+      int stoneEthPrice,
+    /*uint startedAt*/,
+      uint updatedAt,
+    /*uint80 answeredInRound*/
+    ) = stoneEthPriceFeed.latestRoundData();
     require(stoneEthPrice > 0, "stoneEthPriceFeed/price-not-valid");
     require(block.timestamp - uint256(updatedAt) < (24 * 3600 + 300), "stoneEthPriceFeed/timestamp-too-old");
 
     // ETH/USD in 8 DPs
     uint256 ethPrice = resilientOracle.peek(ETH_TOKEN_ADDR);
 
-    return FullMath.mulDiv(uint256(int256(stoneEthPrice)), ethPrice, 1e18);
+    return FullMath.mulDiv(uint256(stoneEthPrice), ethPrice, 1e18);
   }
 
 }
