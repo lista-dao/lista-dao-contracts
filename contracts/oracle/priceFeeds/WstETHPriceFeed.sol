@@ -87,7 +87,7 @@ contract WstETHPriceFeed {
     /*uint80 answeredInRound*/
     ) = wstETH_ETH_PriceFeed.latestRoundData();
     require(wstETH_ETH_Price > 0, "wstETH_ETH_PriceFeed/price-not-valid");
-    require(block.timestamp - updatedAt < (24 * 3600 + 300), "wstETH_ETH_PriceFeed/timestamp-too-old");
+    require(block.timestamp - updatedAt < (6 * 3600 + 300), "wstETH_ETH_PriceFeed/timestamp-too-old");
 
     // ETH/USD in 8 DPs
     uint256 ethPrice = resilientOracle.peek(ETH_TOKEN_ADDR);
