@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../../contracts/oracle/priceFeeds/WstETHPriceFeed.sol";
-import "../../contracts/oracle/WstETHOracle.sol";
+import "../../contracts/oracle/wstETHOracle.sol";
 
 contract WstETHOracleTest is Test {
     WstETHPriceFeed priceFeed;
