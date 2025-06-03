@@ -7,7 +7,7 @@ import "./interfaces/IResilientOracle.sol";
 contract sUsdxOracle is Initializable {
 
     IResilientOracle public resilientOracle;
-    address constant sUSDX_TOKEN_ADDR = 0xf3527ef8dE265eAa3716FB312c12847bFBA66Cef;
+    address constant USDT_TOKEN_ADDR = 0x55d398326f99059fF775485246999027B3197955;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -22,7 +22,7 @@ contract sUsdxOracle is Initializable {
       * Returns the latest price
       */
     function peek() public view returns (bytes32, bool) {
-        uint256 price = resilientOracle.peek(sUSDX_TOKEN_ADDR);
+        uint256 price = resilientOracle.peek(USDT_TOKEN_ADDR);
         return (bytes32(uint(price) * 1e10), true);
     }
 }
