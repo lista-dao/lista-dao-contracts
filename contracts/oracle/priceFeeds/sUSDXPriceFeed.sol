@@ -11,7 +11,7 @@ import "../libraries/FullMath.sol";
   *      and the exchange rate of sUSDX/USDX from the sUSDX contract,
   *      and returns the price of sUSDX in USD.
   */
-contract SUSDXPriceFeed {
+contract sUSDXPriceFeed {
 
   IResilientOracle public resilientOracle;
   // sUSDX Token Address (non-upgradeable)
