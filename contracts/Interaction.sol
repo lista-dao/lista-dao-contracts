@@ -44,7 +44,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     address public dog;
     IRewards public helioRewards; // Deprecated
 
-    mapping(address => uint256) public deposits;
+    mapping(address => uint256) public depositsDeprecated;
     mapping(address => CollateralType) public collaterals;
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -222,8 +222,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.behalf(participant, address(this));
         vat.frob(collateralType.ilk, participant, participant, participant, int256(dink), 0);
 
-        deposits[token] += dink;
-
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
         takeSnapshot(token, participant, ink, 0, true, false);
 
@@ -398,7 +396,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
-        deposits[token] -= dink;
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
         takeSnapshot(token, participant, ink, 0, true, false);
@@ -464,7 +461,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     // Total ceABNBc deposited nominated in $
     function depositTVL(address token) external view returns (uint256) {
-        return deposits[token] * collateralPrice(token) / WAD;
+        CollateralType memory collateralType = collaterals[token];
+        uint256 balance = IERC20Upgradeable(token).balanceOf(address(collateralType.gem));
+        return balance * collateralPrice(token) / WAD;
     }
 
     // Total HAY borrowed by all users
