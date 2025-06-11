@@ -69,7 +69,7 @@ contract InteractionTest is Test {
 
     function testRevert_initialize() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        interaction.initialize(address(vat), address(spotter), address(hay), address(hayJoin), address(jug), address(dog), address(0));
+        interaction.initialize(address(vat), address(spotter), address(hay), address(hayJoin), address(jug), address(dog));
     }
 
     function test_setCollateralType() public {
