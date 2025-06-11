@@ -459,11 +459,16 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return 10 ** 45 / mat;
     }
 
-    // Total ceABNBc deposited nominated in $
-    function depositTVL(address token) external view returns (uint256) {
+    // Return the collateral amount (WAD)
+    function deposits(address token) public view returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
-        uint256 balance = IERC20Upgradeable(token).balanceOf(address(collateralType.gem));
-        return balance * collateralPrice(token) / WAD;
+        return IERC20Upgradeable(token).balanceOf(address(collateralType.gem));
+    }
+
+    // TVL deposited nominated in $
+    function depositTVL(address token) external view returns (uint256) {
+        uint256 amount = deposits(token);
+        return amount * collateralPrice(token) / WAD;
     }
 
     // Total HAY borrowed by all users
