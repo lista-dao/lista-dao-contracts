@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./hMath.sol";
 import "./oracle/libraries/FullMath.sol";
 import "./interfaces/VatLike.sol";
@@ -44,11 +43,10 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     address public dog;
     IRewards public helioRewards; // Deprecated
 
-    mapping(address => uint256) public deposits;
+    mapping(address => uint256) public depositsDeprecated;
     mapping(address => CollateralType) public collaterals;
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
@@ -133,8 +131,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address hay_,
         address hayJoin_,
         address jug_,
-        address dog_,
-        address rewards_
+        address dog_
     ) public initializer {
         __Ownable_init();
 
@@ -146,7 +143,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         hayJoin = HayJoinLike(hayJoin_);
         jug = JugLike(jug_);
         dog = dog_;
-        helioRewards = IRewards(rewards_);
 
         vat.hope(hayJoin_);
 
@@ -221,8 +217,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         collateralType.gem.join(participant, dink);
         vat.behalf(participant, address(this));
         vat.frob(collateralType.ilk, participant, participant, participant, int256(dink), 0);
-
-        deposits[token] += dink;
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
         takeSnapshot(token, participant, ink, 0, true, false);
@@ -398,7 +392,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
-        deposits[token] -= dink;
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
         takeSnapshot(token, participant, ink, 0, true, false);
@@ -462,9 +455,19 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         return 10 ** 45 / mat;
     }
 
-    // Total ceABNBc deposited nominated in $
+    function _deposits(address token) private view returns (uint256) {
+        CollateralType memory collateralType = collaterals[token];
+        return IERC20Upgradeable(token).balanceOf(address(collateralType.gem));
+    }
+
+    // Return the collateral amount (WAD)
+    function deposits(address token) external view returns (uint256) {
+        return _deposits(token);
+    }
+
+    // TVL deposited nominated in $
     function depositTVL(address token) external view returns (uint256) {
-        return deposits[token] * collateralPrice(token) / WAD;
+        return _deposits(token) * collateralPrice(token) / WAD;
     }
 
     // Total HAY borrowed by all users
@@ -641,7 +644,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     }
 
     function _checkIsLive(uint256 live) internal pure {
-        require(live != 0, "Interaction/inactive collateral");
+        require(live != 0, "inactive collateral");
     }
 
     function setDutyCalculator(address _dutyCalculator) external auth {
