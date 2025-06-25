@@ -59,7 +59,6 @@ contract CDPLiquidatorTest is Test {
         vm.startPrank(manager);
         liquidator.setTokenWhitelist(BTCB, true);
         liquidator.setPairWhitelist(address(oneInch), true);
-        liquidator.approveLisUSDToInteraction(type(uint256).max);
         vm.stopPrank();
 
         vm.startPrank(operator);
@@ -77,7 +76,6 @@ contract CDPLiquidatorTest is Test {
         uint256 collateralAmount = 0.01 ether;
 
         uint256 borrowAmount = borrowAll(borrower, BTCB, collateralAmount);
-        console.log("borrowAmount", borrowAmount);
 
         vm.mockCall(btcOracle, abi.encodeWithSignature("peek()"), abi.encode(bytes32(uint256(99_000 ether)), true));
 

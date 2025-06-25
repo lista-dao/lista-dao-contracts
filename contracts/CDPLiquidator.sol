@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC3156FlashBorrower} from "./interfaces/IERC3156FlashBorrower.sol";
 import {IERC3156FlashLender} from "./interfaces/IERC3156FlashLender.sol";
 import {IInteraction} from "./interfaces/IInteraction.sol";
-import "forge-std/Test.sol";
 
 contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
@@ -144,6 +143,7 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         IERC20(tokenIn).safeApprove(pair, amountIn);
         (bool success, ) = pair.call(swapData);
         require(success, "swap failed");
+        IERC20(tokenIn).safeApprove(pair, 0);
 
         uint256 actualAmountIn = beforeTokenIn - IERC20(tokenIn).balanceOf(address(this));
         uint256 actualAmountOut = IERC20(lisUSD).balanceOf(address(this)) - beforeTokenOut;
@@ -175,9 +175,8 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
 
         LiquidationData memory liquidationData = abi.decode(data, (LiquidationData));
 
+        IERC20(lisUSD).safeApprove(address(interaction), type(uint256).max);
         uint256 before = IERC20(liquidationData.collateralReal).balanceOf(address(this));
-
-        console.log("1", IERC20(lisUSD).balanceOf(address(this)));
         interaction.buyFromAuction(
             liquidationData.collateral,
             liquidationData.auctionId,
@@ -185,14 +184,14 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
             liquidationData.maxPrice,
             address(this)
         );
-        console.log("2", IERC20(lisUSD).balanceOf(address(this)));
-
         uint256 amountIn = IERC20(liquidationData.collateralReal).balanceOf(address(this)) - before;
 
         IERC20(liquidationData.collateralReal).safeApprove(liquidationData.pair, amountIn);
-
         (bool success,) = liquidationData.pair.call(liquidationData.swapData);
         require(success, "swap failed");
+
+        IERC20(lisUSD).safeApprove(address(interaction), 0);
+        IERC20(liquidationData.collateralReal).safeApprove(liquidationData.pair, 0);
 
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -232,6 +231,8 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         uint256 before = IERC20(lisUSD).balanceOf(address(this));
         lender.flashLoan(this, lisUSD, borrowAm, data);
         require(IERC20(lisUSD).balanceOf(address(this)) > before, "Flash loan failed");
+
+        IERC20(lisUSD).safeApprove(address(lender), 0);
     }
 
     /// @dev liquidates an auction.
@@ -240,14 +241,9 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
     /// @param collateralAm The amount of collateral to liquidate.
     /// @param maxPrice The maximum price to pay for the collateral.
     function liquidate(uint256 auctionId, address collateral, uint256 collateralAm, uint256 maxPrice) external onlyRole(BOT) auctionWhitelisted {
+        IERC20(lisUSD).safeApprove(address(interaction), type(uint256).max);
         interaction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this));
-    }
-
-    /// @dev approves lisUSD to interaction contract.
-    /// @param allowance The amount of lisUSD to approve.
-    function approveLisUSDToInteraction(uint256 allowance) external onlyRole(MANAGER) {
-        require(allowance > 0, "Allowance must be greater than zero");
-        IERC20(lisUSD).safeApprove(address(interaction), allowance);
+        IERC20(lisUSD).safeApprove(address(interaction), 0);
     }
 
 
