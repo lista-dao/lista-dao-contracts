@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {NonTransferableERC20} from "./NonTransferableERC20.sol";
 
-contract clisBNB is OwnableUpgradeable, NonTransferableERC20 {
+contract slisBNBx is OwnableUpgradeable, NonTransferableERC20 {
     /**
      * Variables
      */
@@ -63,5 +63,13 @@ contract clisBNB is OwnableUpgradeable, NonTransferableERC20 {
 
         delete _minters[minter];
         emit MinterChanged(minter, false);
+    }
+
+    function name() public view override returns (string memory) {
+        return "slisBNB Non-Transferable Receipt";
+    }
+
+    function symbol() public view override returns (string memory) {
+        return "slisBNBx";
     }
 }
