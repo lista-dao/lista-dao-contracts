@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../../contracts/interfaces/VatLike.sol";
 import "../../../../contracts/ceros/ClisToken.sol";
-import "../../../../contracts/ceros/clisBNB.sol";
+import "../../../../contracts/ceros/slisBNBx.sol";
 import "../../../../contracts/ceros/provider/SlisBNBProvider.sol";
 import {Interaction} from "../../../../contracts/Interaction.sol";
 
@@ -35,7 +35,7 @@ contract SlisBNBProviderTest is Test {
 
     IERC20 slisBnb;
 
-    clisBNB clisBnb;
+    slisBNBx clisBnb;
 
     SlisBNBProvider slisBNBLpProvider;
 
@@ -51,7 +51,7 @@ contract SlisBNBProviderTest is Test {
         vat = VatLike(0x33A34eAB3ee892D40420507B820347b1cA2201c4);
         interaction = Interaction(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4);
         slisBnb = IERC20(0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B);
-        clisBnb = clisBNB(0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6);
+        clisBnb = slisBNBx(0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6);
 
         TransparentUpgradeableProxy providerProxy = new TransparentUpgradeableProxy(
             address(new SlisBNBProvider()),
