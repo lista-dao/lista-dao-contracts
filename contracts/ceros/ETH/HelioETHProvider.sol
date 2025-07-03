@@ -148,6 +148,16 @@ ReentrancyGuardUpgradeable
     {
         _ceETHRouter.liquidation(recipient, amount);
     }
+
+    function liquidation(address user, address recipient, uint256 amount, bool isLeftover)
+    external
+    override
+    onlyProxy
+    nonReentrant
+    {
+        _ceETHRouter.liquidation(recipient, amount);
+    }
+
     function daoBurn(address account, uint256 value)
     external
     override

@@ -149,13 +149,23 @@ ReentrancyGuardUpgradeable
      * DAO FUNCTIONALITY
      */
     function liquidation(address recipient, uint256 amount)
-    external
+    public
     override
     onlyProxy
     nonReentrant
     {
         _ceRouter.withdrawABNBc(recipient, amount);
     }
+
+    function liquidation(address user, address recipient, uint256 amount, bool isLeftover)
+    external
+    override
+    onlyProxy
+    nonReentrant
+    {
+        liquidation(recipient, amount);
+    }
+
     function daoBurn(address account, uint256 value)
     external
     override

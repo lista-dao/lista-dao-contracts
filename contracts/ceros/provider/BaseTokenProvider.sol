@@ -243,7 +243,7 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
      * @param _amount amount to liquidate
      */
     function liquidation(address _recipient, uint256 _amount)
-        external
+        public
         virtual
         nonReentrant
         whenNotPaused
@@ -252,6 +252,24 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
         require(_recipient != address(0));
         IERC20(token).safeTransfer(_recipient, _amount);
         emit Liquidation(_recipient, _amount);
+    }
+
+    /**
+     * DAO FUNCTIONALITY
+     * transfer given amount of token to recipient
+     * called by AuctionProxy.buyFromAuction
+     *
+     * @param _recipient recipient address
+     * @param _amount amount to liquidate
+     */
+    function liquidation(address _user, address _recipient, uint256 _amount, bool _isLeftover)
+    external
+    virtual
+    nonReentrant
+    whenNotPaused
+    onlyRole(PROXY)
+    {
+        liquidation(_recipient, _amount);
     }
 
     /**

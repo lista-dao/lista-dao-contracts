@@ -146,12 +146,21 @@ contract mBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reentran
   function liquidation(
     address _recipient,
     uint256 _lpAmount
-  ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+  ) public virtual nonReentrant whenNotPaused onlyRole(PROXY) {
     require(_recipient != address(0));
     uint256 _amount = _lpAmount / scale;
     IERC20(token).safeTransfer(_recipient, _amount);
 
     emit Liquidation(_recipient, _amount, _lpAmount);
+  }
+
+  function liquidation(
+    address _user,
+    address _recipient,
+    uint256 _lpAmount,
+    bool isLeftover
+  ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+    liquidation(_recipient, _lpAmount);
   }
 
   /**
