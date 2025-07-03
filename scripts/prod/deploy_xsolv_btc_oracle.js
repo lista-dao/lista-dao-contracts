@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const {ethers} = hre;
 
 const ORACLE_CONTRACT = 'xSolvBTCOracle';
-const X_SOL_BTC_PRICE_FEED = "0xbB93d99aE4A71F01DeadA197917a20Bb1E7D8E8d";
+const X_SOL_BTC_PRICE_FEED = "";
 
 async function main() {
   if (!ORACLE_CONTRACT.length) {
