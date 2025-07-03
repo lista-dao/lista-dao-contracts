@@ -37,7 +37,6 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
     /// @dev The address of the revenue pool.
     address public revenuePool;
 
-    uint256 constant public MAX_SLIPPAGE = 10000;
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
     bytes32 public constant BOT = keccak256("BOT"); // bot role
 
