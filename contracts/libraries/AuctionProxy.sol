@@ -102,13 +102,13 @@ library AuctionProxy {
 
     if (address(helioProvider) != address(0)) {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
-      helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+      helioProvider.liquidation(urn, receiverAddress, gemBal, false); // Burn router ceToken and mint abnbc to receiver
 
       if (leftover != 0) {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, urn, leftover, true); // Router burns them and gives abnbc remaining
       }
     } else {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(receiverAddress, gemBal);
