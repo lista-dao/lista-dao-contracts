@@ -1,61 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.10;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import { IDao } from "../interfaces/IDao.sol";
-import { IResilientOracle } from "../../oracle/interfaces/IResilientOracle.sol";
-import { ICertToken } from "../interfaces/ICertToken.sol";
-import { ILpToken } from "../interfaces/ILpToken.sol";
-
-import { IStakingHub } from "../../pcsLp/interfaces/IStakingHub.sol";
 import { IV2Wrapper } from "../../pcsLp/interfaces/IV2Wrapper.sol";
 import { IStableSwap, IStableSwapPoolInfo } from "../../pcsLp/interfaces/IStableSwap.sol";
 
-import { ERC20LpRewardDistributor } from "../../pcsLp/ERC20LpRewardDistributor.sol";
+import "./PancakeERC20LpProvider.sol";
 
-contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract PancakeSSLpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
   using SafeERC20 for IERC20;
-
-  /// @dev ceToken; internal ERC20 token representing the collateral
-  address public ceToken;
-
-  /// @dev clisToken; Non-transferable receipt
-  ILpToken public lpToken;
-
-  /// @dev address of Interaction contract
-  IDao public dao;
 
   address public stableSwapPool;
 
   address public stableSwapPoolInfo;
 
-  /// @dev scale factor for token to lpToken conversion
-  uint256 public discount;
-
-  IResilientOracle public constant resilientOracle = IResilientOracle(0xf3afD82A4071f272F403dC176916141f44E6c750);
-
-  bytes32 public constant MANAGER = keccak256("MANAGER");
-  bytes32 public constant BOT = keccak256("BOT");
-
-  uint256 private constant ONE = 1e18;
-
-  event Deposit(address indexed account, uint256 v2LpAmount);
-  event Withdrawal(address indexed account, address indexed recipient, uint256 v2LpAmount);
-  event Liquidation(
-    address indexed lpToken,
-    address indexed recipient,
-    uint256 lpAmount,
-    uint256 amount0,
-    uint256 amount1
-  );
-  event DiscountChanged(uint256 newDiscount);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -113,61 +72,6 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     emit DiscountChanged(_discount);
   }
 
-  function provide(uint256 _amount) external whenNotPaused nonReentrant returns (uint256) {
-    require(_amount > 0, "zero deposit amount");
-
-    // 1. transfer LP and do farming
-    _deposit(_amount);
-
-    // 2. mint ceToken and join CDP
-    ICertToken(ceToken).mint(address(this), _amount);
-    dao.deposit(msg.sender, ceToken, _amount);
-
-    // 3. mint Non-transferable receipt to caller
-    lpToken.mint(msg.sender, _amount);
-
-    emit Deposit(msg.sender, _amount);
-    return _amount;
-  }
-
-  /**
-   * @param _recipient address to receive Pancake V2 LP Token
-   * @param _amount amount of V2 LP Token to withdraw
-   */
-  function release(address _recipient, uint256 _amount) external whenNotPaused nonReentrant returns (uint256) {
-    require(_recipient != address(0), "Invalid recipient address");
-    require(_amount > 0, "Zero withdraw amount");
-
-    // 1. unstake LP from farming
-    _withdraw(_amount);
-
-    // 2. exit CDP and burn ceToken & clisToken
-    dao.withdraw(msg.sender, ceToken, _amount);
-    ICertToken(ceToken).burn(address(this), _amount);
-    lpToken.burn(msg.sender, _amount);
-
-    // 3. transfer Pancake LP Token to caller
-    IERC20(pancakeLpToken).safeTransfer(_recipient, _amount);
-    emit Withdrawal(msg.sender, _recipient, _amount);
-    return _amount;
-  }
-
-  /**
-   * @dev Start auction. Burn clisToken and unstake LP from farming.
-   * @param _account collateral token holder
-   * @param _lpAmount lpToken amount to burn
-   */
-  function daoBurn(address _account, uint256 _lpAmount) external nonReentrant whenNotPaused {
-    require(msg.sender == address(dao), "Only Interaction can call this function");
-    require(_account != address(0));
-    require(_lpAmount > 0, "Zero lp amount");
-
-    // 1. unstake LP from farming
-    _withdraw(_lpAmount);
-
-    lpToken.burn(_account, _lpAmount);
-  }
-
   /**
    * @dev Buy from auction. Transfer bidded collateral to recipient in the form of token0 and token1.
    * @param _recipient recipient address
@@ -178,7 +82,7 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     address _recipient,
     uint256 _lpAmount,
     bytes calldata _data
-  ) external nonReentrant whenNotPaused {
+  ) external override nonReentrant whenNotPaused {
     require(msg.sender == address(dao), "Only Interaction can call this function");
     require(_recipient != address(0));
     require(_data.length == 64, "Invalid data length");
@@ -210,7 +114,7 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
   }
 
   /// @dev returns the V2 LP token price for using in spotter
-  function peek() external view returns (bytes32, bool) {
+  function peek() external view override returns (bytes32, bool) {
     uint256 realPrice = getLpPrice();
     uint256 price = (realPrice * discount) / ONE;
 
@@ -218,7 +122,7 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
   }
 
   /// @dev returns the Pancake LP ERC20 token price in 8 decimal format
-  function getLpPrice() public view returns (uint256) {
+  function getLpPrice() public view override returns (uint256) {
     require(pancakeLpToken != address(0), "Pancake LP token not set");
 
     uint256[2] memory coinsAmount = IStableSwapPoolInfo(stableSwapPoolInfo).calc_coins_amount(stableSwapPool, 1 ether);
@@ -235,7 +139,7 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
    * @dev Get amount of coins for given LP token amount.
    * @param _lpAmount amount of LP token
    */
-  function getCoinsAmount(uint256 _lpAmount) public view returns (uint256 _amount0, uint256 _amount1) {
+  function getCoinsAmount(uint256 _lpAmount) public view override returns (uint256 _amount0, uint256 _amount1) {
     uint256[2] memory coinsAmount = IStableSwapPoolInfo(stableSwapPoolInfo).calc_coins_amount(
       stableSwapPool,
       _lpAmount
@@ -249,15 +153,6 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
   }
 
   /// ------------------ priviliged functions ------------------
-
-  function setDiscount(uint256 _discount) external onlyRole(MANAGER) {
-    require(_discount > 0 && _discount <= ONE, "Discount must be between 0 and 1e18");
-    require(discount != _discount, "New discount must be different from the current one");
-
-    discount = _discount;
-
-    emit DiscountChanged(_discount);
-  }
 
   function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
