@@ -172,14 +172,25 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
    * @dev Buy from auction. Transfer bidded collateral to recipient in the form of token0 and token1.
    * @param _recipient recipient address
    * @param _lpAmount lp amount to liquidate
+   * @param _data packed minAmount0 and minAmount1 for removeLiquidity
    */
-  function liquidation(address _recipient, uint256 _lpAmount) external nonReentrant whenNotPaused {
+  function liquidation(
+    address _recipient,
+    uint256 _lpAmount,
+    bytes calldata _data
+  ) external nonReentrant whenNotPaused {
     require(msg.sender == address(dao), "Only Interaction can call this function");
     require(_recipient != address(0));
+    require(_data.length == 64, "Invalid data length");
 
     // remove liquidity from PancakeSwap
-    uint256 minAmount0 = 0; // TODO: add parameter for min amount? // check
-    uint256 minAmount1 = 0; // TODO: add parameter for min amount?
+    uint256 minAmount0 = abi.decode(_data[:32], (uint256));
+    uint256 minAmount1 = abi.decode(_data[32:], (uint256));
+
+    // check slippage
+    (uint256 _amount0, uint256 _amount1) = getCoinsAmount(_lpAmount);
+    require(_amount0 >= minAmount0, "Slippage too high for token0");
+    require(_amount1 >= minAmount1, "Slippage too high for token1");
 
     address token0 = coins(0);
     address token1 = coins(1);
@@ -188,9 +199,10 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     uint256 balance1Before = IERC20(token1).balanceOf(address(this));
     IStableSwap(stableSwapPool).remove_liquidity(_lpAmount, [minAmount0, minAmount1]);
 
-    uint256 _amount0 = IERC20(token0).balanceOf(address(this)) - balance0Before;
-    uint256 _amount1 = IERC20(token1).balanceOf(address(this)) - balance1Before;
+    _amount0 = IERC20(token0).balanceOf(address(this)) - balance0Before;
+    _amount1 = IERC20(token1).balanceOf(address(this)) - balance1Before;
 
+    // transfer tokens to recipient
     if (_amount0 > 0) IERC20(token0).safeTransfer(_recipient, _amount0);
     if (_amount1 > 0) IERC20(token1).safeTransfer(_recipient, _amount1);
 
@@ -217,6 +229,19 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     uint256 price1 = resilientOracle.peek(coins(1));
 
     return (_token0Amount * price0 + _token1Amount * price1) / 1 ether;
+  }
+
+  /**
+   * @dev Get amount of coins for given LP token amount.
+   * @param _lpAmount amount of LP token
+   */
+  function getCoinsAmount(uint256 _lpAmount) public view returns (uint256 _amount0, uint256 _amount1) {
+    uint256[2] memory coinsAmount = IStableSwapPoolInfo(stableSwapPoolInfo).calc_coins_amount(
+      stableSwapPool,
+      _lpAmount
+    );
+    _amount0 = coinsAmount[0];
+    _amount1 = coinsAmount[1];
   }
 
   function coins(uint256 index) public view returns (address) {
