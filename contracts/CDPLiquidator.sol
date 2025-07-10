@@ -34,14 +34,11 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
     mapping(address => bool) public tokenWhitelist;
     /// @dev Whitelist for pairs.
     mapping(address => bool) public pairWhitelist;
-    /// @dev The address of the revenue pool.
-    address public revenuePool;
 
     bytes32 public constant MANAGER = keccak256("MANAGER"); // manager role
     bytes32 public constant BOT = keccak256("BOT"); // bot role
 
 
-    event RevenuePoolChanged(address indexed newAddress);
     event TokenWhitelistChanged(address indexed token, bool added);
     event PairWhitelistChanged(address pair, bool added);
     event SellToken(address pair, address tokenIn, uint256 amountIn, uint256 amountOutMin);
@@ -243,16 +240,6 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         IERC20(lisUSD).safeApprove(address(interaction), type(uint256).max);
         interaction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this));
         IERC20(lisUSD).safeApprove(address(interaction), 0);
-    }
-
-
-    /// @dev changes the revenue pool address.
-    function changeRevenuePool(address _revenuePool) external onlyRole(MANAGER) {
-        require(_revenuePool != address(0), "Invalid zero address");
-        require(_revenuePool != revenuePool, "Already set");
-
-        revenuePool = _revenuePool;
-        emit RevenuePoolChanged(_revenuePool);
     }
 
     function _authorizeUpgrade(address newImplementations) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
