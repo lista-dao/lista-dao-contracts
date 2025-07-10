@@ -167,23 +167,38 @@ contract PancakeV2LpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
    * @dev Buy from auction. Transfer bidded collateral to recipient in the form of token0 and token1.
    * @param _recipient recipient address
    * @param _lpAmount lp amount to liquidate
+   * @param _data packed minAmount0 and minAmount1 for removeLiquidity
    */
-  function liquidation(address _recipient, uint256 _lpAmount) external nonReentrant whenNotPaused {
+  function liquidation(
+    address _recipient,
+    uint256 _lpAmount,
+    bytes calldata _data
+  ) external nonReentrant whenNotPaused {
     require(msg.sender == address(dao), "Only Interaction can call this function");
     require(_recipient != address(0));
+    require(_data.length == 64, "Invalid data length");
+
+    uint256 minAmount0 = abi.decode(_data[:32], (uint256));
+    uint256 minAmount1 = abi.decode(_data[32:], (uint256));
+
+    // check slippage
+    (uint256 amount0, uint256 amount1) = getCoinsAmount(_lpAmount);
+    require(amount0 >= minAmount0, "Slippage too high for token0");
+    require(amount1 >= minAmount1, "Slippage too high for token1");
 
     // remove liquidity
     address token0 = IPancakePair(pancakeLpToken).token0();
     address token1 = IPancakePair(pancakeLpToken).token1();
 
     IERC20(pancakeLpToken).safeIncreaseAllowance(pancakeRouter, _lpAmount);
+
     // remove liquidity from PancakeSwap
     (uint256 _amount0, uint256 _amount1) = IPancakeRouter01(pancakeRouter).removeLiquidity(
       token0,
       token1,
       _lpAmount,
-      0, // TODO: add parameter for min amount?
-      0, // TODO: add parameter for min amount?
+      minAmount0,
+      minAmount1,
       address(this),
       block.timestamp
     );
@@ -215,6 +230,18 @@ contract PancakeV2LpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     uint256 price1 = resilientOracle.peek(pair.token1());
 
     return (reserve0 * price0 + reserve1 * price1) / pair.totalSupply();
+  }
+
+  /// @dev returns the amount of token0 and token1 for given lpAmount
+  function getCoinsAmount(uint256 _lpAmount) public view returns (uint256 amount0, uint256 amount1) {
+    IPancakePair pair = IPancakePair(pancakeLpToken);
+    require(pair.totalSupply() > 0, "Total supply is zero");
+
+    (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+    uint256 totalSupply = pair.totalSupply();
+
+    amount0 = (_lpAmount * reserve0) / totalSupply;
+    amount1 = (_lpAmount * reserve1) / totalSupply;
   }
 
   /// ------------------ priviliged functions ------------------
