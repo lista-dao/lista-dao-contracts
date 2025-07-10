@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../hMath.sol";
 import "../oracle/libraries/FullMath.sol";
 import "../interfaces/VatLike.sol";
@@ -18,16 +17,15 @@ import "../interfaces/IBorrowLisUSDListaDistributor.sol";
 import "../interfaces/IDynamicDutyCalculator.sol";
 import "../ceros/interfaces/IDao.sol";
 
-import "./libraries/AuctionProxy.sol";
 import "./interfaces/IAuctionProxy.sol";
 import "./ceros/interfaces/IHelioProvider.sol";
-
+import "./libraries/AuctionProxy.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;
 uint256 constant YEAR = 31556952; //seconds in year (365.2425 * 24 * 3600)
 
-contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
+contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     mapping(address => uint) public wards;
     function rely(address usr) external auth {wards[usr] = 1;}
@@ -45,11 +43,10 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
     address public dog;
     IRewards public helioRewards; // Deprecated
 
-    mapping(address => uint256) public deposits;
+    mapping(address => uint256) public depositsDeprecated;
     mapping(address => CollateralType) public collaterals;
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(address => address) public helioProviders; // e.g. Auction purchase from ceabnbc to abnbc
 
@@ -64,6 +61,9 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
     mapping(address => uint) public auctionWhitelist;
 
     IBorrowLisUSDListaDistributor public borrowLisUSDListaDistributor;
+
+    // added on 241028
+    mapping(address => bool) public providerCompatibilityMode;
 
     function enableWhitelist() external auth {whitelistMode = 1;}
     function disableWhitelist() external auth {whitelistMode = 0;}
@@ -98,8 +98,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
             tokensBlacklist[tokens[i]] = 0;
     }
     function setListaDistributor(address distributor) external auth {
-        require(distributor != address(0), "Interaction/lista-distributor-zero-address");
-        require(address(borrowLisUSDListaDistributor) != distributor, "Interaction/same-distributor-address");
+        require(distributor != address(0) && address(borrowLisUSDListaDistributor) != distributor, "invalid addr");
         borrowLisUSDListaDistributor = IBorrowLisUSDListaDistributor(distributor);
     }
     modifier whitelisted(address participant) {
@@ -132,8 +131,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         address hay_,
         address hayJoin_,
         address jug_,
-        address dog_,
-        address rewards_
+        address dog_
     ) public initializer {
         __Ownable_init();
 
@@ -145,30 +143,10 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         hayJoin = HayJoinLike(hayJoin_);
         jug = JugLike(jug_);
         dog = dog_;
-        helioRewards = IRewards(rewards_);
 
         vat.hope(hayJoin_);
 
         hay.safeApprove(hayJoin_, type(uint256).max);
-    }
-
-    function setCores(address vat_, address spot_, address hayJoin_,
-        address jug_) public auth {
-        // Reset previous approval
-        hay.safeApprove(address(hayJoin), 0);
-
-        vat = VatLike(vat_);
-        spotter = SpotLike(spot_);
-        hayJoin = HayJoinLike(hayJoin_);
-        jug = JugLike(jug_);
-
-        vat.hope(hayJoin_);
-
-        hay.safeApprove(hayJoin_, type(uint256).max);
-    }
-
-    function setHayApprove() public auth {
-        hay.safeApprove(address(hayJoin), type(uint256).max);
     }
 
     function setCollateralType(
@@ -199,8 +177,11 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         jug.file(collateralType.ilk, "duty", duty);
     }
 
-    function setHelioProvider(address token, address helioProvider) external auth {
-        helioProviders[token] = helioProvider;
+    function setHelioProvider(address token, address helioProvider, bool compatibilityMode) external auth {
+        if (helioProviders[token] != helioProvider) {
+            helioProviders[token] = helioProvider;
+        }
+        providerCompatibilityMode[token] = compatibilityMode;
     }
 
     function removeCollateralType(address token) external auth {
@@ -210,17 +191,6 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.deny(gemJoin);
         IERC20Upgradeable(token).safeApprove(gemJoin, 0);
         emit CollateralDisabled(token, collaterals[token].ilk);
-    }
-
-    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
-        bytes memory tempEmptyStringTest = bytes(source);
-        if (tempEmptyStringTest.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(source, 32))
-        }
     }
 
     function deposit(
@@ -233,7 +203,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
 
         if (helioProviders[token] != address(0)) {
             require(
-                msg.sender == helioProviders[token],
+                msg.sender == helioProviders[token] || providerCompatibilityMode[token],
                 "Interaction/only helio provider can deposit for this token"
             );
         }
@@ -248,7 +218,8 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.behalf(participant, address(this));
         vat.frob(collateralType.ilk, participant, participant, participant, int256(dink), 0);
 
-        deposits[token] += dink;
+        (uint256 ink,) = vat.urns(collateralType.ilk, participant);
+        takeSnapshot(token, participant, ink, 0, true, false);
 
         emit Deposit(participant, token, dink, locked(token, participant));
         return dink;
@@ -276,7 +247,7 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         (uint256 ink, uint256 art) = vat.urns(collateralType.ilk, msg.sender);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, art);
 
-        takeSnapshot(token, msg.sender, art);
+        takeSnapshot(token, msg.sender, 0, FullMath.mulDiv(art, rate, RAY), false, true);
 
         emit Borrow(msg.sender, token, ink, hayAmount, liqPrice);
         return uint256(dart);
@@ -285,13 +256,28 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
     // Burn user's HAY.
     // N.B. User collateral stays the same.
     function payback(address token, uint256 hayAmount) external nonReentrant returns (int256) {
+        return _payback(token, hayAmount, msg.sender);
+    }
+
+    /**
+     * Burn caller's HAY and payback the debt of the borrower.
+     *
+     * @param token Collateral token address
+     * @param hayAmount Amount of HAY to payback
+     * @param borrower Borrower address
+     */
+    function paybackFor(address token, uint256 hayAmount, address borrower) external nonReentrant returns (int256) {
+        return _payback(token, hayAmount, borrower);
+    }
+
+    function _payback(address token, uint256 hayAmount, address borrower) internal returns (int256) {
         CollateralType memory collateralType = collaterals[token];
         // _checkIsLive(collateralType.live); Checking in the `drip` function
 
         drip(token);
         poke(token);
         (,uint256 rate,,,) = vat.ilks(collateralType.ilk);
-        (,uint256 art) = vat.urns(collateralType.ilk, msg.sender);
+        (,uint256 art) = vat.urns(collateralType.ilk, borrower);
 
         int256 dart;
         uint256 realAmount = hayAmount;
@@ -306,18 +292,18 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         }
 
         IERC20Upgradeable(hay).safeTransferFrom(msg.sender, address(this), realAmount);
-        hayJoin.join(msg.sender, realAmount);
+        hayJoin.join(borrower, realAmount);
 
         require(dart >= 0, "Interaction/too-much-requested");
 
-        vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, - dart);
+        vat.frob(collateralType.ilk, borrower, borrower, borrower, 0, - dart);
 
-        (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, msg.sender);
+        (uint256 ink, uint256 userDebt) = vat.urns(collateralType.ilk, borrower);
         uint256 liqPrice = liquidationPriceForDebt(collateralType.ilk, ink, userDebt);
 
-        takeSnapshot(token, msg.sender, userDebt);
+        takeSnapshot(token, borrower, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
 
-        emit Payback(msg.sender, token, realAmount, userDebt, liqPrice);
+        emit Payback(borrower, token, realAmount, userDebt, liqPrice);
         return dart;
     }
 
@@ -325,12 +311,21 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
      * @dev take snapshot of user's debt
      * @param token collateral token address
      * @param user user address
+     * @param ink user's deposit
+     * @param art user's debit
+     * @param inkUpdated should updated
+     * @param artUpdated should updated
      */
-    function takeSnapshot(address token, address user, uint256 amount) private {
+    function takeSnapshot(
+        address token, address user,
+        uint256 ink, uint256 art,
+        bool inkUpdated, bool artUpdated
+    ) private {
         // ensure the distributor address is set
-        if (address(borrowLisUSDListaDistributor) != address(0)) {
-            borrowLisUSDListaDistributor.takeSnapshot(token, user, amount);
-        }
+        // to switch from original function takeSnapshot(address,address,uint256)
+        // call setListaDistributor with router address first before upgrade this contract
+        // the router contract is compatible with `takeSnapshot(address,address,uint256)`
+        borrowLisUSDListaDistributor.takeSnapshot(token, user, ink, art, inkUpdated, artUpdated);
     }
 
     /**
@@ -342,10 +337,18 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
      */
     function syncSnapshot(address token, address user) external {
         // check user debt is 0?
-        (, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
+        (uint256 ink, uint256 userDebt) = vat.urns(collaterals[token].ilk, user);
         // sync user debt only if it is greater than 0
         if (userDebt > 0) {
-            takeSnapshot(token, user, userDebt);
+            CollateralType memory collateralType = collaterals[token];
+            _checkIsLive(collateralType.live);
+            (, uint256 rate,,,) = vat.ilks(collateralType.ilk);
+
+            takeSnapshot(token, user, 0, FullMath.mulDiv(userDebt, rate, RAY), false, true);
+        }
+
+        if (ink > 0) {
+            takeSnapshot(token, user, ink, 0, true, false);
         }
     }
 
@@ -361,10 +364,17 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         drip(token);
         poke(token);
         if (helioProviders[token] != address(0)) {
-            require(
-                msg.sender == helioProviders[token],
-                "Interaction/Only helio provider can call this function for this token"
-            );
+            if (providerCompatibilityMode[token]) {
+                require(
+                    msg.sender == participant || msg.sender == helioProviders[token],
+                    "Interaction/Caller must be participant/provider"
+                );
+            } else {
+                require(
+                    msg.sender == helioProviders[token],
+                    "Interaction/Only helio provider can call this function for this token"
+                );
+            }
         } else {
             require(
                 msg.sender == participant,
@@ -382,7 +392,9 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
         collateralType.gem.exit(msg.sender, dink);
-        deposits[token] -= dink;
+
+        (uint256 ink,) = vat.urns(collateralType.ilk, participant);
+        takeSnapshot(token, participant, ink, 0, true, false);
 
         emit Withdraw(participant, dink);
         return dink;
@@ -443,9 +455,19 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         return 10 ** 45 / mat;
     }
 
-    // Total ceABNBc deposited nominated in $
+    function _deposits(address token) private view returns (uint256) {
+        CollateralType memory collateralType = collaterals[token];
+        return IERC20Upgradeable(token).balanceOf(address(collateralType.gem));
+    }
+
+    // Return the collateral amount (WAD)
+    function deposits(address token) external view returns (uint256) {
+        return _deposits(token);
+    }
+
+    // TVL deposited nominated in $
     function depositTVL(address token) external view returns (uint256) {
-        return deposits[token] * collateralPrice(token) / WAD;
+        return _deposits(token) * collateralPrice(token) / WAD;
     }
 
     // Total HAY borrowed by all users
@@ -576,8 +598,8 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
             provider,
             collateral
         );
-        // after auction started, user's debt of the token becomes 0
-        takeSnapshot(token, user, 0);
+        // after auction started, user's collateral/debt of the token becomes 0
+        takeSnapshot(token, user, 0, 0, true, true);
 
         emit AuctionStarted(token, user, ink, collateralPrice(token));
         return auctionAmount;
@@ -613,10 +635,6 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         return ClipperLike(collaterals[token].clip).getStatus(auctionId);
     }
 
-    function upchostClipper(address token) external {
-        ClipperLike(collaterals[token].clip).upchost();
-    }
-
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales) {
         return AuctionProxy.getAllActiveAuctionsForClip(ClipperLike(collaterals[token].clip));
     }
@@ -625,18 +643,14 @@ contract InteractionV3 is OwnableUpgradeable, IDao, IAuctionProxy {
         AuctionProxy.resetAuction(auctionId, keeper, hay, hayJoin, vat, collaterals[token]);
     }
 
-    function totalPegLiquidity() external view returns (uint256) {
-        return IERC20Upgradeable(hay).totalSupply();
-    }
-
     function _checkIsLive(uint256 live) internal pure {
-        require(live != 0, "Interaction/inactive collateral");
+        require(live != 0, "inactive collateral");
     }
 
     function setDutyCalculator(address _dutyCalculator) external auth {
-        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "Interaction/invalid-dutyCalculator-address");
+        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "invalid-address");
         dutyCalculator = IDynamicDutyCalculator(_dutyCalculator);
-        require(dutyCalculator.interaction() == address(this), "Interaction/invalid-dutyCalculator-interaction");
+        require(dutyCalculator.interaction() == address(this), "invalid-dutyCalculator-var");
     }
 
     /**

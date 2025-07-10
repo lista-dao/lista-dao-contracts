@@ -7,9 +7,9 @@ import "forge-std/console.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../../contracts/amo/DynamicDutyCalculator.sol";
-import "../../contracts/Interaction.sol";
 import "../../contracts/LisUSD.sol";
 import "../../contracts/oracle/ResilientOracle.sol";
+import "../../contracts/old/InteractionV4.sol";
 
 contract DynamicDutyCalculatorTest is Test {
     DynamicDutyCalculator dynamicDutyCalculator;
