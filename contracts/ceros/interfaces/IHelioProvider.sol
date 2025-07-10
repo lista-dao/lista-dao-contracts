@@ -60,7 +60,7 @@ interface IHelioProvider {
      * DAO FUNCTIONALITY
      */
 
-    function liquidation(address recipient, uint256 amount) external;
+    function liquidation(address recipient, uint256 collateralAmount, bytes32 minAmounts) external;
 
     function daoBurn(address account, uint256 value) external;
 

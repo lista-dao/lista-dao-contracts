@@ -178,15 +178,15 @@ contract PancakeSSLpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
     require(_recipient != address(0));
 
     // remove liquidity from PancakeSwap
-    uint256 minLisUSDAmount = 0; // TODO: add parameter for min amount; same for v3 nft
-    uint256 minUSDTAmount = 0; // TODO: add parameter for min amount; same for v3 nft
+    uint256 minAmount0 = 0; // TODO: add parameter for min amount? // check
+    uint256 minAmount1 = 0; // TODO: add parameter for min amount?
 
     address token0 = coins(0);
     address token1 = coins(1);
 
     uint256 balance0Before = IERC20(token0).balanceOf(address(this));
     uint256 balance1Before = IERC20(token1).balanceOf(address(this));
-    IStableSwap(stableSwapPool).remove_liquidity(_lpAmount, [minLisUSDAmount, minUSDTAmount]);
+    IStableSwap(stableSwapPool).remove_liquidity(_lpAmount, [minAmount0, minAmount1]);
 
     uint256 _amount0 = IERC20(token0).balanceOf(address(this)) - balance0Before;
     uint256 _amount1 = IERC20(token1).balanceOf(address(this)) - balance1Before;

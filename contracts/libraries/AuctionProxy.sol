@@ -11,9 +11,9 @@ import "../interfaces/VatLike.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
 import "../oracle/libraries/FullMath.sol";
 
-import { CollateralType } from  "../ceros/interfaces/IDao.sol";
+import { CollateralType } from "../ceros/interfaces/IDao.sol";
 
-uint256 constant RAY = 10**27;
+uint256 constant RAY = 10 ** 27;
 
 library AuctionProxy {
   using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -56,7 +56,6 @@ library AuctionProxy {
     uint256 hayBal = hay.balanceOf(address(this));
     _clip.redo(auctionId, address(this));
 
-
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
     hay.safeTransfer(keeper, hayBal);
@@ -73,6 +72,35 @@ library AuctionProxy {
     VatLike vat,
     IHelioProvider helioProvider,
     CollateralType calldata collateral
+  ) public returns (uint256 leftover) {
+    return
+      buyFromAuctionV2(
+        auctionId,
+        collateralAmount,
+        maxPrice,
+        receiverAddress,
+        hay,
+        hayJoin,
+        vat,
+        helioProvider,
+        collateral,
+        bytes32(0) // do not pass minAmounts for non-lp collaterals
+      );
+  }
+
+  // Returns lefover from auction
+  function buyFromAuctionV2(
+    // reuse code
+    uint256 auctionId,
+    uint256 collateralAmount,
+    uint256 maxPrice,
+    address receiverAddress,
+    IERC20Upgradeable hay,
+    HayJoinLike hayJoin,
+    VatLike vat,
+    IHelioProvider helioProvider,
+    CollateralType calldata collateral,
+    bytes32 minAmounts
   ) public returns (uint256 leftover) {
     // Balances before
     uint256 hayBal = hay.balanceOf(address(this));
@@ -102,24 +130,20 @@ library AuctionProxy {
 
     if (address(helioProvider) != address(0)) {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
-      helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+      helioProvider.liquidation(receiverAddress, gemBal, minAmounts); // Burn router ceToken and mint abnbc to receiver
 
       if (leftover != 0) {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, leftover, minAmounts); // Router burns them and gives abnbc remaining
       }
     } else {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(receiverAddress, gemBal);
     }
   }
 
-  function getAllActiveAuctionsForClip(ClipperLike clip)
-    external
-    view
-    returns (Sale[] memory sales)
-  {
+  function getAllActiveAuctionsForClip(ClipperLike clip) external view returns (Sale[] memory sales) {
     uint256[] memory auctionIds = clip.list();
     uint256 auctionsCount = auctionIds.length;
     sales = new Sale[](auctionsCount);

@@ -631,6 +631,34 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         emit Liquidation(urn, token, collateralAmount, leftover);
     }
 
+    function buyFromAuctionV2(
+        address token,
+        uint256 auctionId,
+        uint256 collateralAmount,
+        uint256 maxPrice,
+        address receiverAddress,
+        bytes32 minAmounts
+    ) external auctionWhitelisted {
+        CollateralType memory collateral = collaterals[token];
+        IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
+        uint256 leftover = AuctionProxy.buyFromAuctionV2(
+            auctionId,
+            collateralAmount,
+            maxPrice,
+            receiverAddress,
+            hay,
+            hayJoin,
+            vat,
+            helioProvider,
+            collateral,
+            minAmounts
+        );
+
+        address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
+
+        emit Liquidation(urn, token, collateralAmount, leftover);
+    }
+
     function getAuctionStatus(address token, uint256 auctionId) external view returns(bool, uint256, uint256, uint256) {
         return ClipperLike(collaterals[token].clip).getStatus(auctionId);
     }
