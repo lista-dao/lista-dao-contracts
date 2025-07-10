@@ -610,48 +610,27 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         uint256 auctionId,
         uint256 collateralAmount,
         uint256 maxPrice,
-        address receiverAddress
-    ) external auctionWhitelisted {
-        CollateralType memory collateral = collaterals[token];
-        IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
-        uint256 leftover = AuctionProxy.buyFromAuction(
-            auctionId,
-            collateralAmount,
-            maxPrice,
-            receiverAddress,
-            hay,
-            hayJoin,
-            vat,
-            helioProvider,
-            collateral
-        );
-
-        address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
-
-        emit Liquidation(urn, token, collateralAmount, leftover);
-    }
-
-    function buyFromAuctionV2(
-        address token,
-        uint256 auctionId,
-        uint256 collateralAmount,
-        uint256 maxPrice,
         address receiverAddress,
-        bytes32 minAmounts
+        bytes calldata data // format V2: amount0, amount1 ; V3: amount0, amount1, tokenId
     ) external auctionWhitelisted {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
-        uint256 leftover = AuctionProxy.buyFromAuctionV2(
-            auctionId,
-            collateralAmount,
-            maxPrice,
-            receiverAddress,
+
+        AuctionProxy.AuctionParam memory auctionParam = AuctionProxy.AuctionParam({
+            auctionId: auctionId,
+            collateralAmount: collateralAmount,
+            maxPrice: maxPrice,
+            receiverAddress: receiverAddress
+        });
+
+        uint256 leftover = AuctionProxy.buyFromAuction(
+            auctionParam,
             hay,
             hayJoin,
             vat,
             helioProvider,
             collateral,
-            minAmounts
+            data // format V2: amount0, amount1 ; V3: amount0, amount1, tokenId
         );
 
         address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
