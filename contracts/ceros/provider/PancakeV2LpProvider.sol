@@ -182,8 +182,8 @@ contract PancakeV2LpProvider is ERC20LpRewardDistributor, ReentrancyGuardUpgrade
       token0,
       token1,
       _lpAmount,
-      0, // TODO: add parameter for min amount; same for v3 nft
-      0, // TODO: add parameter for min amount; same for v3 nft
+      0, // TODO: add parameter for min amount?
+      0, // TODO: add parameter for min amount?
       address(this),
       block.timestamp
     );

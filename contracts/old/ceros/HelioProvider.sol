@@ -148,7 +148,7 @@ ReentrancyGuardUpgradeable
     /**
      * DAO FUNCTIONALITY
      */
-    function liquidation(address recipient, uint256 amount)
+    function liquidation(address recipient, uint256 amount, bytes32 minAmounts)
     external
     override
     onlyProxy
