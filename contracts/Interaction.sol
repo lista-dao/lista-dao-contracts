@@ -674,24 +674,4 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function _checkIsLive(uint256 live) internal pure {
         require(live != 0, "inactive collateral");
     }
-
-    function setDutyCalculator(address _dutyCalculator) external auth {
-        require(_dutyCalculator != address(0) && _dutyCalculator != address(dutyCalculator), "invalid-address");
-        dutyCalculator = IDynamicDutyCalculator(_dutyCalculator);
-        require(dutyCalculator.interaction() == address(this), "invalid-dutyCalculator-var");
-    }
-
-    /**
-     * @dev Returns the next duty for the given collateral. This function is used by the frontend to display the next duty.
-     *      Can be accessed as a view from within the UX since no state changes and no events emitted.
-     * @param _collateral The address of the collateral
-     * @return duty The next duty
-     */
-    function getNextDuty(address _collateral) external returns (uint256 duty) {
-        CollateralType memory collateral = collaterals[_collateral];
-
-        (uint256 currentDuty,) = jug.ilks(collateral.ilk);
-
-        duty = dutyCalculator.calculateDuty(_collateral, currentDuty, false);
-    }
 }
