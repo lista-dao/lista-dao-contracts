@@ -9,12 +9,14 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "../../interfaces/IPancakeSwapStakingHub.sol";
-import "../../interfaces/IPancakeSwapLpProvider.sol";
+import "../../interfaces/IPancakeSwapV3LpStakingHub.sol";
+import "../../interfaces/IPancakeSwapV3LpProvider.sol";
+import "../../interfaces/IPancakeSwapV3LpStakingVault.sol";
 
 import "../../../oracle/libraries/FullMath.sol";
 
-contract PancakeSwapLpStakingVault is
+contract PancakeSwapV3LpStakingVault is
+IPancakeSwapV3LpStakingVault,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable,
 AccessControlEnumerableUpgradeable,
@@ -29,7 +31,7 @@ UUPSUpgradeable
   // fee rate denominator
   uint256 public constant DENOMINATOR = 10000;
   // PancakeSwap Staking Hub address
-  address public immutable pancakeSwapStakingHub;
+  address public immutable stakingHub;
   // CAKE token address
   address public immutable rewardToken;
   // lp Proxy address
@@ -52,19 +54,19 @@ UUPSUpgradeable
       require(lpProviders[msg.sender], "PancakeSwapV3LpStakingVault: caller-is-not-lp-provider");
       _;
   }
-  
+
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor(
-    address _pancakeSwapStakingHub,
+    address _stakingHub,
     address _rewardToken
   ) {
     require(
-      _pancakeSwapStakingHub != address(0) &&
+      _stakingHub != address(0) &&
       _rewardToken != address(0),
       "PancakeSwapV3LpStakingVault: zero-address-provided"
     );
 
-    pancakeSwapStakingHub = _pancakeSwapStakingHub;
+    stakingHub = _stakingHub;
     rewardToken = _rewardToken;
 
     _disableInitializers();
@@ -85,7 +87,7 @@ UUPSUpgradeable
     require(
       _admin != address(0) &&
       _manager != address(0) &&
-      _pauser != address(0) ,
+      _pauser != address(0) &&
       _lpProxy != address(0),
       "PancakeSwapV3LpStakingVault: zero-address-provided"
     );
@@ -108,12 +110,13 @@ UUPSUpgradeable
   /**
     * @dev fee cut before give user
     * @param amount amount of rewards
+    * @return amount after fee cut
     */
-  function feeCut(uint256 amount) external onlyLpProvider whenNotPaused nonReentrant returns (uint256) {
+  function feeCut(uint256 amount) override external onlyLpProvider whenNotPaused nonReentrant returns (uint256) {
     require(amount > 0, "PancakeSwapLpStakingVault: zero-amount-provided");
     IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
     // cut fee
-    uint256 feeRate = lpProviders[msg.sender];
+    uint256 feeRate = feeRates[msg.sender];
     if (feeRate > 0) {
       uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
       availableFees += fee;
@@ -145,14 +148,14 @@ UUPSUpgradeable
   /**
     * @dev claim rewards from PancakeSwap Staking Hub and send to account
     * @param account user address
-    * @param provider PancakeSwapLpProvider address
+    * @param providers PancakeSwapLpProvider addresses
     */
   function _batchClaimRewards(address account, address[] memory providers) private {
     uint256 total;
     for (uint16 i = 0; i < providers.length; ++i) {
-      uint256 amount = IPancakeSwapLpProvider(providers[i]).vaultClaimStakingReward(account);
+      uint256 amount = IPancakeSwapV3LpProvider(providers[i]).vaultClaimStakingReward(account);
       // cut fee
-      uint256 feeRate = lpProviders[providers[i]];
+      uint256 feeRate = feeRates[providers[i]];
       if (feeRate > 0) {
           uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
           availableFees += fee;
@@ -204,7 +207,7 @@ UUPSUpgradeable
     require(feeRate != oldFeeRate && feeRate <= DENOMINATOR, "PancakeSwapLpStakingVault: invalid-fee-rate");
     lpProviders[provider] = true;
     feeRates[provider] = feeRate;
-    emit LpProviderFeeRateUpdated(provider, oldFeeRate, feeRate);
+    emit FeeRateUpdated(provider, oldFeeRate, feeRate);
   }
 
   /**

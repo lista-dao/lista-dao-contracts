@@ -1,28 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-interface IPancakeSwapLpStakingVault {
+interface IPancakeSwapV3LpStakingVault {
 
-  // @dev type of PancakeSwap LP
-  enum LpType {
-    V3, // V3 LP - ERC721
-    Infinity // Infinity - ERC721
-  }
+  /// @dev Functions
+  function feeCut(uint256 amount) external returns (uint256 rewardsAfterFeeCut);
 
-  struct LpProviderStaking {
-    address lpToken; // for v3, is the NonFungibleManager
-    address rewardToken; // typically CAKE address
-    address provider;    // LP provider address
-    bool isActive; // is distributor active
-    LpType lpType;
-  }
-
-  function feeCut(uint256 amount) external;
-
-  /// @dev EVENTS
+  /// @dev Events
   event LpProxyUpdated(address oldLpProxy, address newLpProxy);
-  event CollectFees(address indexed recipient, uint256 fees);
-  event FeeRateUpdated(address indexed lpProvider, uint256 oldFeeRate, uint256 newFeeRate);
-  event LpProviderRegistered(address indexed provider, uint256 feeRate);
-  event LpProviderDeregistered(address indexed provider);
+  event CollectFees(address recipient, uint256 fees);
+  event FeeRateUpdated(address lpProvider, uint256 oldFeeRate, uint256 newFeeRate);
+  event LpProviderRegistered(address provider, uint256 feeRate);
+  event LpProviderDeregistered(address provider);
 }
