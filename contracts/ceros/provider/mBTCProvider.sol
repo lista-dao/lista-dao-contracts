@@ -155,10 +155,11 @@ contract mBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reentran
   }
 
   function liquidation(
-    address _user,
+    address /*_user*/,
     address _recipient,
     uint256 _lpAmount,
-    bool isLeftover
+    bytes memory /*_data*/,
+    bool /*isLeftover*/
   ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
     liquidation(_recipient, _lpAmount);
   }

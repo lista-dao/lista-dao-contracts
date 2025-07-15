@@ -262,7 +262,13 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
      * @param _recipient recipient address
      * @param _amount amount to liquidate
      */
-    function liquidation(address _user, address _recipient, uint256 _amount, bool _isLeftover)
+    function liquidation(
+        address /*_user*/,
+        address _recipient,
+        uint256 _amount,
+        bytes memory /*data*/,
+        bool /*_isLeftover*/
+    )
     external
     virtual
     nonReentrant

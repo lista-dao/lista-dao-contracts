@@ -1,0 +1,260 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.10;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+import "../../interfaces/IPancakeSwapStakingHub.sol";
+import "../../interfaces/IPancakeSwapLpProvider.sol";
+
+import "../../../oracle/libraries/FullMath.sol";
+
+contract PancakeSwapLpStakingVault is
+PausableUpgradeable,
+ReentrancyGuardUpgradeable,
+AccessControlEnumerableUpgradeable,
+UUPSUpgradeable
+{
+  using SafeERC20 for IERC20;
+
+  /// @dev ROLES
+  bytes32 public constant MANAGER = keccak256("MANAGER");
+  bytes32 public constant PAUSER = keccak256("PAUSER");
+
+  // fee rate denominator
+  uint256 public constant DENOMINATOR = 10000;
+  // PancakeSwap Staking Hub address
+  address public immutable pancakeSwapStakingHub;
+  // CAKE token address
+  address public immutable rewardToken;
+  // lp Proxy address
+  address public lpProxy;
+
+  // PancakeSwapV3LpProvider address => fee rate
+  mapping(address => uint256) public feeRates;
+  // registered providers
+  mapping(address => bool) public lpProviders;
+  // available fees
+  uint256 public availableFees;
+
+  /// @dev MODIFIERS
+  modifier onlyLpProxy() {
+      require(msg.sender == lpProxy, "PancakeSwapV3LpStakingVault: caller-is-not-lp-proxy");
+      _;
+  }
+
+  modifier onlyLpProvider() {
+      require(lpProviders[msg.sender], "PancakeSwapV3LpStakingVault: caller-is-not-lp-provider");
+      _;
+  }
+  
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor(
+    address _pancakeSwapStakingHub,
+    address _rewardToken
+  ) {
+    require(
+      _pancakeSwapStakingHub != address(0) &&
+      _rewardToken != address(0),
+      "PancakeSwapV3LpStakingVault: zero-address-provided"
+    );
+
+    pancakeSwapStakingHub = _pancakeSwapStakingHub;
+    rewardToken = _rewardToken;
+
+    _disableInitializers();
+  }
+
+  /**
+    * @dev initialize contract
+    * @param _admin admin address
+    * @param _manager manager address
+    * @param _pauser pauser address
+    */
+  function initialize(
+    address _admin,
+    address _manager,
+    address _pauser,
+    address _lpProxy
+  ) public initializer {
+    require(
+      _admin != address(0) &&
+      _manager != address(0) &&
+      _pauser != address(0) ,
+      _lpProxy != address(0),
+      "PancakeSwapV3LpStakingVault: zero-address-provided"
+    );
+    __Pausable_init();
+    __ReentrancyGuard_init();
+    __AccessControlEnumerable_init();
+    __UUPSUpgradeable_init();
+
+    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    _grantRole(MANAGER, _manager);
+    _grantRole(PAUSER, _pauser);
+
+    lpProxy = _lpProxy;
+  }
+
+  ///////////////////////////////////////////////////////////////
+  ////////////           External Functions          ////////////
+  ///////////////////////////////////////////////////////////////
+
+  /**
+    * @dev fee cut before give user
+    * @param amount amount of rewards
+    */
+  function feeCut(uint256 amount) external onlyLpProvider whenNotPaused nonReentrant returns (uint256) {
+    require(amount > 0, "PancakeSwapLpStakingVault: zero-amount-provided");
+    IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
+    // cut fee
+    uint256 feeRate = lpProviders[msg.sender];
+    if (feeRate > 0) {
+      uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
+      availableFees += fee;
+      amount -= fee;
+    }
+    // transfer remaining amount to lpProxy
+    IERC20(rewardToken).safeTransfer(msg.sender, amount);
+    return amount;
+  }
+
+  /**
+    * @dev batch claim rewards via proxy
+    * @param account user address
+    * @param providers provider addresses
+    */
+  function batchClaimRewardsWithProxy(address account, address[] memory providers) external onlyLpProxy whenNotPaused nonReentrant {
+    require(account != address(0), "PancakeSwapLpStakingVault: zero-address-provided");
+    _batchClaimRewards(account, providers);
+  }
+
+  /**
+    * @dev batch claim rewards
+    * @param providers provider addresses
+    */
+  function batchClaimRewards(address[] memory providers) external whenNotPaused nonReentrant {
+    _batchClaimRewards(msg.sender, providers);
+  }
+
+  /**
+    * @dev claim rewards from PancakeSwap Staking Hub and send to account
+    * @param account user address
+    * @param provider PancakeSwapLpProvider address
+    */
+  function _batchClaimRewards(address account, address[] memory providers) private {
+    uint256 total;
+    for (uint16 i = 0; i < providers.length; ++i) {
+      uint256 amount = IPancakeSwapLpProvider(providers[i]).vaultClaimStakingReward(account);
+      // cut fee
+      uint256 feeRate = lpProviders[providers[i]];
+      if (feeRate > 0) {
+          uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
+          availableFees += fee;
+          amount -= fee;
+      }
+      total += amount;
+    }
+    if (total > 0) {
+      IERC20(rewardToken).safeTransfer(account, total);
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////
+  ////////////             Administrative            ////////////
+  ///////////////////////////////////////////////////////////////
+
+  /**
+   * @dev collect fees
+   * @param recipient recipient address
+   */
+  function collectFees(address recipient) external onlyRole(MANAGER) {
+    require(recipient != address(0), "PancakeSwapLpStakingVault: zero-address-provided");
+    require(availableFees > 0, "PancakeSwapLpStakingVault: no fees to collect");
+    uint256 fees = availableFees;
+    availableFees = 0;
+    IERC20(rewardToken).safeTransfer(recipient, fees);
+    emit CollectFees(recipient, fees);
+  }
+
+  /**
+    * @dev set LpProxy address
+    * @param _lpProxy LpProxy address
+    */
+  function setLpProxy(address _lpProxy) external onlyRole(MANAGER) {
+    require(_lpProxy != address(0) && lpProxy != _lpProxy, "PancakeSwapLpStakingVault: invalid-lpProxy-address");
+    address oldLpProxy = lpProxy;
+    lpProxy = _lpProxy;
+    emit LpProxyUpdated(oldLpProxy, _lpProxy);
+  }
+
+  /**
+    * @dev set PancakeSwapLpProvider fee rate
+    * @param provider PancakeSwapLpProvider address
+    * @param feeRate fee rate in basis points (0-10000)
+    */
+  function setLpProviderFeeRate(address provider, uint256 feeRate) external onlyRole(MANAGER) {
+    require(provider != address(0) && lpProviders[provider], "PancakeSwapLpStakingVault: provider-not-registered");
+    uint256 oldFeeRate = feeRates[provider];
+    require(feeRate != oldFeeRate && feeRate <= DENOMINATOR, "PancakeSwapLpStakingVault: invalid-fee-rate");
+    lpProviders[provider] = true;
+    feeRates[provider] = feeRate;
+    emit LpProviderFeeRateUpdated(provider, oldFeeRate, feeRate);
+  }
+
+  /**
+    * @dev register PancakeSwapLpProvider
+    * @param provider PancakeSwapLpProvider address
+    * @param feeRate fee rate in basis points (0-10000)
+    */
+  function registerLpProvider(address provider, uint256 feeRate) external onlyRole(MANAGER) {
+    require(
+      provider != address(0) &&
+      !lpProviders[provider],
+      "PancakeSwapLpStakingVault: provider-already-registered"
+    );
+    lpProviders[provider] = true;
+    feeRates[provider] = feeRate;
+    emit LpProviderRegistered(provider, feeRate);
+  }
+
+  /**
+    * @dev deregister PancakeSwapLpProvider
+    * @param provider PancakeSwapLpProvider address
+    */
+  function deregisterLpProvider(address provider) external onlyRole(MANAGER) {
+    require(
+      provider != address(0) &&
+      lpProviders[provider],
+      "PancakeSwapLpStakingVault: provider-not-registered"
+    );
+    lpProviders[provider] = false;
+    feeRates[provider] = 0;
+    emit LpProviderDeregistered(provider);
+  }
+
+  /**
+   * @dev pause the contract
+   */
+  function pause() external onlyRole(PAUSER) {
+    _pause();
+  }
+
+  /**
+   * @dev resume contract
+   */
+  function unpause() external onlyRole(MANAGER) {
+    _unpause();
+  }
+
+  /**
+    * @dev only admin can upgrade the contract
+    * @param _newImplementation new implementation address
+    */
+  function _authorizeUpgrade(address _newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+}
