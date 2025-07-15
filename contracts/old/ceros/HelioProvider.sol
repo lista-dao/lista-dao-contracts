@@ -9,7 +9,7 @@ import "../../ceros/interfaces/IVault.sol";
 import "../../ceros/interfaces/IDex.sol";
 import "../../ceros/interfaces/IDao.sol";
 import "../../ceros/interfaces/ICerosRouter.sol";
-import "../../ceros/interfaces/IHelioProvider.sol";
+import "./interfaces/IHelioProvider.sol";
 import "../../ceros/interfaces/IBinancePool.sol";
 import "../../ceros/interfaces/ICertToken.sol";
 contract HelioProvider is
@@ -155,15 +155,6 @@ ReentrancyGuardUpgradeable
     nonReentrant
     {
         _ceRouter.withdrawABNBc(recipient, amount);
-    }
-
-    function liquidation(address user, address recipient, uint256 amount, bool isLeftover)
-    external
-    override
-    onlyProxy
-    nonReentrant
-    {
-        liquidation(recipient, amount);
     }
 
     function daoBurn(address account, uint256 value)

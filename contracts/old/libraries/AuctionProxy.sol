@@ -3,15 +3,15 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "../interfaces/ClipperLike.sol";
-import "../interfaces/GemJoinLike.sol";
-import "../interfaces/HayJoinLike.sol";
-import "../interfaces/DogLike.sol";
-import "../interfaces/VatLike.sol";
+import "../../interfaces/ClipperLike.sol";
+import "../../interfaces/GemJoinLike.sol";
+import "../../interfaces/HayJoinLike.sol";
+import "../../interfaces/DogLike.sol";
+import "../../interfaces/VatLike.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
-import "../oracle/libraries/FullMath.sol";
+import "../../oracle/libraries/FullMath.sol";
 
-import { CollateralType } from  "../ceros/interfaces/IDao.sol";
+import { CollateralType } from  "../../ceros/interfaces/IDao.sol";
 
 uint256 constant RAY = 10**27;
 
@@ -102,13 +102,13 @@ library AuctionProxy {
 
     if (address(helioProvider) != address(0)) {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
-      helioProvider.liquidation(urn, receiverAddress, gemBal, false); // Burn router ceToken and mint abnbc to receiver
+      helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
 
       if (leftover != 0) {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        helioProvider.liquidation(urn, urn, leftover, true); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
       }
     } else {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(receiverAddress, gemBal);
