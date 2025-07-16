@@ -36,7 +36,6 @@ interface IPancakeSwapV3LpProvider {
   function release(uint256 tokenId) external;
   function vaultClaimStakingReward(address account) external returns (uint256);
   function claimableStakingRewards(address account) external returns (uint256);
-  function syncLpValues(uint256[] calldata tokenIds) external;
   function syncUserLpValues(address user) external;
   function batchSyncUserLpValues(address[] calldata users) external;
   function getLpValue(uint256 tokenId) external view returns (uint256);

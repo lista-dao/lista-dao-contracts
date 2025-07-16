@@ -274,24 +274,6 @@ IERC721Receiver
   }
 
   /**
-    * @dev Sync LP values for multiple tokenId
-    * @param tokenIds array of tokenIds to sync
-    */
-  function syncLpValues(uint256[] calldata tokenIds) override external nonReentrant whenNotPaused onlyRole(BOT) {
-    require(tokenIds.length > 0, "No tokenIds provided");
-    for (uint256 i = 0; i < tokenIds.length; i++) {
-      uint256 tokenId = tokenIds[i];
-      address owner = lpOwners[tokenId];
-      // verify does it exist
-      require(owner != address(0), "PancakeSwapV3LpProvider: invalid-tokenId");
-      // update lpValues
-      _syncLpValue(tokenId);
-      // sync user position
-      _syncUserCdpPosition(owner, false);
-    }
-  }
-
-  /**
     * @dev Sync user LP values
     *      this will alter user's CDP position
     * @param user the address of the user
@@ -301,7 +283,6 @@ IERC721Receiver
     // sync user position
     _syncUserCdpPosition(user, true);
   }
-
 
   /**
     * @dev Batch sync user LP values
