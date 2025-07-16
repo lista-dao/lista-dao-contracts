@@ -25,6 +25,7 @@ import "../../interfaces/IPancakeSwapV3LpProvider.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingVault.sol";
 import "../../../libraries/TickMath.sol";
 import "../../../libraries/LiquidityAmounts.sol";
+import "./libraries/PcsV3LpLiquidationHelper.sol";
 
 /// @title PancakeSwapV3LpProvider
 /// @author ListaDAO
@@ -71,6 +72,8 @@ IERC721Receiver
   address public pancakeLpStakingVault;
   // resilient oracle address
   address public resilientOracle;
+  // Resilient oracle decimal places
+  uint256 public constant RESILIENT_ORACLE_DECIMALS = 1e8;
   // DENOMINATOR of lpExchangeRate
   uint256 public constant DENOMINATOR = 10000;
 
@@ -97,12 +100,12 @@ IERC721Receiver
 
   /// @dev MODIFIERS
   modifier onlyCdp() {
-    require(msg.sender == cdp, "PancakeSwapV3LpProvider: caller-only-cdp");
+    require(msg.sender == cdp, "PcsV3LpProvider caller-only-cdp");
     _;
   }
 
   modifier onlyPancakeStakingHub() {
-    require(msg.sender == pancakeStakingHub, "PancakeSwapV3LpProvider: caller-only-pancakeStakingHub");
+    require(msg.sender == pancakeStakingHub, "PcsV3LpProvider caller-only-pancakeStakingHub");
     _;
   }
 
@@ -218,7 +221,7 @@ IERC721Receiver
    * @param tokenId the tokenId of the LP token
    */
   function provide(uint256 tokenId) override external nonReentrant whenNotPaused {
-    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PancakeSwapV3LpProvider: Not owner of token");
+    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider Not owner of token");
     // transfer user's LP token to this contract
     IERC721(nonFungiblePositionManager).safeTransferFrom(msg.sender, address(this), tokenId);
   }
@@ -230,7 +233,7 @@ IERC721Receiver
     */
   function release(uint256 tokenId) override external nonReentrant whenNotPaused {
     // check if the caller is the owner of the LP token
-    require(lpOwners[tokenId] == msg.sender, "PancakeSwapV3LpProvider: not-token-owner");
+    require(lpOwners[tokenId] == msg.sender, "PcsV3LpProvider not-token-owner");
     // set lp value to zero
     lpValues[tokenId] = 0;
     // remove it from userLps
@@ -242,12 +245,14 @@ IERC721Receiver
         break;
       }
     }
+    // remove the tokenId from lpOwners
+    delete lpOwners[tokenId];
     // sync user position
     _syncUserCdpPosition(msg.sender, false);
     // withdraw from Staking Hub with the harvested rewards
     uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
     // send reward and cut fee
-    sendRewardWithFeeCut(rewardAmount, msg.sender);
+    sendRewardAfterFeeCut(rewardAmount, msg.sender);
     // transfer LP token back to the user
     IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), msg.sender, tokenId);
 
@@ -261,7 +266,7 @@ IERC721Receiver
     // harvest rewards for all user Lp tokens
     totalReward = 0;
     uint256[] storage userLpTokens = userLps[account];
-    require(userLpTokens.length > 0, "PancakeSwapV3LpProvider: no-lp-tokens");
+    require(userLpTokens.length > 0, "PcsV3LpProvider no-lp-tokens");
     for (uint256 i = 0; i < userLpTokens.length; i++) {
       uint256 tokenId = userLpTokens[i];
       // harvest rewards from PancakeStakingHub
@@ -279,7 +284,7 @@ IERC721Receiver
     * @param user the address of the user
     */
   function syncUserLpValues(address user) override external nonReentrant whenNotPaused onlyRole(BOT) {
-    require(user != address(0), "PancakeSwapV3LpProvider: invalid-user");
+    require(user != address(0), "PcsV3LpProvider invalid-user");
     // sync user position
     _syncUserCdpPosition(user, true);
   }
@@ -293,7 +298,7 @@ IERC721Receiver
     require(users.length > 0, "No users provided");
     for (uint256 i = 0; i < users.length; i++) {
       address user = users[i];
-      require(user != address(0), "PancakeSwapV3LpProvider: invalid-user");
+      require(user != address(0), "PcsV3LpProvider invalid-user");
       // sync user position
       _syncUserCdpPosition(user, true);
     }
@@ -334,8 +339,8 @@ IERC721Receiver
     * @notice this function will burn LP_USD from the user
     */
   function daoBurn(address user, uint256 lpAmount) external nonReentrant onlyCdp {
-    require(user != address(0), "PancakeSwapV3LpProvider: invalid-user");
-    require(lpAmount > 0, "PancakeSwapV3LpProvider: invalid-lpAmount");
+    require(user != address(0), "PcsV3LpProvider invalid-user");
+    require(lpAmount > 0, "PcsV3LpProvider invalid-lpAmount");
     // @notice unlike general providers in CDP, there is no cert token to burn
     // as the provider already recorded user's LP position
   }
@@ -362,9 +367,9 @@ IERC721Receiver
     bytes memory data,
     bool isLeftOver
   ) external nonReentrant onlyCdp {
-    require(owner != address(0), "PancakeSwapV3LpProvider: invalid-owner");
-    require(recipient != address(0), "PancakeSwapV3LpProvider: invalid-recipient");
-    require(amount > 0, "PancakeSwapV3LpProvider: invalid-amount");
+    require(owner != address(0), "PcsV3LpProvider invalid-owner");
+    require(recipient != address(0), "PcsV3LpProvider invalid-recipient");
+    require(amount > 0, "PcsV3LpProvider invalid-amount");
     // get user token0 and token1 leftover from previous liquidation(if any)
     LiquidatedLp storage record = userLiquidatedLps[owner];
     // liquidation ended, send leftover tokens and LP to the owner
@@ -383,11 +388,11 @@ IERC721Receiver
       // and calculate their values
       uint256 token0Price = IResilientOracle(resilientOracle).peek(token0);
       uint256 token1Price = IResilientOracle(resilientOracle).peek(token1);
-      uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, 1e8);
-      uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, 1e8);
+      uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, RESILIENT_ORACLE_DECIMALS);
+      uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, RESILIENT_ORACLE_DECIMALS);
       // leftover tokens can't cover the amount to be paid
-      // burn LP to get more token0 and token1
       if ((token0Value + token1Value) < amount) {
+        // burn LP to get more token0 and token1
         (
           uint256 amount0,
           uint256 amount1,
@@ -398,19 +403,27 @@ IERC721Receiver
           data
         );
         // Step 3. rewards send to owner after fee is cut
-        sendRewardWithFeeCut(rewards, owner);
+        sendRewardAfterFeeCut(rewards, owner);
         // Step 4. Update user leftover tokens
         record.token0Left += amount0;
         record.token1Left += amount1;
       }
       // step 5. pay by tokens
-      _payByToken0AndToken1(
-          owner,
-          recipient,
-          amount,
-          token0Price,
-          token1Price
-      );
+      PcsV3LpLiquidationHelper.PaymentParams memory paymentParams = PcsV3LpLiquidationHelper.PaymentParams({
+        recipient: recipient,
+        amountToPay: amount,
+        token0: token0,
+        token1: token1,
+        token0Value: token0Value,
+        token1Value: token1Value,
+        token0Left: record.token0Left,
+        token1Left: record.token1Left
+      });
+      // leftover record will be updated after
+      (uint256 newToken0Left, uint256 newToken1Left) = PcsV3LpLiquidationHelper.payByToken0AndToken1(paymentParams);
+      // update leftover record
+      record.token0Left = newToken0Left;
+      record.token1Left = newToken1Left;
     }
     emit Liquidated(
       owner,
@@ -425,72 +438,6 @@ IERC721Receiver
   ///////////////////////////////////////////////////////////////
   ////////////           Internal Functions          ////////////
   ///////////////////////////////////////////////////////////////
-
-  // ---------- Liquidation internal functions ---------- //
-  /**
-    * @notice ----- FOR Liquidation ------
-    * @dev pay liquidator/user by leftover token0 and token1
-    * @param owner the address of the user to liquidate
-    * @param recipient the address of the liquidator or user
-    * @param amountToPay the amount of LP_USD to be paid
-    * @param token0Price the price of token0 in USD
-    * @param token1Price the price of token1 in USD
-    */
-  function _payByToken0AndToken1(
-    address owner,
-    address recipient,
-    uint256 amountToPay,
-    uint256 token0Price,
-    uint256 token1Price
-  ) internal {
-    // get user token0 and token1 leftover from previous liquidation(if any)
-    LiquidatedLp storage record = userLiquidatedLps[owner];
-    uint256 amount0 = record.token0Left;
-    uint256 amount1 = record.token1Left;
-    // calculate values of token0 and token1
-    uint256 token0Value = FullMath.mulDiv(amount0, token0Price, 1e8);
-    uint256 token1Value = FullMath.mulDiv(amount1, token1Price, 1e8);
-    uint256 token0Sent = 0;
-    uint256 token1Sent = 0;
-    uint256 amountLeft = amountToPay;
-    // use the token with lower value first
-    if (token0Value < token1Value) {
-      // Use token0 first
-      if (amountLeft > token0Value) {
-        IERC20(token0).safeTransfer(recipient, amount0);
-        amountLeft -= token0Value;
-        token0Sent = amount0;
-        // Use token1 for the rest
-        uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1Value);
-        IERC20(token1).safeTransfer(recipient, token1AmountToSend);
-        token1Sent = token1AmountToSend;
-      } else {
-        // Only token0 is needed
-        uint256 token0AmountToSend = FullMath.mulDiv(amountLeft, amount0, token0Value);
-        IERC20(token0).safeTransfer(recipient, token0AmountToSend);
-        token0Sent = token0AmountToSend;
-      }
-    } else {
-      // Use token1 first
-      if (amountLeft > token1Value) {
-        IERC20(token1).safeTransfer(recipient, amount1);
-        amountLeft -= token1Value;
-        token1Sent = amount1;
-        // Use token0 for the rest
-        uint256 token0AmountToSend = FullMath.mulDiv(amountLeft, amount0, token0Value);
-        IERC20(token0).safeTransfer(recipient, token0AmountToSend);
-        token0Sent = token0AmountToSend;
-      } else {
-        // Only token1 is needed
-        uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1Value);
-        IERC20(token1).safeTransfer(recipient, token1AmountToSend);
-        token1Sent = token1AmountToSend;
-      }
-    }
-    // update leftovers
-    record.token0Left += (amount0 - token0Sent);
-    record.token1Left += (amount1 - token1Sent);
-  }
 
   /**
     * @notice ----- FOR Liquidation ------
@@ -510,9 +457,10 @@ IERC721Receiver
   ) internal returns (uint256 amount0, uint256 amount1, uint256 rewards) {
     // decode data for decrease liquidity params
     (uint256 amount0Min, uint256 amount1Min, uint256 tokenId) = abi.decode(data, (uint256, uint256, uint256));
-    require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PancakeSwapV3LpProvider: invalid-data");
+    require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PcsV3LpProvider invalid-data");
     // sync user's LP total value first to ensure the lowest LP value is correct
-    _syncUserLpTotalValue(owner, true);
+    // this must be `false` as we aren't able to alter user's position anymore
+    _syncUserLpTotalValue(owner, false);
     uint256 lowestLpValue = type(uint256).max;
     uint256 lowestLpTokenId = 0;
     uint256[] storage userLpTokens = userLps[owner];
@@ -528,8 +476,8 @@ IERC721Receiver
       }
     }
     // the amount of LP_USD to be bought by the liquidator, must be covered by the lowest LP value
-    require(amount <= lowestLpValue, "PancakeSwapV3LpProvider: amount-exceeds-lp-value");
-    require(lowestLpTokenId == tokenId, "PancakeSwapV3LpProvider: invalid-tokenId");
+    require(amount <= lowestLpValue, "PcsV3LpProvider amount-exceeds-lp-value");
+    require(lowestLpTokenId == tokenId, "PcsV3LpProvider invalid-tokenId");
     // remove it from userLps[]
     for (uint256 i = 0; i < userLpTokens.length; i++) {
       if (userLpTokens[i] == lowestLpTokenId) {
@@ -539,13 +487,13 @@ IERC721Receiver
       }
     }
     // remove if from lpOwners[tokenId]
-    lpOwners[lowestLpTokenId] = address(0);
+    delete lpOwners[lowestLpTokenId];
     // burn LP and collects token0, token1 and rewards
     (
       amount0,
       amount1,
       rewards
-    ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burn(tokenId, amount0Min, amount1Min);
+    ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(tokenId, amount0Min, amount1Min);
   }
 
   /**
@@ -562,10 +510,10 @@ IERC721Receiver
       // withdraw from Staking Hub with the harvested rewards
       uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
       // send reward and cut fee
-      sendRewardWithFeeCut(rewardAmount, user);
+      sendRewardAfterFeeCut(rewardAmount, user);
       // transfer LP token back to the user
       IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
-      lpOwners[tokenId] = address(0);
+      delete lpOwners[tokenId];
       lpValues[tokenId] = 0;
     }
     // remove all tokenIds from lpOwners
@@ -573,8 +521,6 @@ IERC721Receiver
     // reset user's total LP value
     userTotalLpValue[user] = 0;
   }
-  // ---------- /Liquidation internal functions ---------- //
-
 
   /*
    * @inheritdoc IERC721Receiver
@@ -586,17 +532,17 @@ IERC721Receiver
     bytes calldata /*data*/
   ) external returns (bytes4) {
     // only accept NFT sent from NonFungiblePositionManager
-    require(msg.sender == nonFungiblePositionManager, "PancakeSwapV3LpProvider: invalid-lp-sender");
+    require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider invalid-lp-sender");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
     if (from != pancakeStakingHub) {
       // check correctness of token0 and token1 and make sure non-zero liquidity
       bool isValid = verifyLp(tokenId);
-      require(isValid, "PancakeSwapV3LpProvider: invalid-lp");
+      require(isValid, "PcsV3LpProvider invalid-lp");
       // make deposit and stake LP
       _deposit(from, tokenId);
     } else {
       // if the NFT is sent from PancakeStakingHub, it should belongs to someone(lpOwners)
-      require(lpOwners[tokenId] != address(0), "PancakeSwapV3LpProvider: invalid-lp-owner");
+      require(lpOwners[tokenId] != address(0), "PcsV3LpProvider invalid-lp-owner");
     }
     return IERC721Receiver.onERC721Received.selector;
   }
@@ -606,8 +552,8 @@ IERC721Receiver
     * @param amount amount of rewards to send
     * @param to the address to send the rewards to
     */
-  function sendRewardWithFeeCut(uint256 amount, address to) internal {
-    require(to != address(0), "PancakeSwapV3LpProvider: invalid-recipient");
+  function sendRewardAfterFeeCut(uint256 amount, address to) internal {
+    require(to != address(0), "PcsV3LpProvider invalid-recipient");
     if (amount > 0) {
       // approve rewardToken to the vault
       IERC20(rewardToken).safeApprove(pancakeLpStakingVault, amount);
@@ -651,11 +597,11 @@ IERC721Receiver
     */
   function _deposit(address user, uint256 tokenId) internal {
     // check if user has reached the max LP limit
-    require(userLps[user].length < maxLpPerUser, "PancakeSwapV3LpProvider: max-lp-reached");
+    require(userLps[user].length < maxLpPerUser, "PcsV3LpProvider max-lp-reached");
 
     // get lp value and verify the underlying price
     uint256 lpValue = _syncLpValue(tokenId);
-    require(lpValue >= minLpValue, "PancakeSwapV3LpProvider: min-lp-value-not-met");
+    require(lpValue >= minLpValue, "PcsV3LpProvider min-lp-value-not-met");
 
     // update lpOwners, lpValues
     lpOwners[tokenId] = user;
@@ -781,7 +727,7 @@ IERC721Receiver
       sqrtPriceX96, sqrtPriceX96Lower, sqrtPriceX96Upper, liquidity
     );
     // verification of zero liquidity when user deposit
-    require(amount0 > 0 || amount1 > 0, "PancakeSwapV3LpProvider: zero-amounts");
+    require(amount0 > 0 || amount1 > 0, "PcsV3LpProvider zero-amounts");
   }
 
   /**
@@ -795,8 +741,9 @@ IERC721Receiver
     // get price of token0 and token1 from oracle
     uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
     uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
-    // calculate appraised value in USD with 8 decimal places
-    appraisedValue = (amount0 * price0 + amount1 * price1);
+    // calculate appraised value in USD with 18 decimal places
+    appraisedValue = FullMath.mulDiv(amount0, price0, RESILIENT_ORACLE_DECIMALS) +
+                     FullMath.mulDiv(amount1, price1, RESILIENT_ORACLE_DECIMALS);
   }
 
   /**
@@ -839,7 +786,7 @@ IERC721Receiver
     * @param _maxLpPerUser the max LPs per user
     */
   function setMaxLpPerUser(uint256 _maxLpPerUser) external onlyRole(MANAGER) {
-    require(_maxLpPerUser > 0 && maxLpPerUser != _maxLpPerUser, "PancakeSwapV3LpProvider: invalid-maxLpPerUser");
+    require(_maxLpPerUser > 0 && maxLpPerUser != _maxLpPerUser, "PcsV3LpProvider invalid-maxLpPerUser");
     uint256 oldMaxLpPerUser = maxLpPerUser;
     maxLpPerUser = _maxLpPerUser;
     emit MaxLpPerUserSet(oldMaxLpPerUser, _maxLpPerUser);
@@ -850,7 +797,7 @@ IERC721Receiver
     * @param _lpExchangeRate the exchange rate
     */
   function setLpExchangeRate(uint256 _lpExchangeRate) external onlyRole(MANAGER) {
-    require(_lpExchangeRate <= DENOMINATOR && lpExchangeRate != _lpExchangeRate, "PancakeSwapV3LpProvider: invalid-lpExchangeRate");
+    require(_lpExchangeRate <= DENOMINATOR && lpExchangeRate != _lpExchangeRate, "PcsV3LpProvider invalid-lpExchangeRate");
     uint256 oldLpExchangeRate = lpExchangeRate;
     lpExchangeRate = _lpExchangeRate;
     emit LpExchangeRateSet(oldLpExchangeRate, _lpExchangeRate);
@@ -861,7 +808,7 @@ IERC721Receiver
     * @param _minLpValue the minimum LP value in USD
     */
   function setMinLpValue(uint256 _minLpValue) external onlyRole(MANAGER) {
-    require(_minLpValue > 0 && minLpValue != _minLpValue, "PancakeSwapV3LpProvider: invalid-minLpValue");
+    require(_minLpValue > 0 && minLpValue != _minLpValue, "PcsV3LpProvider invalid-minLpValue");
     uint256 oldMinLpValue = minLpValue;
     minLpValue = _minLpValue;
     emit MinLpValueSet(oldMinLpValue, _minLpValue);
