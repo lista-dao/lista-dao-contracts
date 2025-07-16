@@ -7,7 +7,11 @@ interface IPancakeSwapV3LpStakingHub {
   function deposit(uint256 tokenId) external;
   function withdraw(uint256 tokenId) external returns (uint256);
   function harvest(uint256 tokenId) external returns (uint256);
-  function burn(uint256 tokenId, uint256 amount0Min, uint256 amount1Min) external returns (uint256 amount0, uint256 amount1, uint256 rewards);
+  function burnAndCollect(
+    uint256 tokenId,
+    uint256 amount0Min,
+    uint256 amount1Min
+  ) external returns (uint256 amount0, uint256 amount1, uint256 rewards);
 
   /// @dev Events
   event RegisterProvider(address provider);

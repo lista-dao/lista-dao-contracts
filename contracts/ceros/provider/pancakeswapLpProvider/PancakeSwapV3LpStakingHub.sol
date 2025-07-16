@@ -135,6 +135,7 @@ IERC721Receiver
   override
   external
   checkTokenIdWithProvider(tokenId)
+  onlyProvider
   whenNotPaused
   nonReentrant
   returns (uint256 rewards) {
@@ -156,7 +157,7 @@ IERC721Receiver
     // transfer NFT back to the provider
     IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), provider, tokenId);
     // remove if from tokenIds
-    _removeTokenId(tokenId);
+    _removeTokenRecord(tokenId);
     // emit event
     emit WithdrawLp(provider, tokenId, rewards);
   }
@@ -170,7 +171,7 @@ IERC721Receiver
     * @return amount1 collected amount of token1
     * @return rewards collected amount of rewards
     */
-  function burn(uint256 tokenId, uint256 amount0Min, uint256 amount1Min)
+  function burnAndCollect(uint256 tokenId, uint256 amount0Min, uint256 amount1Min)
   override
   external
   checkTokenIdWithProvider(tokenId)
@@ -187,14 +188,19 @@ IERC721Receiver
       amount0Min,
       amount1Min
     );
-    // // get rewards amount
+    // get rewards amount
     rewards = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
     // remove tokenId record
-    _removeTokenId(tokenId);
+    _removeTokenRecord(tokenId);
     // emit event
     emit BurnLp(msg.sender, tokenId, rewards, amount1, amount0);
   }
 
+  /**
+    * @dev harvest rewards from MasterChefV3 and send to the provider
+    * @param tokenId ID of the NFT token to harvest
+    * @return rewards amount of rewards harvested
+    */
   function harvest(uint256 tokenId) override external onlyProvider whenNotPaused nonReentrant returns (uint256 rewards) {
     require(tokenId > 0, "PancakeSwapStakingHub: non-zero-tokenId");
     address provider = msg.sender;
@@ -217,6 +223,15 @@ IERC721Receiver
   ////////////           Internal Functions          ////////////
   ///////////////////////////////////////////////////////////////
 
+  /**
+    * @notice to avoid stack too deep error, this function is separated from burnAndCollect()
+    * @dev burn LP token, collect fees and rewards, then send them to the provider
+    * @param tokenId ID of the NFT token to burn
+    * @param amount0Min minimum amount of token0 to collect
+    * @param amount1Min minimum amount of token1 to collect
+    * @return collectedAmount0 collected amount of token0
+    * @return collectedAmount1 collected amount of token1
+    */
   function _burnAndCollectTokens(
     uint256 tokenId,
     uint256 amount0Min,
@@ -266,7 +281,7 @@ IERC721Receiver
     * @dev remove tokenId from the tokenIds array and mapping
     * @param tokenId ID of the NFT token to remove
     */
-  function _removeTokenId(uint256 tokenId) internal {
+  function _removeTokenRecord(uint256 tokenId) internal {
     // remove if from tokenIds
     for (uint256 i = 0; i < tokenIds.length; i++) {
       if (tokenIds[i] == tokenId) {
