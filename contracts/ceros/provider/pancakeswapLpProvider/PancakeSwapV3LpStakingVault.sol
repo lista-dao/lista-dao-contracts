@@ -132,17 +132,17 @@ UUPSUpgradeable
     * @param account user address
     * @param providers provider addresses
     */
-  function batchClaimRewardsWithProxy(address account, address[] memory providers) external onlyLpProxy whenNotPaused nonReentrant {
+  function batchClaimRewardsWithProxy(address account, address[] memory providers, uint256[][] memory tokenIds) external onlyLpProxy whenNotPaused nonReentrant {
     require(account != address(0), "PancakeSwapLpStakingVault: zero-address-provided");
-    _batchClaimRewards(account, providers);
+    _batchClaimRewards(account, providers, tokenIds);
   }
 
   /**
     * @dev batch claim rewards
     * @param providers provider addresses
     */
-  function batchClaimRewards(address[] memory providers) external whenNotPaused nonReentrant {
-    _batchClaimRewards(msg.sender, providers);
+  function batchClaimRewards(address[] memory providers, uint256[][] memory tokenIds) external whenNotPaused nonReentrant {
+    _batchClaimRewards(msg.sender, providers, tokenIds);
   }
 
   /**
@@ -150,10 +150,15 @@ UUPSUpgradeable
     * @param account user address
     * @param providers PancakeSwapLpProvider addresses
     */
-  function _batchClaimRewards(address account, address[] memory providers) private {
+  function _batchClaimRewards(address account, address[] memory providers, uint256[][] memory tokenIds) private {
+    require(account != address(0), "PancakeSwapLpStakingVault: zero-address-provided");
+    require(providers.length > 0, "PancakeSwapLpStakingVault: no-providers-provided");
+    require(tokenIds.length == providers.length, "PancakeSwapLpStakingVault: tokenIds-length-mismatch");
     uint256 total;
     for (uint16 i = 0; i < providers.length; ++i) {
-      uint256 amount = IPancakeSwapV3LpProvider(providers[i]).vaultClaimStakingReward(account);
+      uint256[] memory _tokenIds = tokenIds[i];
+      require(_tokenIds.length > 0, "PancakeSwapLpStakingVault: no-tokenIds");
+      uint256 amount = IPancakeSwapV3LpProvider(providers[i]).vaultClaimStakingReward(account, _tokenIds);
       // cut fee
       uint256 feeRate = feeRates[providers[i]];
       if (feeRate > 0) {

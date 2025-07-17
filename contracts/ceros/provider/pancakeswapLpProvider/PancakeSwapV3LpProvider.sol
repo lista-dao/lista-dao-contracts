@@ -86,7 +86,7 @@ IERC721Receiver
   // user => user's total appraised value of all LPs
   mapping(address => uint256) public userTotalLpValue;
   // user => liquidated LPs
-  mapping(address => LiquidatedLp) public userLiquidatedLps;
+  mapping(address => UserLiquidation) public userLiquidations;
 
   // the max. number of LPs a user can deposit
   uint256 public maxLpPerUser;
@@ -100,20 +100,17 @@ IERC721Receiver
 
   /// @dev MODIFIERS
   modifier onlyCdp() {
-    require(msg.sender == cdp, "PcsV3LpProvider caller-only-cdp");
+    require(msg.sender == cdp, "PcsV3LpProvider: caller-only-cdp");
     _;
   }
 
   modifier onlyPancakeStakingHub() {
-    require(msg.sender == pancakeStakingHub, "PcsV3LpProvider caller-only-pancakeStakingHub");
+    require(msg.sender == pancakeStakingHub, "PcsV3LpProvider: caller-only-pancakeStakingHub");
     _;
   }
 
   modifier onlyStakingVault() {
-    require(
-      msg.sender == pancakeLpStakingVault,
-      "PancakeSwapStakingHub: only-staking-vault"
-    );
+    require(msg.sender == pancakeLpStakingVault, "PancakeSwapStakingHub: only-staking-vault");
     _;
   }
 
@@ -221,7 +218,8 @@ IERC721Receiver
    * @param tokenId the tokenId of the LP token
    */
   function provide(uint256 tokenId) override external nonReentrant whenNotPaused {
-    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider Not owner of token");
+    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider: Not owner of token");
+    require(!userLiquidations[msg.sender].ongoing, "PcsV3LpProvider: liquidation-ongoing");
     // transfer user's LP token to this contract
     IERC721(nonFungiblePositionManager).safeTransferFrom(msg.sender, address(this), tokenId);
   }
@@ -233,7 +231,8 @@ IERC721Receiver
     */
   function release(uint256 tokenId) override external nonReentrant whenNotPaused {
     // check if the caller is the owner of the LP token
-    require(lpOwners[tokenId] == msg.sender, "PcsV3LpProvider not-token-owner");
+    require(lpOwners[tokenId] == msg.sender, "PcsV3LpProvider: not-token-owner");
+    require(!userLiquidations[msg.sender].ongoing, "PcsV3LpProvider: liquidation-ongoing");
     // set lp value to zero
     lpValues[tokenId] = 0;
     // remove it from userLps
@@ -262,13 +261,13 @@ IERC721Receiver
   /**
     * @dev Harvest function to claim rewards from PancakeSwap Staking Hub
     */
-  function vaultClaimStakingReward(address account) override external nonReentrant whenNotPaused onlyStakingVault returns (uint256 totalReward) {
+  function vaultClaimStakingReward(address account, uint256[] memory tokenIds) override external nonReentrant whenNotPaused onlyStakingVault returns (uint256 totalReward) {
     // harvest rewards for all user Lp tokens
     totalReward = 0;
-    uint256[] storage userLpTokens = userLps[account];
-    require(userLpTokens.length > 0, "PcsV3LpProvider no-lp-tokens");
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      uint256 tokenId = userLpTokens[i];
+    require(tokenIds.length > 0, "PcsV3LpProvider: no-lp-tokens");
+    for (uint256 i = 0; i < tokenIds.length; i++) {
+      uint256 tokenId = tokenIds[i];
+      require(lpOwners[tokenId] == account, "PcsV3LpProvider: not-lp-owner");
       // harvest rewards from PancakeStakingHub
       totalReward += IPancakeSwapV3LpStakingHub(pancakeStakingHub).harvest(tokenId);
     }
@@ -284,7 +283,8 @@ IERC721Receiver
     * @param user the address of the user
     */
   function syncUserLpValues(address user) override external nonReentrant whenNotPaused onlyRole(BOT) {
-    require(user != address(0), "PcsV3LpProvider invalid-user");
+    require(user != address(0), "PcsV3LpProvider: invalid-user");
+    require(!userLiquidations[user].ongoing, "PcsV3LpProvider: liquidation-ongoing");
     // sync user position
     _syncUserCdpPosition(user, true);
   }
@@ -298,7 +298,8 @@ IERC721Receiver
     require(users.length > 0, "No users provided");
     for (uint256 i = 0; i < users.length; i++) {
       address user = users[i];
-      require(user != address(0), "PcsV3LpProvider invalid-user");
+      require(user != address(0) && userLps[user].length > 0, "PcsV3LpProvider: invalid-user");
+      require(!userLiquidations[user].ongoing, "PcsV3LpProvider: liquidation-ongoing");
       // sync user position
       _syncUserCdpPosition(user, true);
     }
@@ -339,8 +340,8 @@ IERC721Receiver
     * @notice this function will burn LP_USD from the user
     */
   function daoBurn(address user, uint256 lpAmount) external nonReentrant onlyCdp {
-    require(user != address(0), "PcsV3LpProvider invalid-user");
-    require(lpAmount > 0, "PcsV3LpProvider invalid-lpAmount");
+    require(user != address(0), "PcsV3LpProvider: invalid-user");
+    require(lpAmount > 0, "PcsV3LpProvider: invalid-lpAmount");
     // @notice unlike general providers in CDP, there is no cert token to burn
     // as the provider already recorded user's LP position
   }
@@ -367,15 +368,15 @@ IERC721Receiver
     bytes memory data,
     bool isLeftOver
   ) external nonReentrant onlyCdp {
-    require(owner != address(0), "PcsV3LpProvider invalid-owner");
-    require(recipient != address(0), "PcsV3LpProvider invalid-recipient");
-    require(amount > 0, "PcsV3LpProvider invalid-amount");
+    require(owner != address(0), "PcsV3LpProvider: invalid-owner");
+    require(recipient != address(0), "PcsV3LpProvider: invalid-recipient");
+    require(amount > 0, "PcsV3LpProvider: invalid-amount");
     // get user token0 and token1 leftover from previous liquidation(if any)
-    LiquidatedLp storage record = userLiquidatedLps[owner];
+    UserLiquidation storage record = userLiquidations[owner];
     // liquidation ended, send leftover tokens and LP to the owner
     if (isLeftOver) {
-      // returns all leftover Lp tokens to user
-      _returnLeftoverLpToUser(owner);
+      // sync user position
+      _syncUserCdpPosition(owner, false);
       // returns all leftover token0 and token1 to user
       if (record.token1Left > 0) {
         IERC20(token1).safeTransfer(owner, record.token1Left);
@@ -383,7 +384,11 @@ IERC721Receiver
       if (record.token1Left > 0) {
         IERC20(token0).safeTransfer(owner, record.token0Left);
       }
+      // delete user's liquidation record
+      delete userLiquidations[owner];
     } else {
+      // make sure user has a liquidation record
+      record.ongoing = true;
       // get token0 and token1's price
       // and calculate their values
       uint256 token0Price = IResilientOracle(resilientOracle).peek(token0);
@@ -457,10 +462,10 @@ IERC721Receiver
   ) internal returns (uint256 amount0, uint256 amount1, uint256 rewards) {
     // decode data for decrease liquidity params
     (uint256 amount0Min, uint256 amount1Min, uint256 tokenId) = abi.decode(data, (uint256, uint256, uint256));
-    require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PcsV3LpProvider invalid-data");
+    require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PcsV3LpProvider: invalid-data");
     // sync user's LP total value first to ensure the lowest LP value is correct
-    // this must be `false` as we aren't able to alter user's position anymore
-    _syncUserLpTotalValue(owner, false);
+    // this must be `false` as we aren't able to alter user's position before the liquidation is finished
+    _syncUserCdpPosition(owner, false);
     uint256 lowestLpValue = type(uint256).max;
     uint256 lowestLpTokenId = 0;
     uint256[] storage userLpTokens = userLps[owner];
@@ -476,8 +481,8 @@ IERC721Receiver
       }
     }
     // the amount of LP_USD to be bought by the liquidator, must be covered by the lowest LP value
-    require(amount <= lowestLpValue, "PcsV3LpProvider amount-exceeds-lp-value");
-    require(lowestLpTokenId == tokenId, "PcsV3LpProvider invalid-tokenId");
+    require(amount <= lowestLpValue, "PcsV3LpProvider: amount-exceeds-lp-value");
+    require(lowestLpTokenId == tokenId, "PcsV3LpProvider: invalid-tokenId");
     // remove it from userLps[]
     for (uint256 i = 0; i < userLpTokens.length; i++) {
       if (userLpTokens[i] == lowestLpTokenId) {
@@ -496,32 +501,6 @@ IERC721Receiver
     ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(tokenId, amount0Min, amount1Min);
   }
 
-  /**
-   * @notice ----- FOR Liquidation ------
-   * @dev Withdraw all leftover LP tokens and send them back to user
-   *      as well as harvesting rewards from PancakeSwap Staking Hub
-   * @param user the address of the user to remove all LP tokens
-   */
-  function _returnLeftoverLpToUser(address user) internal {
-    uint256[] storage userLpTokens = userLps[user];
-    // remove all tokenIds from userLps
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      uint256 tokenId = userLpTokens[i];
-      // withdraw from Staking Hub with the harvested rewards
-      uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
-      // send reward and cut fee
-      sendRewardAfterFeeCut(rewardAmount, user);
-      // transfer LP token back to the user
-      IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
-      delete lpOwners[tokenId];
-      lpValues[tokenId] = 0;
-    }
-    // remove all tokenIds from lpOwners
-    delete userLps[user];
-    // reset user's total LP value
-    userTotalLpValue[user] = 0;
-  }
-
   /*
    * @inheritdoc IERC721Receiver
    */
@@ -532,17 +511,17 @@ IERC721Receiver
     bytes calldata /*data*/
   ) external returns (bytes4) {
     // only accept NFT sent from NonFungiblePositionManager
-    require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider invalid-lp-sender");
+    require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider: invalid-lp-sender");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
     if (from != pancakeStakingHub) {
       // check correctness of token0 and token1 and make sure non-zero liquidity
       bool isValid = verifyLp(tokenId);
-      require(isValid, "PcsV3LpProvider invalid-lp");
+      require(isValid, "PcsV3LpProvider: invalid-lp");
       // make deposit and stake LP
       _deposit(from, tokenId);
     } else {
       // if the NFT is sent from PancakeStakingHub, it should belongs to someone(lpOwners)
-      require(lpOwners[tokenId] != address(0), "PcsV3LpProvider invalid-lp-owner");
+      require(lpOwners[tokenId] != address(0), "PcsV3LpProvider: invalid-lp-owner");
     }
     return IERC721Receiver.onERC721Received.selector;
   }
@@ -553,7 +532,7 @@ IERC721Receiver
     * @param to the address to send the rewards to
     */
   function sendRewardAfterFeeCut(uint256 amount, address to) internal {
-    require(to != address(0), "PcsV3LpProvider invalid-recipient");
+    require(to != address(0), "PcsV3LpProvider: invalid-recipient");
     if (amount > 0) {
       // approve rewardToken to the vault
       IERC20(rewardToken).safeApprove(pancakeLpStakingVault, amount);
@@ -597,11 +576,11 @@ IERC721Receiver
     */
   function _deposit(address user, uint256 tokenId) internal {
     // check if user has reached the max LP limit
-    require(userLps[user].length < maxLpPerUser, "PcsV3LpProvider max-lp-reached");
+    require(userLps[user].length < maxLpPerUser, "PcsV3LpProvider: max-lp-reached");
 
     // get lp value and verify the underlying price
     uint256 lpValue = _syncLpValue(tokenId);
-    require(lpValue >= minLpValue, "PcsV3LpProvider min-lp-value-not-met");
+    require(lpValue >= minLpValue, "PcsV3LpProvider: min-lp-value-not-met");
 
     // update lpOwners, lpValues
     lpOwners[tokenId] = user;
@@ -643,7 +622,6 @@ IERC721Receiver
       IDao(cdp).withdraw(user, lpUsd, burnAmount);
       ILpUsd(lpUsd).burn(user, burnAmount);
     }
-
     emit UserCdpPositionSynced(
       user,
       _userLpTotalValue,
@@ -727,7 +705,7 @@ IERC721Receiver
       sqrtPriceX96, sqrtPriceX96Lower, sqrtPriceX96Upper, liquidity
     );
     // verification of zero liquidity when user deposit
-    require(amount0 > 0 || amount1 > 0, "PcsV3LpProvider zero-amounts");
+    require(amount0 > 0 || amount1 > 0, "PcsV3LpProvider: zero-amounts");
   }
 
   /**
@@ -786,7 +764,7 @@ IERC721Receiver
     * @param _maxLpPerUser the max LPs per user
     */
   function setMaxLpPerUser(uint256 _maxLpPerUser) external onlyRole(MANAGER) {
-    require(_maxLpPerUser > 0 && maxLpPerUser != _maxLpPerUser, "PcsV3LpProvider invalid-maxLpPerUser");
+    require(_maxLpPerUser > 0 && maxLpPerUser != _maxLpPerUser, "PcsV3LpProvider: invalid-maxLpPerUser");
     uint256 oldMaxLpPerUser = maxLpPerUser;
     maxLpPerUser = _maxLpPerUser;
     emit MaxLpPerUserSet(oldMaxLpPerUser, _maxLpPerUser);
@@ -797,7 +775,7 @@ IERC721Receiver
     * @param _lpExchangeRate the exchange rate
     */
   function setLpExchangeRate(uint256 _lpExchangeRate) external onlyRole(MANAGER) {
-    require(_lpExchangeRate <= DENOMINATOR && lpExchangeRate != _lpExchangeRate, "PcsV3LpProvider invalid-lpExchangeRate");
+    require(_lpExchangeRate <= DENOMINATOR && lpExchangeRate != _lpExchangeRate, "PcsV3LpProvider: invalid-lpExchangeRate");
     uint256 oldLpExchangeRate = lpExchangeRate;
     lpExchangeRate = _lpExchangeRate;
     emit LpExchangeRateSet(oldLpExchangeRate, _lpExchangeRate);
@@ -808,7 +786,7 @@ IERC721Receiver
     * @param _minLpValue the minimum LP value in USD
     */
   function setMinLpValue(uint256 _minLpValue) external onlyRole(MANAGER) {
-    require(_minLpValue > 0 && minLpValue != _minLpValue, "PcsV3LpProvider invalid-minLpValue");
+    require(_minLpValue > 0 && minLpValue != _minLpValue, "PcsV3LpProvider: invalid-minLpValue");
     uint256 oldMinLpValue = minLpValue;
     minLpValue = _minLpValue;
     emit MinLpValueSet(oldMinLpValue, _minLpValue);

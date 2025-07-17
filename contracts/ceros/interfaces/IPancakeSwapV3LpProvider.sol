@@ -8,7 +8,8 @@ interface IPancakeSwapV3LpProvider {
   // if an user CDP position is being liquidated
   // token0 and token1 amounts from burned LP tokens will be store in this struct
   // to be used in liquidation process, and the leftover amounts will be transferred to the user
-  struct LiquidatedLp {
+  struct UserLiquidation {
+    bool ongoing;
     uint256 token0Left;
     uint256 token1Left;
   }
@@ -34,7 +35,7 @@ interface IPancakeSwapV3LpProvider {
   function token1() external view returns (address);
   function provide(uint256 tokenId) external;
   function release(uint256 tokenId) external;
-  function vaultClaimStakingReward(address account) external returns (uint256);
+  function vaultClaimStakingReward(address account, uint256[] memory tokenIds) external returns (uint256);
   function claimableStakingRewards(address account) external returns (uint256);
   function syncUserLpValues(address user) external;
   function batchSyncUserLpValues(address[] calldata users) external;
