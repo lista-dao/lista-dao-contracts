@@ -15,7 +15,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../../interfaces/IPancakeSwapV3LpProvider.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingHub.sol";
-import "../../interfaces/INonFungiblePositionManager.sol";
+import "../../interfaces/INonfungiblePositionManager.sol";
 import "../../interfaces/IMasterChefV3.sol";
 
 contract PancakeSwapV3LpStakingHub is
