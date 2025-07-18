@@ -22,7 +22,7 @@ import "../../interfaces/IPancakeSwapV3LpStakingHub.sol";
 import "../../interfaces/IPancakeSwapV3LpProvider.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingVault.sol";
 import "./libraries/PcsV3LpLiquidationHelper.sol";
-import "./libraries/PcsV3LpAmountHelper.sol";
+import "./libraries/PcsV3LpNumbersHelper.sol";
 
 /// @title PancakeSwapV3LpProvider
 /// @author ListaDAO
@@ -675,19 +675,32 @@ IERC721Receiver
     */
   function getLpValue(uint256 tokenId) public view returns (uint256 appraisedValue) {
     // get amounts of token0 and token1
-    (uint256 amount0, uint256 amount1) = PcsV3LpAmountHelper.getAmounts(
-      tokenId,
-      token0,
-      token1,
-      nonFungiblePositionManager,
-      pancakeV3Factory
-    );
+    (uint256 amount0, uint256 amount1) = getAmounts(tokenId);
     // get price of token0 and token1 from oracle
     uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
     uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
     // calculate appraised value in USD with 18 decimal places
     appraisedValue = FullMath.mulDiv(amount0, price0, RESILIENT_ORACLE_DECIMALS) +
                      FullMath.mulDiv(amount1, price1, RESILIENT_ORACLE_DECIMALS);
+  }
+
+  /**
+    * @dev Get the amounts of token0 and token1 from a LP token
+    * @param tokenId the tokenId of the LP token
+    * @return amount0 the amount of token0 in the LP
+    * @return amount1 the amount of token1 in the LP
+    */
+  function getAmounts(
+    uint256 tokenId
+  ) public view returns (uint256 amount0, uint256 amount1) {
+    // get amounts of token0 and token1
+    (amount0, amount1) = PcsV3LpNumbersHelper.getAmounts(
+      tokenId,
+      token0,
+      token1,
+      nonFungiblePositionManager,
+      pancakeV3Factory
+    );
   }
 
   /**
