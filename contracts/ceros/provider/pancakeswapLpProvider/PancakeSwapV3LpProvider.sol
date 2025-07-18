@@ -13,8 +13,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "../../interfaces/IUniswapV3Factory.sol";
-import "../../interfaces/IUniswapV3Pool.sol";
 import "../../interfaces/IMasterChefV3.sol";
 import "../../interfaces/INonfungiblePositionManager.sol";
 import "../../../oracle/interfaces/IResilientOracle.sol";
@@ -23,9 +21,8 @@ import "../../interfaces/ILpUsd.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingHub.sol";
 import "../../interfaces/IPancakeSwapV3LpProvider.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingVault.sol";
-import "../../../libraries/TickMath.sol";
-import "../../../libraries/LiquidityAmounts.sol";
 import "./libraries/PcsV3LpLiquidationHelper.sol";
+import "./libraries/PcsV3LpAmountHelper.sol";
 
 /// @title PancakeSwapV3LpProvider
 /// @author ListaDAO
@@ -672,56 +669,19 @@ IERC721Receiver
   ///////////////////////////////////////////////////////////////
 
   /**
-    * @dev Get amounts of token0 and token1 for a given NFT
-    * @param tokenId the tokenId of the NFT
-    * @return amount0 the amount of token0
-    * @return amount1 the amount of token1
-    */
-  function getAmounts(uint256 tokenId) internal view returns (uint256 amount0, uint256 amount1) {
-    // Get fee, tickLower, tickUpper and liquidity
-    (
-      /* uint96 nonce */,
-      /* address operator */,
-      /* address token0 */,
-      /* address token1 */,
-      uint24 fee,
-      int24 tickLower,
-      int24 tickUpper,
-      uint128 liquidity,
-      /* uint256 feeGrowthInside0LastX128 */,
-      /* uint256 feeGrowthInside1LastX128 */,
-      /* uint128 tokensOwed0 */,
-      /* uint128 tokensOwed1 */
-    ) = INonfungiblePositionManager(nonFungiblePositionManager).positions(tokenId);
-    // get pool from pool factory
-    address poolAddress = IUniswapV3Factory(pancakeV3Factory).getPool(token0, token1, fee);
-    // get sqrtPriceX96 from slot0
-    (
-      uint160 sqrtPriceX96,
-      /* int24 tick */,
-      /* uint16 observationIndex */,
-      /* uint16 observationCardinality */,
-      /* uint16 observationCardinalityNext */,
-      /* uint8 feeProtocol */,
-      /* bool unlocked */
-    ) = IUniswapV3Pool(poolAddress).slot0();
-    uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-    uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
-    (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-      sqrtPriceX96, sqrtPriceX96Lower, sqrtPriceX96Upper, liquidity
-    );
-    // verification of zero liquidity when user deposit
-    require(amount0 > 0 || amount1 > 0, "PcsV3LpProvider: zero-amounts");
-  }
-
-  /**
     * @dev Get the appraised value of a LP token in USD
     * @param tokenId the tokenId of the LP token
     * @return appraisedValue the appraised value in USD with 8 decimal places
     */
   function getLpValue(uint256 tokenId) public view returns (uint256 appraisedValue) {
     // get amounts of token0 and token1
-    (uint256 amount0, uint256 amount1) = getAmounts(tokenId);
+    (uint256 amount0, uint256 amount1) = PcsV3LpAmountHelper.getAmounts(
+      tokenId,
+      token0,
+      token1,
+      nonFungiblePositionManager,
+      pancakeV3Factory
+    );
     // get price of token0 and token1 from oracle
     uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
     uint256 price1 = IResilientOracle(resilientOracle).peek(token1);

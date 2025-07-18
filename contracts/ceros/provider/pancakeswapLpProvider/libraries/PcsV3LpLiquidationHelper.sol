@@ -29,7 +29,7 @@ library PcsV3LpLiquidationHelper {
     */
   function payByToken0AndToken1(
     PaymentParams memory paymentParams
-  ) internal returns (uint256 newToken0Left, uint256 newToken1Left) {
+  ) public returns (uint256 newToken0Left, uint256 newToken1Left) {
     address recipient = paymentParams.recipient;
     uint256 amountToPay = paymentParams.amountToPay;
     address token0 = paymentParams.token0;
