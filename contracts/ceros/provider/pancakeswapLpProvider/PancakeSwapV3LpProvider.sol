@@ -607,6 +607,7 @@ IERC721Receiver
     _userLpTotalValue = FullMath.mulDiv(_userLpTotalValue, lpExchangeRate, DENOMINATOR);
     // get total deposited LP_USD amount in the cdp
     uint256 totalLpUsd = IDao(cdp).locked(lpUsd, user);
+    uint256 withdrawableLpUsd = IDao(cdp).free(lpUsd, user);
     // if user has more LP value than the total LP_USD amount in the cdp
     if (_userLpTotalValue > totalLpUsd) {
       // mint LP_USD
@@ -618,6 +619,11 @@ IERC721Receiver
       // if user has less LP value than the total LP_USD amount in the cdp,
       // burn LP_USD from the user
       uint256 burnAmount = totalLpUsd - _userLpTotalValue;
+      // if burn amount is more than the withdrawable amount
+      // we withdraw as much as we can, the position should be liquidated very soon
+      if (burnAmount > withdrawableLpUsd) {
+        burnAmount = withdrawableLpUsd;
+      }
       // update cdp position
       IDao(cdp).withdraw(user, lpUsd, burnAmount);
       ILpUsd(lpUsd).burn(user, burnAmount);
