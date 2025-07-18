@@ -8,10 +8,15 @@ import { IPancakeRouter01 } from "../interfaces/IPancakeRouter.sol";
 
 import "./PancakeERC20LpProvider.sol";
 
+/**
+ * @title PancakeV2LpProvider
+ * @dev Contract for providing PancakeSwap V2 LP tokens as collateral.
+ *      It extends PancakeERC20LpProvider to handle the specific logic for V2 LP tokens.
+ */
 contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
   using SafeERC20 for IERC20;
 
-  /// @dev address of the PancakeSwap router, used for removing liquidity on buy auction
+  /// @dev address of the PancakeSwap router, used for removing V2 liquidity on buy auction
   address public pancakeRouter;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -22,49 +27,19 @@ contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
   function initialize(
     address _admin,
     address _manager,
-    address _bot,
     address _pauser,
     address _pancakeLpToken,
     address _pancakeRouter,
-    address _stakingHub,
     address _ceToken,
     address _lpToken,
-    address _dao,
+    address _interaction,
     uint256 _discount
   ) external initializer {
-    require(_admin != address(0), "Invalid admin address");
-    require(_manager != address(0), "Invalid manager address");
-    require(_bot != address(0), "Invalid bot address");
-    require(_pauser != address(0), "Invalid pauser address");
-    require(_pancakeLpToken != address(0), "Invalid Pancake LP token address");
-    require(IPancakePair(_pancakeLpToken).totalSupply() > 0, "Pancake LP token must have a non-zero total supply");
-    require(IPancakePair(_pancakeLpToken).decimals() == 18, "Pancake LP token must have 18 decimals");
     require(_pancakeRouter != address(0), "Invalid Pancake router address");
-    require(_stakingHub != address(0), "Invalid staking hub address");
-    require(_ceToken != address(0), "Invalid ceToken address");
-    require(_lpToken != address(0), "Invalid lpToken address");
-    require(_dao != address(0), "Invalid dao address");
-    require(_discount > 0 && _discount <= ONE, "Discount must be between 0 and 1e18");
 
-    __Pausable_init();
-    __AccessControl_init();
-    __UUPSUpgradeable_init();
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-    _grantRole(MANAGER, _manager);
-    _grantRole(BOT, _bot);
-    _grantRole(PAUSER, _pauser);
-
-    ceToken = _ceToken;
-    lpToken = ILpToken(_lpToken);
-    dao = IDao(_dao);
-
-    stakingHub = _stakingHub;
-    pancakeLpToken = _pancakeLpToken;
     pancakeRouter = _pancakeRouter;
-    discount = _discount;
 
-    emit DiscountChanged(_discount);
+    __ERC20LpProvider_init(_admin, _manager, _pauser, _pancakeLpToken, _ceToken, _lpToken, _interaction, _discount);
   }
 
   /**
@@ -86,20 +61,16 @@ contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
     uint256 minAmount1 = abi.decode(_data[32:], (uint256));
 
     // check slippage
-    (uint256 amount0, uint256 amount1) = getCoinsAmount(_lpAmount);
+    (uint256 amount0, uint256 amount1) = getTokensAmount(_lpAmount);
     require(amount0 >= minAmount0, "Slippage too high for token0");
     require(amount1 >= minAmount1, "Slippage too high for token1");
-
-    // remove liquidity
-    address token0 = IPancakePair(pancakeLpToken).token0();
-    address token1 = IPancakePair(pancakeLpToken).token1();
 
     IERC20(pancakeLpToken).safeIncreaseAllowance(pancakeRouter, _lpAmount);
 
     // remove liquidity from PancakeSwap
     (uint256 _amount0, uint256 _amount1) = IPancakeRouter01(pancakeRouter).removeLiquidity(
-      token0,
-      token1,
+      token0(),
+      token1(),
       _lpAmount,
       minAmount0,
       minAmount1,
@@ -107,8 +78,8 @@ contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
       block.timestamp
     );
 
-    if (_amount0 > 0) IERC20(token0).safeTransfer(_recipient, _amount0);
-    if (_amount1 > 0) IERC20(token1).safeTransfer(_recipient, _amount1);
+    if (_amount0 > 0) IERC20(token0()).safeTransfer(_recipient, _amount0);
+    if (_amount1 > 0) IERC20(token1()).safeTransfer(_recipient, _amount1);
 
     emit Liquidation(pancakeLpToken, _recipient, _lpAmount, _amount0, _amount1);
   }
@@ -137,7 +108,7 @@ contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
   }
 
   /// @dev returns the amount of token0 and token1 for given lpAmount
-  function getCoinsAmount(uint256 _lpAmount) public view override returns (uint256 amount0, uint256 amount1) {
+  function getTokensAmount(uint256 _lpAmount) public view override returns (uint256 amount0, uint256 amount1) {
     IPancakePair pair = IPancakePair(pancakeLpToken);
     require(pair.totalSupply() > 0, "Total supply is zero");
 
@@ -146,6 +117,16 @@ contract PancakeV2LpProvider is PancakeERC20LpProvider, UUPSUpgradeable {
 
     amount0 = (_lpAmount * reserve0) / totalSupply;
     amount1 = (_lpAmount * reserve1) / totalSupply;
+  }
+
+  /// @dev Returns the token0 address
+  function token0() public view override returns (address) {
+    return IPancakePair(pancakeLpToken).token0();
+  }
+
+  /// @dev Returns the token1 address
+  function token1() public view override returns (address) {
+    return IPancakePair(pancakeLpToken).token1();
   }
 
   /// ------------------ priviliged functions ------------------
