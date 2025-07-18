@@ -48,8 +48,6 @@ IERC721Receiver
   address public immutable cdp;
   // PancakeSwap NonFungiblePositionManager address
   address public immutable nonFungiblePositionManager;
-  // PancakeSwap V3 Pool Factory
-  address public immutable pancakeV3Factory;
   // MasterChefV3 address
   address public immutable masterChefV3;
   // token0 address of the LP token
@@ -115,7 +113,6 @@ IERC721Receiver
   constructor(
     address _cdp,
     address _nonFungiblePositionManager,
-    address _pancakeV3Factory,
     address _masterChefV3,
     address _lpUsd,
     address _token0,
@@ -125,7 +122,6 @@ IERC721Receiver
     require(
       _cdp != address(0) &&
       _nonFungiblePositionManager != address(0) &&
-      _pancakeV3Factory != address(0) &&
       _masterChefV3 != address(0) &&
       _lpUsd != address(0) &&
       _token0 != address(0) &&
@@ -135,7 +131,6 @@ IERC721Receiver
     );
     cdp = _cdp;
     nonFungiblePositionManager = _nonFungiblePositionManager;
-    pancakeV3Factory = _pancakeV3Factory;
     masterChefV3 = _masterChefV3;
     lpUsd = _lpUsd;
     token0 = _token0;
@@ -699,7 +694,7 @@ IERC721Receiver
       token0,
       token1,
       nonFungiblePositionManager,
-      pancakeV3Factory
+      resilientOracle
     );
   }
 
