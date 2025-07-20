@@ -119,7 +119,9 @@ IERC721Receiver
     require(tokenId > 0, "PancakeSwapStakingHub: non-zero-tokenId");
     address provider = msg.sender;
     // transfer token from provider to MasterChefV3
-    IERC721(nonFungiblePositionManager).safeTransferFrom(provider, masterChefV3, tokenId);
+    IERC721(nonFungiblePositionManager).safeTransferFrom(provider, address(this), tokenId);
+    // transfer to MasterChefV3
+    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), masterChefV3, tokenId);
     // record tokenId
     tokenIds.push(tokenId);
     tokenIdToProvider[tokenId] = provider;
