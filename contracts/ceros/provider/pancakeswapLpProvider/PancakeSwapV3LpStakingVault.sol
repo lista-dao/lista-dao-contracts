@@ -96,9 +96,9 @@ UUPSUpgradeable
     __AccessControlEnumerable_init();
     __UUPSUpgradeable_init();
 
-    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-    _grantRole(MANAGER, _manager);
-    _grantRole(PAUSER, _pauser);
+    _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+    _setupRole(MANAGER, _manager);
+    _setupRole(PAUSER, _pauser);
 
     lpProxy = _lpProxy;
   }

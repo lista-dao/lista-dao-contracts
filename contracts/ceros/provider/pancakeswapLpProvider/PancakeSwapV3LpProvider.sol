@@ -181,10 +181,10 @@ IERC721Receiver
     __Pausable_init();
     __ReentrancyGuard_init();
     // grant roles
-    grantRole(DEFAULT_ADMIN_ROLE, _admin);
-    grantRole(MANAGER, _manager);
-    grantRole(BOT, _bot);
-    grantRole(PAUSER, _pauser);
+    _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+    _setupRole(MANAGER, _manager);
+    _setupRole(BOT, _bot);
+    _setupRole(PAUSER, _pauser);
     // init state variables
     pancakeStakingHub = _pancakeStakingHub;
     pancakeLpStakingVault = _pancakeStakingVault;
