@@ -68,6 +68,7 @@ library PcsV3LpNumbersHelper {
     }
     // verification of zero liquidity when user deposit
     require(liquidity > 0, "PcsV3LpNumbersHelper: zero-liquidity");
+    require(amount0 > 0 || amount1 > 0, "PcsV3LpNumbersHelper: zero-token-amounts");
   }
 
   // @dev reference from https://github.com/sky-ecosystem/univ3-lp-oracle/blob/master/src/GUniLPOracle.sol
