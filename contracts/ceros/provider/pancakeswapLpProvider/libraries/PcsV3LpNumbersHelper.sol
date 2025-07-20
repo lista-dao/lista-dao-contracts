@@ -67,7 +67,7 @@ library PcsV3LpNumbersHelper {
       amount1 = amount1 / (10 ** (decimals1 - 18));
     }
     // verification of zero liquidity when user deposit
-    require(amount0 > 0 || amount1 > 0, "PcsV3LpNumbersHelper: zero-amounts");
+    require(liquidity > 0, "PcsV3LpNumbersHelper: zero-liquidity");
   }
 
   // @dev reference from https://github.com/sky-ecosystem/univ3-lp-oracle/blob/master/src/GUniLPOracle.sol
