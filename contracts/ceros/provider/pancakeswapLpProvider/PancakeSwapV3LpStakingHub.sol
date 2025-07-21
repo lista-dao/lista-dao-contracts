@@ -177,6 +177,7 @@ IERC721Receiver
   override
   external
   checkTokenIdWithProvider(tokenId)
+  onlyProvider
   whenNotPaused
   nonReentrant
   returns (uint256 amount0, uint256 amount1, uint256 rewards) {
@@ -192,6 +193,11 @@ IERC721Receiver
     );
     // get rewards amount
     rewards = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
+    // send rewards to provider
+    if (rewards > 0) {
+      IERC20(rewardToken).safeTransfer(msg.sender, rewards);
+      emit Harvest(msg.sender, tokenId, rewards);
+    }
     // remove tokenId record
     _removeTokenRecord(tokenId);
     // emit event
@@ -240,8 +246,11 @@ IERC721Receiver
     uint256 amount1Min
   ) internal returns (uint256 collectedAmount0, uint256 collectedAmount1) {
     address provider = msg.sender;
-    uint256 preToken0Balance = IERC20(IPancakeSwapV3LpProvider(provider).token0()).balanceOf(address(this));
-    uint256 preToken1Balance = IERC20(IPancakeSwapV3LpProvider(provider).token1()).balanceOf(address(this));
+    IERC20 token0 = IERC20(IPancakeSwapV3LpProvider(provider).token0());
+    IERC20 token1 = IERC20(IPancakeSwapV3LpProvider(provider).token1());
+
+    uint256 preToken0Balance = token0.balanceOf(address(this));
+    uint256 preToken1Balance = token1.balanceOf(address(this));
 
     // fully remove liquidity from the tokenId
     // after this tokens including fees are ready to collect
@@ -258,25 +267,32 @@ IERC721Receiver
     (collectedAmount0, collectedAmount1) = IMasterChefV3(masterChefV3).collect(
       IMasterChefV3.CollectParams({
         tokenId: tokenId,
-        recipient: provider, // send to provider directly
+        recipient: address(this),
         amount0Max: type(uint128).max, // just put max value to collect all fees
         amount1Max: type(uint128).max // just put max value to collect all fees
       })
     );
-    // approve masterChefV3 to burn the LP
-    IERC721(nonFungiblePositionManager).approve(masterChefV3, tokenId);
     // burn the LP
     IMasterChefV3(masterChefV3).burn(tokenId);
 
-    uint256 postToken0Balance = IERC20(IPancakeSwapV3LpProvider(provider).token0()).balanceOf(address(this));
-    uint256 postToken1Balance = IERC20(IPancakeSwapV3LpProvider(provider).token1()).balanceOf(address(this));
+    uint256 postToken0Balance = token0.balanceOf(address(this));
+    uint256 postToken1Balance = token1.balanceOf(address(this));
+
+    uint256 collectedAmount0WithFees = postToken0Balance - preToken0Balance;
+    uint256 collectedAmount1WithFees = postToken1Balance - preToken1Balance;
 
     // verify amount0 and amount1
     require(
-      postToken0Balance == preToken0Balance + collectedAmount0 &&
-      postToken1Balance == preToken1Balance + collectedAmount1,
+      collectedAmount0WithFees >= collectedAmount0 && collectedAmount1WithFees >= collectedAmount1,
       "PancakeSwapStakingHub: invalid-token-balances"
     );
+    // transfer token0 & token 1 to provider
+    if (collectedAmount0 > 0) {
+      token0.safeTransfer(provider, collectedAmount0);
+    }
+    if (collectedAmount1 > 0) {
+      token1.safeTransfer(provider, collectedAmount1);
+    }
   }
 
   /**

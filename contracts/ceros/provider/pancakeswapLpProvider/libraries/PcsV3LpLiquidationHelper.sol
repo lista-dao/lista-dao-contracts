@@ -36,48 +36,60 @@ library PcsV3LpLiquidationHelper {
     address token1 = paymentParams.token1;
     uint256 token0Value = paymentParams.token0Value;
     uint256 token1Value = paymentParams.token1Value;
-    // get user token0 and token1 leftover from previous liquidation(if any)
+    // Get leftover token balances from previous liquidation (if any)
     uint256 amount0 = paymentParams.token0Left;
     uint256 amount1 = paymentParams.token1Left;
+
+    // Track how much of each token is actually sent
     uint256 token0Sent = 0;
     uint256 token1Sent = 0;
+
+    // Remaining amount (in USD) that needs to be paid
     uint256 amountLeft = amountToPay;
-    // use the token with lower value first
+
+    // Use the token with lower value first
     if (token0Value < token1Value) {
-      // Use token0 first
-      if (amountLeft > token0Value) {
-        IERC20(token0).safeTransfer(recipient, amount0);
+      // If token0 cannot fully cover the amount and has non-zero balance and price
+      if (amountLeft > token0Value && amount0 > 0 && token0Value > 0) {
+        IERC20(token0).safeTransfer(recipient, amount0); // Send all token0
         amountLeft -= token0Value;
         token0Sent = amount0;
-        // Use token1 for the rest
-        uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1Value);
-        IERC20(token1).safeTransfer(recipient, token1AmountToSend);
-        token1Sent = token1AmountToSend;
-      } else {
-        // Only token0 is needed
+
+        // Use token1 for remaining payment
+        if (amount1 > 0 && token1Value > 0) {
+          uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1Value);
+          IERC20(token1).safeTransfer(recipient, token1AmountToSend);
+          token1Sent = token1AmountToSend;
+        }
+      } else if (amount0 > 0 && token0Value > 0) {
+        // token0 alone is enough to cover the amount
         uint256 token0AmountToSend = FullMath.mulDiv(amountLeft, amount0, token0Value);
         IERC20(token0).safeTransfer(recipient, token0AmountToSend);
         token0Sent = token0AmountToSend;
       }
     } else {
       // Use token1 first
-      if (amountLeft > token1Value) {
-        IERC20(token1).safeTransfer(recipient, amount1);
+      if (amountLeft > token1Value && amount1 > 0 && token1Value > 0) {
+        IERC20(token1).safeTransfer(recipient, amount1); // Send all token1
         amountLeft -= token1Value;
         token1Sent = amount1;
-        // Use token0 for the rest
-        uint256 token0AmountToSend = FullMath.mulDiv(amountLeft, amount0, token0Value);
-        IERC20(token0).safeTransfer(recipient, token0AmountToSend);
-        token0Sent = token0AmountToSend;
-      } else {
-        // Only token1 is needed
+
+        // Use token0 for remaining payment
+        if (amount0 > 0 && token0Value > 0) {
+          uint256 token0AmountToSend = FullMath.mulDiv(amountLeft, amount0, token0Value);
+          IERC20(token0).safeTransfer(recipient, token0AmountToSend);
+          token0Sent = token0AmountToSend;
+        }
+      } else if (amount1 > 0 && token1Value > 0) {
+        // token1 alone is enough to cover the amount
         uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1Value);
         IERC20(token1).safeTransfer(recipient, token1AmountToSend);
         token1Sent = token1AmountToSend;
       }
     }
-    // update leftovers
-    newToken0Left = amount0 - token0Sent;
-    newToken1Left = amount1 - token1Sent;
+
+    // Update and return remaining token balances
+    newToken0Left = amount0 > token0Sent ? amount0 - token0Sent : 0;
+    newToken1Left = amount1 > token1Sent ? amount1 - token1Sent : 0;
   }
 }

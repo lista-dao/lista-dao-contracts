@@ -344,6 +344,7 @@ IERC721Receiver
     // as the provider already recorded user's LP position
     UserLiquidation storage record = userLiquidations[user];
     record.ongoing = true;
+    emit LiquidationBegan(user, lpAmount);
   }
 
   /**
