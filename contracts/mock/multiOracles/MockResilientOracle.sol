@@ -7,13 +7,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./../../oracle/interfaces/IResilientOracle.sol";
 
 contract MockResilientOracle is IResilientOracle, Initializable, AccessControlUpgradeable {
-    IResilientOracle constant public resilientOracle = IResilientOracle(0x9CCf790F691925fa61b8cB777Cb35a64F5555e53);// dev multi oracle
+    IResilientOracle public resilientOracle;
 
     // token => price
     mapping(address => uint256) public prices;
 
-    function initialize(address _admin) public initializer {
+    function initialize(address _admin, address _resilientOracle) public initializer {
          _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        resilientOracle = IResilientOracle(_resilientOracle);
     }
 
     function realPrice(address asset) external view returns (uint256) {

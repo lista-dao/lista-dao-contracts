@@ -9,14 +9,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 interface INonfungiblePositionManagerStruct {
-  struct IncreaseLiquidityParams {
-    uint256 tokenId;
-    uint256 amount0Desired;
-    uint256 amount1Desired;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    uint256 deadline;
-  }
   struct DecreaseLiquidityParams {
     uint256 tokenId;
     uint128 liquidity;
@@ -32,10 +24,7 @@ interface INonfungiblePositionManagerStruct {
   }
 }
 
-interface NFTManager {
-  function increaseLiquidity(
-    IncreaseLiquidityParams calldata params
-  ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+interface INFTManager is INonfungiblePositionManagerStruct, IERC721 {
   function decreaseLiquidity(
     DecreaseLiquidityParams calldata params
   ) external payable returns (uint256 amount0, uint256 amount1);
@@ -48,36 +37,49 @@ contract MockMasterChefV3 {
 
   /// @notice Address of CAKE contract.
   IERC20 public immutable CAKE;
-  NFTManager public immutable nonfungiblePositionManager;
+  INFTManager public immutable nonfungiblePositionManager;
   bool public emergency;
 
   constructor(address _CAKE, address _nonfungiblePositionManager) {
     CAKE = IERC20(_CAKE);
-    nonfungiblePositionManager = NFTManager(_nonfungiblePositionManager);
+    nonfungiblePositionManager = INFTManager(_nonfungiblePositionManager);
   }
 
-  function withdraw(uint256 tokenId, address to) external returns (uint256 reward);
+  function withdraw(uint256 tokenId, address to) external returns (uint256 reward) {
+//    require(to == address(this) || to == address(0), "wrong receiver");
+    CAKE.safeTransfer(to, reward);
+    nonfungiblePositionManager.safeTransferFrom(address(this), to, tokenId);
+  }
 
   function harvest(uint256 tokenId, address to) external returns (uint256 reward) {
     reward = 5 ether;
     CAKE.safeTransfer(to, reward);
   }
 
-  function pendingCake(uint256 tokenId) override external view returns (uint256 reward) {
+  function pendingCake(uint256 tokenId) external view returns (uint256 reward) {
     reward = 5 ether;
   }
 
-  function decreaseLiquidity(DecreaseLiquidityParams memory params) external returns (uint256 amount0, uint256 amount1) {
+  function decreaseLiquidity(INFTManager.DecreaseLiquidityParams memory params) external returns (uint256 amount0, uint256 amount1) {
     // simulate harvest
-    CAKE.safeTransfer(msg.sender, reward);
+    CAKE.safeTransfer(msg.sender, 5 ether);
     (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
   }
 
-  function collect(CollectParams memory params) external returns (uint256 amount0, uint256 amount1) {
+  function collect(INFTManager.CollectParams memory params) external returns (uint256 amount0, uint256 amount1) {
     (amount0, amount1) = nonfungiblePositionManager.collect(params);
   }
 
   function burn(uint256 tokenId) external {
-    nonfungiblePositionManager.burn(_tokenId);
+    nonfungiblePositionManager.burn(tokenId);
+  }
+
+  function onERC721Received(
+    address,
+    address _from,
+    uint256 _tokenId,
+    bytes calldata
+  ) external returns (bytes4) {
+    return this.onERC721Received.selector;
   }
 }
