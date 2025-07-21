@@ -21,6 +21,7 @@ interface IPancakeSwapV3LpProvider {
   event MaxLpPerUserSet(uint256 oldMaxLpValue, uint256 newMaxLpValue);
   event LpExchangeRateSet(uint256 oldExchangeRate, uint256 newExchangeRate);
   event MinLpValueSet(uint256 oldMinLpValue, uint256 newMinLpValue);
+  event Liquidatable(address user, uint256 userLpTotalValue, uint256 userLockedCollateral);
   event Liquidated(
     address user,
     address receipient,

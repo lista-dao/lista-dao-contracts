@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../interfaces/IMasterChefV3.sol";
 import "../../interfaces/INonfungiblePositionManager.sol";
 import "../../../oracle/interfaces/IResilientOracle.sol";
-import "../../interfaces/IDao.sol";
+import "../../interfaces/ICdp.sol";
 import "../../interfaces/ILpUsd.sol";
 import "../../interfaces/IPancakeSwapV3LpStakingHub.sol";
 import "../../interfaces/IPancakeSwapV3LpProvider.sol";
@@ -225,10 +225,18 @@ IERC721Receiver
     // check if the caller is the owner of the LP token
     require(lpOwners[tokenId] == msg.sender, "PcsV3LpProvider: not-token-owner");
     require(!userLiquidations[msg.sender].ongoing, "PcsV3LpProvider: liquidation-ongoing");
+    address user = msg.sender;
+
+    uint256 withdrawableAmount = _getMaxCdpWithdrawable(user);
+    uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpExchangeRate, DENOMINATOR);
+    require(wishToWithdraw <= withdrawableAmount, "PcsV3LpProvider: lp-value-exceeds-withdrawable-amount");
+
+    // withdraw from Staking Hub with the harvested rewards
+    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
     // set lp value to zero
     lpValues[tokenId] = 0;
     // remove it from userLps
-    uint256[] storage userLpTokens = userLps[msg.sender];
+    uint256[] storage userLpTokens = userLps[user];
     for (uint256 i = 0; i < userLpTokens.length; i++) {
       if (userLpTokens[i] == tokenId) {
         userLpTokens[i] = userLpTokens[userLpTokens.length - 1];
@@ -240,12 +248,10 @@ IERC721Receiver
     delete lpOwners[tokenId];
     // sync user position
     _syncUserCdpPosition(msg.sender, false);
-    // withdraw from Staking Hub with the harvested rewards
-    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
     // send reward and cut fee
-    sendRewardAfterFeeCut(rewardAmount, msg.sender);
+    sendRewardAfterFeeCut(rewardAmount, user);
     // transfer LP token back to the user
-    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), msg.sender, tokenId);
+    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
 
     emit WithdrawLp(msg.sender, tokenId, lpValues[tokenId]);
   }
@@ -336,6 +342,8 @@ IERC721Receiver
     require(lpAmount > 0, "PcsV3LpProvider: invalid-lpAmount");
     // @notice unlike general providers in CDP, there is no cert token to burn
     // as the provider already recorded user's LP position
+    UserLiquidation storage record = userLiquidations[user];
+    record.ongoing = true;
   }
 
   /**
@@ -577,11 +585,11 @@ IERC721Receiver
     // update lpOwners, lpValues
     lpOwners[tokenId] = user;
     userLps[user].push(tokenId);
-    // update user position
-    _syncUserCdpPosition(user, false);
     // farm LP by deposit to pancakeStakingHub
     IERC721(nonFungiblePositionManager).approve(pancakeStakingHub, tokenId);
     IPancakeSwapV3LpStakingHub(pancakeStakingHub).deposit(tokenId);
+    // update user position
+    _syncUserCdpPosition(user, false);
 
     emit DepositLp(user, tokenId, lpValue);
   }
@@ -592,21 +600,22 @@ IERC721Receiver
     * @param syncLpPrice whether to sync LP price or not
     *        when its true, it will sync the LP price before calculating the user's total LP value
     */
-  function _syncUserCdpPosition(address user, bool syncLpPrice) internal nonReentrant {
+  function _syncUserCdpPosition(address user, bool syncLpPrice) internal {
     // sync current user Lp total value
     uint256 _userLpTotalValue = _syncUserLpTotalValue(user, syncLpPrice);
     // convert with lpExchangeRate
     _userLpTotalValue = FullMath.mulDiv(_userLpTotalValue, lpExchangeRate, DENOMINATOR);
     // get total deposited LP_USD amount in the cdp
-    uint256 totalLpUsd = IDao(cdp).locked(lpUsd, user);
-    uint256 withdrawableLpUsd = IDao(cdp).free(lpUsd, user);
+    uint256 totalLpUsd = ICdp(cdp).locked(lpUsd, user);
+    uint256 withdrawableLpUsd = _getMaxCdpWithdrawable(user);
     // if user has more LP value than the total LP_USD amount in the cdp
     if (_userLpTotalValue > totalLpUsd) {
       // mint LP_USD
       uint256 mintAmount = _userLpTotalValue - totalLpUsd;
       ILpUsd(lpUsd).mint(address(this), mintAmount);
+      ILpUsd(lpUsd).approve(cdp, mintAmount);
       // deposit the difference to cdp
-      IDao(cdp).deposit(user, lpUsd, mintAmount);
+      ICdp(cdp).deposit(user, lpUsd, mintAmount);
     } else if (_userLpTotalValue < totalLpUsd) {
       // if user has less LP value than the total LP_USD amount in the cdp,
       // burn LP_USD from the user
@@ -615,16 +624,46 @@ IERC721Receiver
       // we withdraw as much as we can, the position should be liquidated very soon
       if (burnAmount > withdrawableLpUsd) {
         burnAmount = withdrawableLpUsd;
+        // notify our liquidator to kickoff the liquidation
+        emit Liquidatable(
+          user,
+          userTotalLpValue[user],
+          totalLpUsd
+        );
       }
       // update cdp position
-      IDao(cdp).withdraw(user, lpUsd, burnAmount);
-      ILpUsd(lpUsd).burn(user, burnAmount);
+      ICdp(cdp).withdraw(user, lpUsd, burnAmount);
+      ILpUsd(lpUsd).burn(address(this), burnAmount);
     }
     emit UserCdpPositionSynced(
       user,
       _userLpTotalValue,
-      totalLpUsd
+      ICdp(cdp).locked(lpUsd, user)
     );
+  }
+
+  /**
+    * @dev Get the maximum amount of LP_USD that can be withdrawn from the user's CDP
+    * @param user the address of the user
+    * @return withdrawableAmount the maximum amount of LP_USD that can be withdrawn
+    */
+  function _getMaxCdpWithdrawable(address user) internal returns (uint256 withdrawableAmount) {
+    // get collateralized LpUSD
+    uint256 collateralValue = ICdp(cdp).locked(lpUsd, user);
+    // get ilk
+    (,bytes32 ilk,,) = ICdp(cdp).collaterals(lpUsd);
+    // get rate
+    (uint256 art, uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
+    // get debt
+    uint256 debt = FullMath.mulDiv(art, rate, RAY);
+    // get MCR
+    (,uint256 mat) = ICdp(cdp).spotter().ilks(ilk);
+    // calculate the minimum required collateral
+    uint256 minRequiredCollateral = FullMath.mulDiv(debt, mat, RAY);
+    // if collateral value is less than or equal to the minimum required collateral,
+    if (collateralValue <= minRequiredCollateral) return 0;
+    // calculate the withdrawable amount
+    withdrawableAmount = collateralValue - minRequiredCollateral;
   }
 
   /**
@@ -704,7 +743,7 @@ IERC721Receiver
     * @param user the address of the user
     * @return userLpTotalValue the total appraised value of the user's LPs in USD with 8 decimal places
     */
-  function getLatestUserTotalLpValue(address user) override external view returns (uint256 userLpTotalValue) {
+  function getLatestUserTotalLpValue(address user) override public view returns (uint256 userLpTotalValue) {
     userLpTotalValue = 0;
     // iterate through user's LPs and sum up the appraised value
     uint256[] storage userLpTokens = userLps[user];
