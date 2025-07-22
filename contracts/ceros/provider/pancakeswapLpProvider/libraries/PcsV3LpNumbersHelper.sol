@@ -78,21 +78,21 @@ library PcsV3LpNumbersHelper {
     address token1
   ) private view returns (uint160 sqrtPriceX96) {
     // @note: ResilientOracle returns 8-decimal prices
-    uint256 price0 = IResilientOracle(resilientOracle).peek(token0); // 8 decimals
-    uint256 price1 = IResilientOracle(resilientOracle).peek(token1); // 8 decimals
+    uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
+    uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
     require(price0 != 0 && price1 != 0, "PcsV3LpNumbersHelper: zero-price");
 
     // scale both to 18 decimals (8 + 10)
     uint256 p0 = price0 * 1e10;
     uint256 p1 = price1 * 1e10;
 
-    // sqrtPriceX96 = sqrt(p1 / p0) * 2^96
-    // (p1 * 2^96) / p0
-    uint256 ratio = _mul(p1, 1 << 96) / p0;
-    // sqrt(p1/p0 * 2^96)
-    uint256 sqrtRatio = sqrt(ratio);
-    // scale by 2^48 and divide by 1e9 to offset decimals
-    sqrtPriceX96 = toUint160(sqrtRatio << 48) / 1e9;
+    // fairPrice = p1 / p0 (1e18)
+    // sqrtPrice = sqrt(p1 / p0) (1e9)
+    uint256 fairPrice = (p1 * 1e18) / p0; // 1e18 decimals
+    uint256 sqrtFairPrice = sqrt(fairPrice); // 1e9 decimals
+
+    // sqrtPriceX96 = sqrtFairPrice * 2^96 / 1e9
+    sqrtPriceX96 = toUint160((sqrtFairPrice << 96) / 1e9);
   }
 
   function _mul(uint256 _x, uint256 _y) private pure returns (uint256 z) {
