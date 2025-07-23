@@ -136,6 +136,8 @@ contract PancakeSwapV3LpProviderTest is Test {
       admin,
       0xf3afD82A4071f272F403dC176916141f44E6c750
     );
+    // 2. LP USD
+    lpUsd = new LpUsd(token0, token1);
 
     // 3. PCS Staking hub
     PancakeSwapV3LpStakingHub pcsStakingHubImpl = new PancakeSwapV3LpStakingHub(
@@ -176,6 +178,7 @@ contract PancakeSwapV3LpProviderTest is Test {
       address(interaction),
       nonfungiblePositionManager,
       address(masterChef),
+      address(lpUsd),
       token0,
       token1,
       address(Cake)
@@ -198,7 +201,8 @@ contract PancakeSwapV3LpProviderTest is Test {
     );
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));
 
-    lpUsd = LpUsd(address(pcsProvider.lpUsd()));
+    // transfer ownership of lpUSD
+    lpUsd.setMinter(address(pcsProvider));
 
     // -------- upgrade interaction --------
     Interaction interactionImpl = new Interaction();
