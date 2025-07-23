@@ -1,46 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
   * @title LpUsd
   * @notice This contract is an ERC20 token that represents the liquidity in Usd for a specific collateral via a provider
   */
-contract LpUsd is ERC20Upgradeable, Ownable2StepUpgradeable {
-
-  address public minter;
-  event MinterChanged(address oldMinter, address newMinter);
-  modifier onlyMinter() {
-    require(msg.sender == minter, "LpUsd/only-minter");
-    _;
-  }
-
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
-
+contract LpUsd is ERC20, Ownable {
   /**
-    * @dev Initialize the contract with the name, symbol and minter address
-    * @param _name Name of the token
-    * @param _symbol Symbol of the token
-    * @param _minter Address of the minter
+    * @dev Constructor to initialize the token with a name and symbol
+    * @param token0Name Name of the first token in the pair
+    * @param token1Name Name of the second token in the pair
     */
-  function initialize(string memory _name, string memory _symbol, address _minter) external initializer {
-    require(_minter != address(0), "LpUsd/zero-address-minter");
-    __Ownable2Step_init();
-    __ERC20_init(_name, _symbol);
-    minter = _minter;
-  }
+  constructor(string memory token0Name, string memory token1Name)
+  ERC20(
+    string(abi.encodePacked(token0Name, "/", token1Name, " LPUSD")),
+    string(abi.encodePacked(token0Name, "/", token1Name, " LPUSD"))
+  )
+  {}
 
   /**
     * @dev Mint tokens to a specific account
     * @param account Address of the account to mint tokens to
     * @param amount Amount of tokens to mint
     */
-  function mint(address account, uint256 amount) external onlyMinter {
+  function mint(address account, uint256 amount) external onlyOwner {
     _mint(account, amount);
   }
 
@@ -49,18 +36,8 @@ contract LpUsd is ERC20Upgradeable, Ownable2StepUpgradeable {
     * @param account Address of the account to burn tokens from
     * @param amount Amount of tokens to burn
     */
-  function burn(address account, uint256 amount) external onlyMinter {
+  function burn(address account, uint256 amount) external onlyOwner {
       _burn(account, amount);
   }
 
-  /**
-    * @dev Set a new minter address
-    * @param _minter Address of the new minter
-    */
-  function setMinter(address _minter) external onlyOwner {
-    require(_minter != address(0) && minter != _minter, "LpUsd/invalid-minter");
-    address oldMinter = minter;
-    minter = _minter;
-    emit MinterChanged(oldMinter, minter);
-  }
 }
