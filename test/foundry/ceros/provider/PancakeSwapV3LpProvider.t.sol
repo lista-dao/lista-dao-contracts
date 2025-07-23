@@ -136,18 +136,6 @@ contract PancakeSwapV3LpProviderTest is Test {
       admin,
       0xf3afD82A4071f272F403dC176916141f44E6c750
     );
-    // 2. LP USD
-    LpUsd lpUsdImpl = new LpUsd();
-    ERC1967Proxy lpUsdProxy = new ERC1967Proxy(
-      address(lpUsdImpl),
-      abi.encodeWithSelector(
-        LpUsd.initialize.selector,
-        "pscUSDT/WBNB-V3-LpUsd",
-        "PancakeSwap V3 LP USDT/WBNB LpUSD",
-        admin
-      )
-    );
-    lpUsd = LpUsd(address(lpUsdProxy));
 
     // 3. PCS Staking hub
     PancakeSwapV3LpStakingHub pcsStakingHubImpl = new PancakeSwapV3LpStakingHub(
@@ -188,7 +176,6 @@ contract PancakeSwapV3LpProviderTest is Test {
       address(interaction),
       nonfungiblePositionManager,
       address(masterChef),
-      address(lpUsd),
       token0,
       token1,
       address(Cake)
@@ -211,8 +198,7 @@ contract PancakeSwapV3LpProviderTest is Test {
     );
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));
 
-    // lpUsd set PcsProvider as minter
-    lpUsd.setMinter(address(pcsProvider));
+    lpUsd = LpUsd(address(pcsProvider.lpUsd()));
 
     // -------- upgrade interaction --------
     Interaction interactionImpl = new Interaction();
