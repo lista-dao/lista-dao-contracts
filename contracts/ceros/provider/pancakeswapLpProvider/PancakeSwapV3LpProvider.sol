@@ -13,6 +13,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import "../LpUsd.sol";
 import "../../interfaces/IMasterChefV3.sol";
 import "../../interfaces/INonfungiblePositionManager.sol";
 import "../../../oracle/interfaces/IResilientOracle.sol";
@@ -60,7 +61,7 @@ IERC721Receiver
   string public name;
   // an ERC20 token as the collateral in the CDP
   // this token is minted when user deposit LP to the provider
-  address public immutable lpUsd;
+  address public lpUsd;
   // PancakeStakingHub address
   address public pancakeStakingHub;
   // pancakeSwapLpStakingVault address
@@ -69,7 +70,7 @@ IERC721Receiver
   address public resilientOracle;
   // Resilient oracle decimal places
   uint256 public constant RESILIENT_ORACLE_DECIMALS = 1e8;
-  // DENOMINATOR of lpExchangeRate
+  // DENOMINATOR of lpDiscountRate
   uint256 public constant DENOMINATOR = 10000;
 
   // tokenId => owner
@@ -90,8 +91,8 @@ IERC721Receiver
   uint256 public minLpValue;
   // When user deposit LP to the provider,
   // a amount of LP_USD(ERC20) equals to the appraised USD value of the LP will be minted and deposit to the cdp
-  // 0 <= lpExchangeRate <= EXCHANGE_RATE_DENOMINATOR
-  uint256 public lpExchangeRate;
+  // 0 <= lpDiscountRate <= EXCHANGE_RATE_DENOMINATOR
+  uint256 public lpDiscountRate;
 
   /// @dev MODIFIERS
   modifier onlyCdp() {
@@ -114,7 +115,6 @@ IERC721Receiver
     address _cdp,
     address _nonFungiblePositionManager,
     address _masterChefV3,
-    address _lpUsd,
     address _token0,
     address _token1,
     address _rewardToken
@@ -123,7 +123,6 @@ IERC721Receiver
       _cdp != address(0) &&
       _nonFungiblePositionManager != address(0) &&
       _masterChefV3 != address(0) &&
-      _lpUsd != address(0) &&
       _token0 != address(0) &&
       _token1 != address(0) &&
       _rewardToken != address(0),
@@ -132,7 +131,6 @@ IERC721Receiver
     cdp = _cdp;
     nonFungiblePositionManager = _nonFungiblePositionManager;
     masterChefV3 = _masterChefV3;
-    lpUsd = _lpUsd;
     token0 = _token0;
     token1 = _token1;
     rewardToken = _rewardToken;
@@ -149,7 +147,7 @@ IERC721Receiver
     * @param _pancakeStakingHub PancakeStakingHub address
     * @param _maxLpPerUser max LPs per user
     * @param _minLpValue minimum LP value in USD
-    * @param _lpExchangeRate exchange rate of LP in USD
+    * @param _lpDiscountRate exchange rate of LP in USD
     */
   function initialize(
     address _admin,
@@ -161,7 +159,7 @@ IERC721Receiver
     address _resilientOracle,
     uint256 _maxLpPerUser,
     uint256 _minLpValue,
-    uint256 _lpExchangeRate
+    uint256 _lpDiscountRate
   ) public initializer {
     require(
       _admin != address(0) &&
@@ -175,7 +173,7 @@ IERC721Receiver
     );
     require(_maxLpPerUser > 0, "invalid maxLpPerUser value");
     require(_minLpValue > 0, "invalid minLpValue value");
-    require(_lpExchangeRate <= DENOMINATOR, "invalid lpExchangeRate value");
+    require(_lpDiscountRate <= DENOMINATOR, "invalid lpDiscountRate value");
 
     __AccessControlEnumerable_init();
     __Pausable_init();
@@ -191,12 +189,15 @@ IERC721Receiver
     resilientOracle = _resilientOracle;
     maxLpPerUser = _maxLpPerUser;
     minLpValue = _minLpValue;
-    lpExchangeRate = _lpExchangeRate;
+    lpDiscountRate = _lpDiscountRate;
 
     // set provider name
     string memory token0Name = IERC20Metadata(token0).symbol();
     string memory token1Name = IERC20Metadata(token1).symbol();
     name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "-", token1Name, " V3 LP Provider"));
+
+    // deploy LpUSD
+    lpUsd = address(new LpUsd(token0Name, token1Name));
   }
 
 
@@ -211,7 +212,7 @@ IERC721Receiver
    */
   function provide(uint256 tokenId) override external nonReentrant whenNotPaused {
     require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider: Not owner of token");
-    require(!userLiquidations[msg.sender].ongoing, "PcsV3LpProvider: liquidation-ongoing");
+    // @note we don't check user whether is liquidating, we do it at onERC721Received
     // transfer user's LP token to this contract
     IERC721(nonFungiblePositionManager).safeTransferFrom(msg.sender, address(this), tokenId);
   }
@@ -223,33 +224,24 @@ IERC721Receiver
     */
   function release(uint256 tokenId) override external nonReentrant whenNotPaused {
     // check if the caller is the owner of the LP token
-    require(lpOwners[tokenId] == msg.sender, "PcsV3LpProvider: not-token-owner");
-    require(!userLiquidations[msg.sender].ongoing, "PcsV3LpProvider: liquidation-ongoing");
     address user = msg.sender;
+    require(lpOwners[tokenId] == user, "PcsV3LpProvider: not-token-owner");
+    require(!userLiquidations[user].ongoing, "PcsV3LpProvider: liquidation-ongoing");
 
+    // fully sync. user CDP position
+    _syncUserCdpPosition(user, true);
     uint256 withdrawableAmount = _getMaxCdpWithdrawable(user);
-    uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpExchangeRate, DENOMINATOR);
+    uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpDiscountRate, DENOMINATOR);
     require(wishToWithdraw <= withdrawableAmount, "PcsV3LpProvider: lp-value-exceeds-withdrawable-amount");
 
     // withdraw from Staking Hub with the harvested rewards
     uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
-    // set lp value to zero
-    lpValues[tokenId] = 0;
-    // remove it from userLps
-    uint256[] storage userLpTokens = userLps[user];
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      if (userLpTokens[i] == tokenId) {
-        userLpTokens[i] = userLpTokens[userLpTokens.length - 1];
-        userLpTokens.pop();
-        break;
-      }
-    }
-    // remove the tokenId from lpOwners
-    delete lpOwners[tokenId];
+    // remove token
+    _removeToken(user, tokenId);
     // sync user position
     _syncUserCdpPosition(msg.sender, false);
     // send reward and cut fee
-    sendRewardAfterFeeCut(rewardAmount, user);
+    _sendRewardAfterFeeCut(rewardAmount, user);
     // transfer LP token back to the user
     IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
 
@@ -376,20 +368,20 @@ IERC721Receiver
     UserLiquidation storage record = userLiquidations[owner];
     // liquidation ended, send leftover tokens and LP to the owner
     if (isLeftOver) {
+      // @todo sweep LP_USD withdraw > free() then burn
+
       // sync user position
-      _syncUserCdpPosition(owner, false);
+      _syncUserCdpPosition(owner, true);
       // returns all leftover token0 and token1 to user
       if (record.token1Left > 0) {
         IERC20(token1).safeTransfer(owner, record.token1Left);
       }
-      if (record.token1Left > 0) {
+      if (record.token0Left > 0) {
         IERC20(token0).safeTransfer(owner, record.token0Left);
       }
       // delete user's liquidation record
       delete userLiquidations[owner];
     } else {
-      // make sure user has a liquidation record
-      record.ongoing = true;
       // get token0 and token1's price
       // and calculate their values
       uint256 token0Price = IResilientOracle(resilientOracle).peek(token0);
@@ -409,7 +401,7 @@ IERC721Receiver
           data
         );
         // Step 3. rewards send to owner after fee is cut
-        sendRewardAfterFeeCut(rewards, owner);
+        _sendRewardAfterFeeCut(rewards, owner);
         // Step 4. Update user leftover tokens
         record.token0Left += amount0;
         record.token1Left += amount1;
@@ -465,8 +457,8 @@ IERC721Receiver
     (uint256 amount0Min, uint256 amount1Min, uint256 tokenId) = abi.decode(data, (uint256, uint256, uint256));
     require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PcsV3LpProvider: invalid-data");
     // sync user's LP total value first to ensure the lowest LP value is correct
-    // this must be `false` as we aren't able to alter user's position before the liquidation is finished
-    _syncUserCdpPosition(owner, false);
+    _syncUserLpTotalValue(owner, true);
+    // find the lowest LP value in USD
     uint256 lowestLpValue = type(uint256).max;
     uint256 lowestLpTokenId = 0;
     uint256[] storage userLpTokens = userLps[owner];
@@ -484,22 +476,36 @@ IERC721Receiver
     // the amount of LP_USD to be bought by the liquidator, must be covered by the lowest LP value
     require(amount <= lowestLpValue, "PcsV3LpProvider: amount-exceeds-lp-value");
     require(lowestLpTokenId == tokenId, "PcsV3LpProvider: invalid-tokenId");
-    // remove it from userLps[]
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      if (userLpTokens[i] == lowestLpTokenId) {
-        userLpTokens[i] = userLpTokens[userLpTokens.length - 1];
-        userLpTokens.pop();
-        break;
-      }
-    }
-    // remove if from lpOwners[tokenId]
-    delete lpOwners[lowestLpTokenId];
+    // remove token from records
+    _removeToken(owner, lowestLpTokenId);
     // burn LP and collects token0, token1 and rewards
     (
       amount0,
       amount1,
       rewards
     ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(tokenId, amount0Min, amount1Min);
+  }
+
+  /**
+    * @dev removes token from user's LP record
+    * @notice this function will not sync user's CDP position and LpTotalValue
+    * @param user the address of the user
+    * @param tokenId the tokenId of the LP token to be removed
+  */
+  function _removeToken(address user, uint256 tokenId) internal {
+    // zeroize lpValues[tokenId]
+    lpValues[tokenId] = 0;
+    // remove it from userLps[]
+    uint256[] storage userLpTokens = userLps[user];
+    for (uint256 i = 0; i < userLpTokens.length; i++) {
+      if (userLpTokens[i] == tokenId) {
+        userLpTokens[i] = userLpTokens[userLpTokens.length - 1];
+        userLpTokens.pop();
+        break;
+      }
+    }
+    // remove if from lpOwners[tokenId]
+    delete lpOwners[tokenId];
   }
 
   /*
@@ -515,14 +521,13 @@ IERC721Receiver
     require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider: invalid-lp-sender");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
     if (from != pancakeStakingHub) {
+      // user is not allowed to deposit LP if liquidation is ongoing
+      require(!userLiquidations[from].ongoing, "PcsV3LpProvider: liquidation-ongoing");
       // check correctness of token0 and token1 and make sure non-zero liquidity
-      bool isValid = verifyLp(tokenId);
+      bool isValid = _verifyLp(tokenId);
       require(isValid, "PcsV3LpProvider: invalid-lp");
       // make deposit and stake LP
       _deposit(from, tokenId);
-    } else {
-      // if the NFT is sent from PancakeStakingHub, it should belongs to someone(lpOwners)
-      require(lpOwners[tokenId] != address(0), "PcsV3LpProvider: invalid-lp-owner");
     }
     return IERC721Receiver.onERC721Received.selector;
   }
@@ -532,7 +537,7 @@ IERC721Receiver
     * @param amount amount of rewards to send
     * @param to the address to send the rewards to
     */
-  function sendRewardAfterFeeCut(uint256 amount, address to) internal {
+  function _sendRewardAfterFeeCut(uint256 amount, address to) internal {
     require(to != address(0), "PcsV3LpProvider: invalid-recipient");
     if (amount > 0) {
       // approve rewardToken to the vault
@@ -549,7 +554,7 @@ IERC721Receiver
     * @param tokenId the tokenId of the LP token
     * @return true if the LP token is valid, false otherwise
     */
-  function verifyLp(uint256 tokenId) internal view returns (bool) {
+  function _verifyLp(uint256 tokenId) internal view returns (bool) {
     (
     /* uint96 nonce */,
     /* address operator */,
@@ -577,7 +582,7 @@ IERC721Receiver
     */
   function _deposit(address user, uint256 tokenId) internal {
     // check if user has reached the max LP limit
-    require(userLps[user].length < maxLpPerUser, "PcsV3LpProvider: max-lp-reached");
+    require(userLps[user].length <= maxLpPerUser, "PcsV3LpProvider: max-lp-reached");
 
     // get lp value and verify the underlying price
     uint256 lpValue = _syncLpValue(tokenId);
@@ -604,11 +609,10 @@ IERC721Receiver
   function _syncUserCdpPosition(address user, bool syncLpPrice) internal {
     // sync current user Lp total value
     uint256 _userLpTotalValue = _syncUserLpTotalValue(user, syncLpPrice);
-    // convert with lpExchangeRate
-    _userLpTotalValue = FullMath.mulDiv(_userLpTotalValue, lpExchangeRate, DENOMINATOR);
+    // convert with lpDiscountRate
+    _userLpTotalValue = FullMath.mulDiv(_userLpTotalValue, lpDiscountRate, DENOMINATOR);
     // get total deposited LP_USD amount in the cdp
     uint256 totalLpUsd = ICdp(cdp).locked(lpUsd, user);
-    uint256 withdrawableLpUsd = _getMaxCdpWithdrawable(user);
     // if user has more LP value than the total LP_USD amount in the cdp
     if (_userLpTotalValue > totalLpUsd) {
       // mint LP_USD
@@ -621,6 +625,7 @@ IERC721Receiver
       // if user has less LP value than the total LP_USD amount in the cdp,
       // burn LP_USD from the user
       uint256 burnAmount = totalLpUsd - _userLpTotalValue;
+      uint256 withdrawableLpUsd = _getMaxCdpWithdrawable(user);
       // if burn amount is more than the withdrawable amount
       // we withdraw as much as we can, the position should be liquidated very soon
       if (burnAmount > withdrawableLpUsd) {
@@ -653,6 +658,8 @@ IERC721Receiver
     uint256 collateralValue = ICdp(cdp).locked(lpUsd, user);
     // get ilk
     (,bytes32 ilk,,) = ICdp(cdp).collaterals(lpUsd);
+    // refresh interest
+    ICdp(cdp).drip(address(lpUsd));
     // get rate
     (uint256 art, uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
     // get debt
@@ -785,14 +792,14 @@ IERC721Receiver
   }
 
   /**
-    * @dev Set lpExchangeRate
-    * @param _lpExchangeRate the exchange rate
+    * @dev Set lpDiscountRate
+    * @param _lpDiscountRate the exchange rate
     */
-  function setLpExchangeRate(uint256 _lpExchangeRate) external onlyRole(MANAGER) {
-    require(_lpExchangeRate <= DENOMINATOR && lpExchangeRate != _lpExchangeRate, "PcsV3LpProvider: invalid-lpExchangeRate");
-    uint256 oldLpExchangeRate = lpExchangeRate;
-    lpExchangeRate = _lpExchangeRate;
-    emit LpExchangeRateSet(oldLpExchangeRate, _lpExchangeRate);
+  function setLpDiscountRate(uint256 _lpDiscountRate) external onlyRole(MANAGER) {
+    require(_lpDiscountRate <= DENOMINATOR && lpDiscountRate != _lpDiscountRate, "PcsV3LpProvider: invalid-lpDiscountRate");
+    uint256 oldLpDiscountRate = lpDiscountRate;
+    lpDiscountRate = _lpDiscountRate;
+    emit LpDiscountRateSet(oldLpDiscountRate, _lpDiscountRate);
   }
 
   /**

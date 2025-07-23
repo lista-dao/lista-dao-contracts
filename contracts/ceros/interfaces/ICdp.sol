@@ -42,8 +42,8 @@ interface ICdp {
 
   function collaterals(address token) external view returns (GemJoinLike, bytes32, uint32, address);
   function locked(address token, address usr) external view returns (uint256);
-//  function free(address token, address usr) external view returns (uint256);
   function borrowed(address token, address usr) external view returns (uint256);
   function spotter() external view returns (SpotLike);
   function vat() external view returns (VatLike);
+  function drip(address token) external;
 }

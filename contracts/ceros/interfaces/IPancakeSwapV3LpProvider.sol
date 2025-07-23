@@ -19,7 +19,7 @@ interface IPancakeSwapV3LpProvider {
   event WithdrawLp(address user, uint256 tokenId, uint256 lpValue);
   event UserCdpPositionSynced(address user, uint256 userTotalLpValue, uint256 userCdpPositionValue);
   event MaxLpPerUserSet(uint256 oldMaxLpValue, uint256 newMaxLpValue);
-  event LpExchangeRateSet(uint256 oldExchangeRate, uint256 newExchangeRate);
+  event LpDiscountRateSet(uint256 oldExchangeRate, uint256 newExchangeRate);
   event MinLpValueSet(uint256 oldMinLpValue, uint256 newMinLpValue);
   event LiquidationBegan(address user, uint256 liquidatableAmount);
   event Liquidatable(address user, uint256 userLpTotalValue, uint256 userLockedCollateral);
