@@ -13,7 +13,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "../LpUsd.sol";
 import "../../interfaces/IMasterChefV3.sol";
 import "../../interfaces/INonfungiblePositionManager.sol";
 import "../../../oracle/interfaces/IResilientOracle.sol";
@@ -61,7 +60,7 @@ IERC721Receiver
   string public name;
   // an ERC20 token as the collateral in the CDP
   // this token is minted when user deposit LP to the provider
-  address public lpUsd;
+  address public immutable lpUsd;
   // PancakeStakingHub address
   address public pancakeStakingHub;
   // pancakeSwapLpStakingVault address
@@ -115,6 +114,7 @@ IERC721Receiver
     address _cdp,
     address _nonFungiblePositionManager,
     address _masterChefV3,
+    address _lpUsd,
     address _token0,
     address _token1,
     address _rewardToken
@@ -123,6 +123,7 @@ IERC721Receiver
       _cdp != address(0) &&
       _nonFungiblePositionManager != address(0) &&
       _masterChefV3 != address(0) &&
+      _lpUsd != address(0) &&
       _token0 != address(0) &&
       _token1 != address(0) &&
       _rewardToken != address(0),
@@ -134,6 +135,7 @@ IERC721Receiver
     token0 = _token0;
     token1 = _token1;
     rewardToken = _rewardToken;
+    lpUsd = _lpUsd;
 
     _disableInitializers();
   }
@@ -195,9 +197,6 @@ IERC721Receiver
     string memory token0Name = IERC20Metadata(token0).symbol();
     string memory token1Name = IERC20Metadata(token1).symbol();
     name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "-", token1Name, " V3 LP Provider"));
-
-    // deploy LpUSD
-    lpUsd = address(new LpUsd(token0Name, token1Name));
   }
 
 
