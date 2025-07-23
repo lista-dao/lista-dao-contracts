@@ -367,10 +367,16 @@ IERC721Receiver
     UserLiquidation storage record = userLiquidations[owner];
     // liquidation ended, send leftover tokens and LP to the owner
     if (isLeftOver) {
-      // @todo sweep LP_USD withdraw > free() then burn
-
-      // sync user position
-      _syncUserCdpPosition(owner, true);
+      // sweep the leftover lpUsd at cdp after liquidation
+      PcsV3LpLiquidationHelper.sweepLeftoverLpUsd(
+        owner,
+        lpUsd,
+        cdp
+      );
+      if (userLps[owner].length > 0) {
+        // re-init user's position at CDP
+        _syncUserCdpPosition(owner, true);
+      }
       // returns all leftover token0 and token1 to user
       if (record.token1Left > 0) {
         IERC20(token1).safeTransfer(owner, record.token1Left);

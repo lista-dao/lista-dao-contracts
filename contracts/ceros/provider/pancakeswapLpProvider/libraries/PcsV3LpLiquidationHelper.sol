@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../../interfaces/IPancakeSwapV3LpStakingHub.sol";
 import "../../../interfaces/IPancakeSwapV3LpProvider.sol";
+import "../../../interfaces/ICdp.sol";
+import "../../../interfaces/ILpUsd.sol";
 import "../../../../oracle/libraries/FullMath.sol";
 
-uint256 constant _RESILIENT_ORACLE_DECIMALS = 1e8;
 
 library PcsV3LpLiquidationHelper {
 
@@ -79,5 +80,22 @@ library PcsV3LpLiquidationHelper {
     // Update and return new token balances
     newToken0Left = amount0 > token0Sent ? amount0 - token0Sent : 0;
     newToken1Left = amount1 > token1Sent ? amount1 - token1Sent : 0;
+  }
+
+  /**
+    * @dev sweep leftover LpUsd after liquidation
+    * @param user user address
+    * @param lpUsd LpUsd token address
+    * @param cdp cdp address
+    */
+  function sweepLeftoverLpUsd(address user, address lpUsd, address cdp) public {
+    // fetch the remaining value of LpUsd after liquidation
+    uint256 remaining = ICdp(cdp).free(lpUsd, user);
+    // has leftover LpUsd
+    if (remaining > 0) {
+      // withdraw the remaining and burn
+      ICdp(cdp).withdraw(user, lpUsd, remaining);
+      ILpUsd(lpUsd).burn(address(this), remaining);
+    }
   }
 }

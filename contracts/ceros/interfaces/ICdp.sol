@@ -46,4 +46,5 @@ interface ICdp {
   function spotter() external view returns (SpotLike);
   function vat() external view returns (VatLike);
   function drip(address token) external;
+  function free(address token, address usr) external view returns (uint256);
 }
