@@ -69,13 +69,13 @@ library PcsV3LpLiquidationHelper {
     // pay the remainder with token1 if necessary
     if (amountLeft > 0 && amount1 > 0 && token1Value > 0) {
       uint256 token1MaxPayable = token1Value;
-      require(token1MaxPayable >= amountLeft, "Insufficient token1 value");
-
       uint256 token1AmountToSend = FullMath.mulDiv(amountLeft, amount1, token1MaxPayable);
       IERC20(token1).safeTransfer(recipient, token1AmountToSend);
       token1Sent = token1AmountToSend;
       amountLeft = 0;
     }
+    // if there is still amount left, it means not enough token0 and token1 were sent
+    require(amountLeft == 0, "PcsV3LpLiquidationHelper: not-enough-token-amount");
 
     // Update and return new token balances
     newToken0Left = amount0 > token0Sent ? amount0 - token0Sent : 0;

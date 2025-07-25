@@ -31,20 +31,22 @@ library PcsV3LpNumbersHelper {
       /* address operator */,
       /* address token0 */,
       /* address token1 */,
-      /*uint24 fee*/,
+      /* uint24 fee */,
       int24 tickLower,
       int24 tickUpper,
       uint128 liquidity,
+      //// @note we didn't count the fees to make the amounts more conservative
       /* uint256 feeGrowthInside0LastX128 */,
       /* uint256 feeGrowthInside1LastX128 */,
       /* uint128 tokensOwed0 */,
       /* uint128 tokensOwed1 */
     ) = INonfungiblePositionManager(nonFungiblePositionManager).positions(tokenId);
-    // To prevent manipulation of the price, we compute the fair sqrtPriceX96
-    // instead of using slot0 from the pool.
-    // address poolAddress = IUniswapV3Factory(pancakeV3Factory).getPool(token0, token1, fee);
-    // (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(poolAddress).slot0();
-    // get sqrtPriceX96 from slot0
+
+    // @note To prevent manipulation of the price,
+    //       we compute the fair sqrtPriceX96 instead of using slot0 from the pool.
+    //       (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(poolAddress).slot0();
+
+    // calculate fair sqrtPriceX96
     uint160 sqrtPriceX96 = computeFairSqrtPriceX96(resilientOracle, token0, token1);
     uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
     uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
@@ -88,7 +90,7 @@ library PcsV3LpNumbersHelper {
 
     // fairPrice = p1 / p0 (1e18)
     // sqrtPrice = sqrt(p1 / p0) (1e9)
-    uint256 fairPrice = (p1 * 1e18) / p0; // 1e18 decimals
+    uint256 fairPrice = _mul(p1, 1e18) / p0; // 1e18 decimals
     uint256 sqrtFairPrice = sqrt(fairPrice); // 1e9 decimals
 
     // sqrtPriceX96 = sqrtFairPrice * 2^96 / 1e9

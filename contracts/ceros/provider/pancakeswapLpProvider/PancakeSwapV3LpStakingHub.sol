@@ -237,14 +237,14 @@ IERC721Receiver
     * @param tokenId ID of the NFT token to burn
     * @param amount0Min minimum amount of token0 to collect
     * @param amount1Min minimum amount of token1 to collect
-    * @return collectedAmount0 collected amount of token0
-    * @return collectedAmount1 collected amount of token1
+    * @return collectedAmount0WithFees collected amount of token0
+    * @return collectedAmount1WithFees collected amount of token1
     */
   function _burnAndCollectTokens(
     uint256 tokenId,
     uint256 amount0Min,
     uint256 amount1Min
-  ) internal returns (uint256 collectedAmount0, uint256 collectedAmount1) {
+  ) internal returns (uint256 collectedAmount0WithFees, uint256 collectedAmount1WithFees) {
     address provider = msg.sender;
     IERC20 token0 = IERC20(IPancakeSwapV3LpProvider(provider).token0());
     IERC20 token1 = IERC20(IPancakeSwapV3LpProvider(provider).token1());
@@ -264,7 +264,7 @@ IERC721Receiver
       })
     );
     // collect token0 and token1 including fees from the tokenId
-    (collectedAmount0, collectedAmount1) = IMasterChefV3(masterChefV3).collect(
+    (uint256 collectedAmount0, uint256 collectedAmount1) = IMasterChefV3(masterChefV3).collect(
       IMasterChefV3.CollectParams({
         tokenId: tokenId,
         recipient: address(this),
@@ -278,8 +278,8 @@ IERC721Receiver
     uint256 postToken0Balance = token0.balanceOf(address(this));
     uint256 postToken1Balance = token1.balanceOf(address(this));
 
-    uint256 collectedAmount0WithFees = postToken0Balance - preToken0Balance;
-    uint256 collectedAmount1WithFees = postToken1Balance - preToken1Balance;
+    collectedAmount0WithFees = postToken0Balance - preToken0Balance;
+    collectedAmount1WithFees = postToken1Balance - preToken1Balance;
 
     // verify amount0 and amount1
     require(
@@ -287,11 +287,11 @@ IERC721Receiver
       "PancakeSwapStakingHub: invalid-token-balances"
     );
     // transfer token0 & token 1 to provider
-    if (collectedAmount0 > 0) {
-      token0.safeTransfer(provider, collectedAmount0);
+    if (collectedAmount0WithFees > 0) {
+      token0.safeTransfer(provider, collectedAmount0WithFees);
     }
-    if (collectedAmount1 > 0) {
-      token1.safeTransfer(provider, collectedAmount1);
+    if (collectedAmount1WithFees > 0) {
+      token1.safeTransfer(provider, collectedAmount1WithFees);
     }
   }
 

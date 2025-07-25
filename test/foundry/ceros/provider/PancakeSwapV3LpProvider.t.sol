@@ -75,6 +75,21 @@ interface IUniswapV3Pool {
   function tickSpacing() external view returns (int24);
 }
 
+
+interface IChainLink {
+  function latestRoundData()
+  external
+  view
+  returns (
+    uint80 roundId,
+    int256 answer,
+    uint256 startedAt,
+    uint256 updatedAt,
+    uint80 answeredInRound
+  );
+}
+
+
 contract PancakeSwapV3LpProviderTest is Test {
 
   address admin = 0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253;
@@ -93,6 +108,7 @@ contract PancakeSwapV3LpProviderTest is Test {
 
   address token0 = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; // CAKE
   address token1 = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c; // WBNB
+  mapping(address => IChainLink) public priceFeeds;
 
   bytes32 public ilk = "USDT/WBNB-LPUSD";
   uint256 public mat = 2000000000000000000000000000; // 200% MCR
@@ -121,6 +137,9 @@ contract PancakeSwapV3LpProviderTest is Test {
     spotter = Spotter(0x49bc2c4E5B035341b7d92Da4e6B267F7426F3038);
     interaction = Interaction(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4);
     dog = Dog(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+
+    priceFeeds[token0] = IChainLink(0xB6064eD41d4f67e353768aA239cA86f4F73665a1); // CAKE/USD
+    priceFeeds[token1] = IChainLink(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE); // WBNB/USD
 
     vm.startPrank(admin);
 
@@ -352,62 +371,63 @@ contract PancakeSwapV3LpProviderTest is Test {
 
   /// @dev buy from auction
   function test_liquidation() public {
-    // user provided
-    uint256 tokenId1 = normalProvide(20 ether);
-    uint256 tokenId2 = normalProvide(5 ether);
-    // get LP values
-    uint256 token1Value = pcsProvider.getLpValue(tokenId1);
-    uint256 token2Value = pcsProvider.getLpValue(tokenId2);
+
+    syncPrice(token0);
+    syncPrice(token1);
+    uint256 tokenId = normalProvide(5 ether);
+    uint256 tokenValue = pcsProvider.getLpValue(tokenId);
 
     // pretend CDP kickstart the liquidation
     vm.startPrank(address(interaction));
-    // we pretend user needs to be liquidated
     pcsProvider.daoBurn(user, 1 ether);
     vm.stopPrank();
 
     // pretend liquidator buy from auction
     vm.startPrank(address(interaction));
-    // try liquidate with token1 with a big enough value
-    // but contract would expect to use token2 to buy it
-    // however tokenId2 don't have enough value to cover the amount
-    vm.expectRevert("PcsV3LpProvider: amount-exceeds-lp-value");
+    // try liquidate with token with unmatched user
+    vm.expectRevert("PcsV3LpProvider: not-lp-owner");
     pcsProvider.liquidation(
       user,
       address(bot),
-      token1Value,
-      abi.encode(0, 0, tokenId1),
+      tokenValue,
+      abi.encode(1, 1, 1234),
       false
     );
-    // try liquidate with token1 with a small amount
-    // but contract would expect to use token2
-    vm.expectRevert("PcsV3LpProvider: invalid-tokenId");
+    // try liquidate with token1 with all zero amounts
+    vm.expectRevert("PcsV3LpProvider: invalid-data");
     pcsProvider.liquidation(
       user,
       address(bot),
       2 ether,
-      abi.encode(0, 0, tokenId1),
+      abi.encode(0, 0, tokenId),
       false
     );
-    // try liquidate with token2
+    // try liquidate
     pcsProvider.liquidation(
       user,
       address(bot),
-      token2Value,
-      abi.encode(0, 0, tokenId2),
+      1000 ether,
+      abi.encode(1, 1, tokenId),
       false
     );
     vm.stopPrank();
   }
   // ------------------------ Utilities -------------------------- //
   function mockPrice(address token, uint256 price) public {
-    vm.startPrank(admin);
+    vm.prank(admin);
     oracle.setPrice(token, price);
-    vm.stopPrank();
+  }
+
+  function syncPrice(address token) public {
+    IChainLink priceFeed = priceFeeds[token];
+    (,int256 answer,,,) = priceFeed.latestRoundData();
+    vm.prank(admin);
+    oracle.setPrice(token, uint256(answer));
   }
 
   function normalProvide(uint256 token1Amount) public returns (uint256) {
-    mockPrice(token0, 3 * 1e8);
-    mockPrice(token1, 740 * 1e8);
+    syncPrice(token0);
+    syncPrice(token1);
 
     // 10 WBNB + x CAKE which worth 10 BNB
     uint256 tokenId1 = mintLp(token1Amount);

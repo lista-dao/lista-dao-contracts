@@ -400,9 +400,8 @@ IERC721Receiver
           uint256 amount0,
           uint256 amount1,
           uint256 rewards
-        ) = _burnLpWithTheLowestValue(
+        ) = _burnLp(
           owner,
-          amount,
           data
         );
         // Step 3. rewards send to owner after fee is cut
@@ -411,6 +410,9 @@ IERC721Receiver
         record.token0Left += amount0;
         record.token1Left += amount1;
       }
+      // after LP burn, recalculate token0 and token1 values
+      token0Value = FullMath.mulDiv(record.token0Left, token0Price, RESILIENT_ORACLE_DECIMALS);
+      token1Value = FullMath.mulDiv(record.token1Left, token1Price, RESILIENT_ORACLE_DECIMALS);
       // step 5. pay by tokens
       PcsV3LpLiquidationHelper.PaymentParams memory paymentParams = PcsV3LpLiquidationHelper.PaymentParams({
         recipient: recipient,
@@ -423,6 +425,7 @@ IERC721Receiver
         token1Left: record.token1Left
       });
       // leftover record will be updated after
+      // @dev payByToken0AndToken1 will make sure enough tokens to cover the amount, revert otherwise
       (uint256 newToken0Left, uint256 newToken1Left) = PcsV3LpLiquidationHelper.payByToken0AndToken1(paymentParams);
       // update leftover record
       record.token0Left = newToken0Left;
@@ -444,45 +447,26 @@ IERC721Receiver
 
   /**
     * @notice ----- FOR Liquidation ------
-    * @dev Burn user's LP with the lowest value in USD
-    *     and return the token0, token1 and rewards to the recipient
+    * @dev Burn user's LP then return the token0, token1 to the recipient, and rewards to the owner
+    *      Liquidator determines the amount of LP_USD to be bought and which LP token to burn
+    *      this can maintain the flexibility while not sacrifice the security
     * @param owner the address of the user to liquidate
-    * @param amount the amount of LP_USD to be bought by the liquidator
     * @param data bytes consist of 3 uint256 variables: amount0min, amount1Min, tokenId
     * @return amount0 the amount of token0 returned to the recipient
     * @return amount1 the amount of token1 returned to the recipient
-    * @return rewards the amount of rewards returned to the recipient
+    * @return rewards the amount of rewards returned to the owner
     */
-  function _burnLpWithTheLowestValue(
+  function _burnLp(
     address owner,
-    uint256 amount,
     bytes memory data
   ) internal returns (uint256 amount0, uint256 amount1, uint256 rewards) {
     // decode data for decrease liquidity params
     (uint256 amount0Min, uint256 amount1Min, uint256 tokenId) = abi.decode(data, (uint256, uint256, uint256));
-    require(amount1Min >= 0 && amount0Min >= 0 && tokenId > 0, "PcsV3LpProvider: invalid-data");
-    // sync user's LP total value first to ensure the lowest LP value is correct
-    _syncUserLpTotalValue(owner, true);
-    // find the lowest LP value in USD
-    uint256 lowestLpValue = type(uint256).max;
-    uint256 lowestLpTokenId = 0;
-    uint256[] storage userLpTokens = userLps[owner];
-    // find user LPs with the lowest value
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      uint256 currentTokenId = userLpTokens[i];
-      // get the lp value in USD
-      uint256 lpValue = lpValues[currentTokenId];
-      // find the lowest lp value
-      if (lpValue < lowestLpValue) {
-        lowestLpValue = lpValue;
-        lowestLpTokenId = currentTokenId;
-      }
-    }
-    // the amount of LP_USD to be bought by the liquidator, must be covered by the lowest LP value
-    require(amount <= lowestLpValue, "PcsV3LpProvider: amount-exceeds-lp-value");
-    require(lowestLpTokenId == tokenId, "PcsV3LpProvider: invalid-tokenId");
+    // amount0Min and amount1Min can't be zero at the same time and non-zero tokenId
+    require(!(amount1Min == 0 && amount0Min == 0) && tokenId > 0, "PcsV3LpProvider: invalid-data");
+    require(lpOwners[tokenId] == owner, "PcsV3LpProvider: not-lp-owner");
     // remove token from records
-    _removeToken(owner, lowestLpTokenId);
+    _removeToken(owner, tokenId);
     // burn LP and collects token0, token1 and rewards
     (
       amount0,
