@@ -53,7 +53,7 @@ contract LpUsd is ERC20, Ownable2Step {
     * @param newMinter Address of the new minter
     */
   function setMinter(address newMinter) external onlyOwner {
-    require(newMinter != address(0) && newMinter != minter, "LpUsd: new minter is the zero address");
+    require(newMinter != address(0) && newMinter != minter, "LpUsd: new minter is invalid");
     address oldMinter = minter;
     minter = newMinter;
     emit MinterChanged(oldMinter, newMinter);
