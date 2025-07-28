@@ -375,7 +375,18 @@ contract PancakeSwapV3LpProviderTest is Test {
     syncPrice(token0);
     syncPrice(token1);
     uint256 tokenId = normalProvide(5 ether);
-    uint256 tokenValue = pcsProvider.getLpValue(tokenId);
+
+    (uint256 amount0, uint256 amount1) = pcsProvider.getAmounts(tokenId);
+    uint256 amount0Min = FullMath.mulDiv(
+      amount0,
+      8000,
+      10000
+    );
+    uint256 amount1Min = FullMath.mulDiv(
+      amount1,
+      8000,
+      10000
+    );
 
     // pretend CDP kickstart the liquidation
     vm.startPrank(address(interaction));
@@ -389,7 +400,7 @@ contract PancakeSwapV3LpProviderTest is Test {
     pcsProvider.liquidation(
       user,
       address(bot),
-      tokenValue,
+      1 ether,
       abi.encode(1, 1, 1234),
       false
     );
@@ -402,12 +413,20 @@ contract PancakeSwapV3LpProviderTest is Test {
       abi.encode(0, 0, tokenId),
       false
     );
+    vm.expectRevert("PcsV3LpProvider: insufficient-lp-value");
+    pcsProvider.liquidation(
+      user,
+      address(bot),
+      1000000 ether,
+      abi.encode(1, 1, tokenId),
+      false
+    );
     // try liquidate
     pcsProvider.liquidation(
       user,
       address(bot),
       1000 ether,
-      abi.encode(1, 1, tokenId),
+      abi.encode(amount0Min, amount1Min, tokenId),
       false
     );
     vm.stopPrank();

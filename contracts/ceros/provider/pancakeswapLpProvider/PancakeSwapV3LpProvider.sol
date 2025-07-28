@@ -413,6 +413,8 @@ IERC721Receiver
       // after LP burn, recalculate token0 and token1 values
       token0Value = FullMath.mulDiv(record.token0Left, token0Price, RESILIENT_ORACLE_DECIMALS);
       token1Value = FullMath.mulDiv(record.token1Left, token1Price, RESILIENT_ORACLE_DECIMALS);
+      // make sure enough tokens to cover the amount
+      require((token0Value + token1Value) >= amount, "PcsV3LpProvider: insufficient-lp-value");
       // step 5. pay by tokens
       PcsV3LpLiquidationHelper.PaymentParams memory paymentParams = PcsV3LpLiquidationHelper.PaymentParams({
         recipient: recipient,
@@ -425,7 +427,6 @@ IERC721Receiver
         token1Left: record.token1Left
       });
       // leftover record will be updated after
-      // @dev payByToken0AndToken1 will make sure enough tokens to cover the amount, revert otherwise
       (uint256 newToken0Left, uint256 newToken1Left) = PcsV3LpLiquidationHelper.payByToken0AndToken1(paymentParams);
       // update leftover record
       record.token0Left = newToken0Left;

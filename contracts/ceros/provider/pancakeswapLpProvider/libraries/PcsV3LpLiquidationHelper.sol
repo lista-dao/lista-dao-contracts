@@ -74,8 +74,6 @@ library PcsV3LpLiquidationHelper {
       token1Sent = token1AmountToSend;
       amountLeft = 0;
     }
-    // if there is still amount left, it means not enough token0 and token1 were sent
-    require(amountLeft == 0, "PcsV3LpLiquidationHelper: not-enough-token-amount");
 
     // Update and return new token balances
     newToken0Left = amount0 > token0Sent ? amount0 - token0Sent : 0;

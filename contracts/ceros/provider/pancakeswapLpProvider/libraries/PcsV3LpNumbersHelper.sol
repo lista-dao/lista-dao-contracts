@@ -88,13 +88,9 @@ library PcsV3LpNumbersHelper {
     uint256 p0 = price0 * 1e10;
     uint256 p1 = price1 * 1e10;
 
-    // fairPrice = p1 / p0 (1e18)
-    // sqrtPrice = sqrt(p1 / p0) (1e9)
-    uint256 fairPrice = _mul(p1, 1e18) / p0; // 1e18 decimals
-    uint256 sqrtFairPrice = sqrt(fairPrice); // 1e9 decimals
-
-    // sqrtPriceX96 = sqrtFairPrice * 2^96 / 1e9
-    sqrtPriceX96 = toUint160((sqrtFairPrice << 96) / 1e9);
+    sqrtPriceX96 = toUint160(
+      sqrt(_mul(p0, (1 << 96)) / p1) << 48
+    );
   }
 
   function _mul(uint256 _x, uint256 _y) private pure returns (uint256 z) {
