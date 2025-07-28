@@ -7,6 +7,7 @@ interface IPancakeSwapV3LpStakingVault {
   function feeCut(uint256 amount) external returns (uint256 rewardsAfterFeeCut);
 
   /// @dev Events
+  event FeeCut(address indexed recipient, uint256 amount, uint256 fee);
   event LpProxyUpdated(address oldLpProxy, address newLpProxy);
   event CollectFees(address recipient, uint256 fees);
   event FeeRateUpdated(address lpProvider, uint256 oldFeeRate, uint256 newFeeRate);

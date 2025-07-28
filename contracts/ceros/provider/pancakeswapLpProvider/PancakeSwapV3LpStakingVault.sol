@@ -124,6 +124,8 @@ UUPSUpgradeable
     }
     // transfer remaining amount to lpProxy
     IERC20(rewardToken).safeTransfer(msg.sender, amount);
+    // emit Fee cut event (provider address, amount, fee rate)
+    emit FeeCut(msg.sender, amount, feeRate);
     return amount;
   }
 
