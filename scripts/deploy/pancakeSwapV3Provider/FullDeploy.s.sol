@@ -33,6 +33,7 @@ contract PcsV3Deployment is Script {
   uint256 MAX_LP_DEPOSIT = 5; // Max Lp can be deposit
   uint256 MIN_LP_USD = 1000 * 1e18; // 1000 LP USD
   uint256 DISCOUNT_RATE = 8000; // 80% discount rate
+  uint256 REWARD_FEE_RATE = 300; // 3% reward fee rate
 
   uint256 deployerPrivateKey;
   address deployer;
@@ -63,6 +64,7 @@ contract PcsV3Deployment is Script {
 
     // deploy LpUSD
     lpUsd = new LpUsd(token0, token1);
+    console.log("LpUsd deployed at: ", address(lpUsd));
 
     // deploy PCS StakingHub
     PancakeSwapV3LpStakingHub pcsStakingHubImpl = new PancakeSwapV3LpStakingHub(
@@ -129,9 +131,9 @@ contract PcsV3Deployment is Script {
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));
     console.log("PancakeSwapV3LpProvider deployed at: ", address(pcsProvider));
 
-    // transfer ownership of lpUSD
     lpUsd.setMinter(address(pcsProvider));
-    console.log("LpUsd deployed at: ", address(lpUsd));
+    pcsStakingHub.registerProvider(address(pcsProvider));
+    pcsStakingVault.registerLpProvider(address(pcsProvider), REWARD_FEE_RATE);
 
     vm.stopBroadcast();
   }
