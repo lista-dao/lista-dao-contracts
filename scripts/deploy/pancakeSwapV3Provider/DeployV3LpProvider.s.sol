@@ -43,11 +43,18 @@ contract PcsV3Deployment is Script {
     deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     deployer = vm.addr(deployerPrivateKey);
 
+    pcsStakingVault = PancakeSwapV3LpStakingVault(
+      vm.envAddress("PCS_STAKING_VAULT")
+    );
+    pcsStakingHub = PancakeSwapV3LpStakingHub(
+      vm.envAddress("PCS_STAKING_HUB")
+    );
+
     pancakeSwapV3Factory = vm.envAddress("PCS_V3_FACTORY");
     masterChefV3 = vm.envAddress("MASTER_CHEF_V3");
     nonfungiblePositionManager = vm.envAddress("NON_FUNGIBLE_POSITION_MANAGER");
     admin = deployer;
-    manager = deployer;
+    manager = vm.envAddress("MANAGER");
     pauser = vm.envAddress("PAUSER");
     bot = vm.envAddress("BOT");
     interaction = vm.envAddress("INTERACTION");
@@ -65,42 +72,6 @@ contract PcsV3Deployment is Script {
     // deploy LpUSD
     lpUsd = new LpUsd(token0, token1);
     console.log("LpUsd deployed at: ", address(lpUsd));
-
-    // deploy PCS StakingHub
-    PancakeSwapV3LpStakingHub pcsStakingHubImpl = new PancakeSwapV3LpStakingHub(
-      nonfungiblePositionManager,
-      address(masterChefV3),
-      address(cake)
-    );
-    ERC1967Proxy pcsStakingHubProxy = new ERC1967Proxy(
-      address(pcsStakingHubImpl),
-      abi.encodeWithSelector(
-        PancakeSwapV3LpStakingHub.initialize.selector,
-        admin,
-        manager,
-        pauser
-      )
-    );
-    pcsStakingHub = PancakeSwapV3LpStakingHub(address(pcsStakingHubProxy));
-    console.log("PancakeSwapV3LpStakingHub deployed at: ", address(pcsStakingHub));
-
-    // Deploy PCS StakingVault
-    PancakeSwapV3LpStakingVault pcsStakingVaultImpl = new PancakeSwapV3LpStakingVault(
-      address(pcsStakingHub),
-      address(cake)
-    );
-    ERC1967Proxy pcsStakingVaultProxy = new ERC1967Proxy(
-      address(pcsStakingVaultImpl),
-      abi.encodeWithSelector(
-        pcsStakingVaultImpl.initialize.selector,
-        admin,
-        manager,
-        pauser,
-        address(0x5A0E3291514F5F1797A0C7eFefdac81eeC70ec01)
-      )
-    );
-    pcsStakingVault = PancakeSwapV3LpStakingVault(address(pcsStakingVaultProxy));
-    console.log("PancakeSwapV3LpStakingVault deployed at: ", address(pcsStakingVault));
 
     // Deploy PCS LpProvider
     PancakeSwapV3LpProvider pcsProviderImpl = new PancakeSwapV3LpProvider(
@@ -132,6 +103,7 @@ contract PcsV3Deployment is Script {
     console.log("PancakeSwapV3LpProvider deployed at: ", address(pcsProvider));
 
     lpUsd.setMinter(address(pcsProvider));
+    // @note should be called by Manager, after deployer has transferred ownership to Manager
     pcsStakingHub.registerProvider(address(pcsProvider));
     pcsStakingVault.registerLpProvider(address(pcsProvider), REWARD_FEE_RATE);
 
