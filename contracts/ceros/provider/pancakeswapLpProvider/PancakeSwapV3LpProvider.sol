@@ -752,6 +752,16 @@ IERC721Receiver
     }
   }
 
+  /**
+    * @dev Get the LPs of a user
+    * @notice for external use only
+    * @param user the address of the user
+    * @return an array of tokenIds of the user's LPs
+    */
+  function getUserLps(address user) external view returns (uint256[] memory) {
+    return userLps[user];
+  }
+
   ///////////////////////////////////////////////////////////////
   ////////////             Administrative            ////////////
   ///////////////////////////////////////////////////////////////
