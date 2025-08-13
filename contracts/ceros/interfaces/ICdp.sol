@@ -19,6 +19,7 @@ interface VatLike {
     uint256 maxLoan, // max. debt - user can only borrow at most this amount
     uint256 minLoan // min. debt - user must borrow at least this amount
   );
+  function urns(bytes32, address) external view returns (uint256 userCollateralAmt, uint256 userNormalisedDebt);
 }
 
 interface SpotLike {

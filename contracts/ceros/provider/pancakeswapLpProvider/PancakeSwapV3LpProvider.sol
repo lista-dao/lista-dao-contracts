@@ -651,7 +651,9 @@ IERC721Receiver
     // refresh interest
     ICdp(cdp).drip(address(lpUsd));
     // get rate
-    (uint256 art, uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
+    (,uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
+    // get user debt
+    (uint256 art,) = ICdp(cdp).vat().urns(ilk, user);
     // get debt
     uint256 debt = FullMath.mulDiv(art, rate, RAY);
     // get MCR
@@ -661,7 +663,9 @@ IERC721Receiver
     // if collateral value is less than or equal to the minimum required collateral,
     if (collateralValue <= minRequiredCollateral) return 0;
     // calculate the withdrawable amount
-    withdrawableAmount = collateralValue - minRequiredCollateral;
+    // in order to prevent could not withdraw from CDP
+    // to accommodate the precision loss, we subtract 1 from the withdrawable amount
+    withdrawableAmount = collateralValue - minRequiredCollateral - 1;
   }
 
   /**
