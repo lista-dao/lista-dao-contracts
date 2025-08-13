@@ -653,7 +653,7 @@ IERC721Receiver
     // get rate
     (,uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
     // get user debt
-    (uint256 art,) = ICdp(cdp).vat().urns(ilk, user);
+    (,uint256 art) = ICdp(cdp).vat().urns(ilk, user);
     // get debt
     uint256 debt = FullMath.mulDiv(art, rate, RAY);
     // get MCR
