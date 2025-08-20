@@ -67,8 +67,8 @@ IERC721Receiver
   address public pancakeLpStakingVault;
   // resilient oracle address
   address public resilientOracle;
-  // token price decimal places
-  uint256 public constant ORACLE_PRICE_DECIMALS = 1e18;
+  // oracle price decimal places
+  uint256 public constant ORACLE_PRICE_DECIMALS = 1e8;
   // DENOMINATOR of lpDiscountRate
   uint256 public constant DENOMINATOR = 10000;
 
@@ -691,7 +691,7 @@ IERC721Receiver
   /**
     * @dev fetch latest LP value and update lpValues
     * @param tokenId the tokenId of the LP token
-    * @return appraisedValue the appraised value in USD with 8 decimal places
+    * @return appraisedValue the appraised value in USD with 18 decimal places
     */
   function _syncLpValue(uint256 tokenId) internal returns (uint256 appraisedValue) {
     // get appraised value of the LP token
