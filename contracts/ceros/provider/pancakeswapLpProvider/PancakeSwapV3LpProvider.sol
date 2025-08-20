@@ -500,6 +500,8 @@ IERC721Receiver
       amount1,
       rewards
     ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(tokenId, amount0Min, amount1Min);
+    // refresh user TotalLpValue
+    _syncUserLpTotalValue(owner, true);
   }
 
   /**
