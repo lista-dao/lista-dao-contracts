@@ -598,7 +598,7 @@ IERC721Receiver
     */
   function _deposit(address user, uint256 tokenId) internal {
     // check if user has reached the max LP limit
-    require(userLps[user].length <= maxLpPerUser, "PcsV3LpProvider: max-lp-reached");
+    require(userLps[user].length < maxLpPerUser, "PcsV3LpProvider: max-lp-reached");
 
     // get lp value and verify the underlying price
     uint256 lpValue = _syncLpValue(tokenId);
