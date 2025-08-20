@@ -229,7 +229,7 @@ IERC721Receiver
 
     // fully sync. user CDP position
     _syncUserCdpPosition(user, true);
-    uint256 withdrawableAmount = _getMaxCdpWithdrawable(user);
+    uint256 withdrawableAmount = PcsV3LpNumbersHelper._getMaxCdpWithdrawable(cdp, lpUsd, user);
     uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpDiscountRate, DENOMINATOR);
     require(wishToWithdraw <= withdrawableAmount, "PcsV3LpProvider: lp-value-exceeds-withdrawable-amount");
 
@@ -615,7 +615,7 @@ IERC721Receiver
       // if user has less LP value than the total LP_USD amount in the cdp,
       // burn LP_USD from the user
       uint256 burnAmount = totalLpUsd - _userLpTotalValue;
-      uint256 withdrawableLpUsd = _getMaxCdpWithdrawable(user);
+      uint256 withdrawableLpUsd = PcsV3LpNumbersHelper._getMaxCdpWithdrawable(cdp, lpUsd, user);
       // if burn amount is more than the withdrawable amount
       // we withdraw as much as we can, the position should be liquidated very soon
       if (burnAmount > withdrawableLpUsd) {
@@ -636,36 +636,6 @@ IERC721Receiver
       _userLpTotalValue,
       ICdp(cdp).locked(lpUsd, user)
     );
-  }
-
-  /**
-    * @dev Get the maximum amount of LP_USD that can be withdrawn from the user's CDP
-    * @param user the address of the user
-    * @return withdrawableAmount the maximum amount of LP_USD that can be withdrawn
-    */
-  function _getMaxCdpWithdrawable(address user) internal returns (uint256 withdrawableAmount) {
-    // get collateralized LpUSD
-    uint256 collateralValue = ICdp(cdp).locked(lpUsd, user);
-    // get ilk
-    (,bytes32 ilk,,) = ICdp(cdp).collaterals(lpUsd);
-    // refresh interest
-    ICdp(cdp).drip(address(lpUsd));
-    // get rate
-    (,uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
-    // get user debt
-    (,uint256 art) = ICdp(cdp).vat().urns(ilk, user);
-    // get debt
-    uint256 debt = FullMath.mulDiv(art, rate, RAY);
-    // get MCR
-    (,uint256 mat) = ICdp(cdp).spotter().ilks(ilk);
-    // calculate the minimum required collateral
-    uint256 minRequiredCollateral = FullMath.mulDiv(debt, mat, RAY);
-    // if collateral value is less than or equal to the minimum required collateral,
-    if (collateralValue <= minRequiredCollateral) return 0;
-    // calculate the withdrawable amount
-    // in order to prevent could not withdraw from CDP
-    // to accommodate the precision loss, we subtract 1 from the withdrawable amount
-    withdrawableAmount = collateralValue - minRequiredCollateral - 1;
   }
 
   /**

@@ -6,6 +6,7 @@ import "../../../interfaces/INonfungiblePositionManager.sol";
 import "../../../../oracle/interfaces/IResilientOracle.sol";
 import "../../../../libraries/LiquidityAmounts.sol";
 import "../../../../libraries/TickMath.sol";
+import "../../../interfaces/ICdp.sol";
 
 library PcsV3LpNumbersHelper {
   /**
@@ -123,5 +124,33 @@ library PcsV3LpNumbersHelper {
       uint256 r1 = _x / r;
       return uint128 (r < r1 ? r : r1);
     }
+  }
+
+  /**
+    * @dev Get the maximum amount of LP_USD that can be withdrawn from the user's CDP
+    * @param user the address of the user
+    * @return withdrawableAmount the maximum amount of LP_USD that can be withdrawn
+    */
+  function _getMaxCdpWithdrawable(address cdp, address lpUsd, address user) public returns (uint256 withdrawableAmount) {
+    // get collateralized LpUSD
+    uint256 collateralValue = ICdp(cdp).locked(lpUsd, user);
+    // get ilk
+    (,bytes32 ilk,,) = ICdp(cdp).collaterals(lpUsd);
+    // refresh interest
+    ICdp(cdp).drip(address(lpUsd));
+    // get rate
+    (,uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
+    // get user debt
+    (,uint256 art) = ICdp(cdp).vat().urns(ilk, user);
+    // get debt
+    uint256 debt = FullMath.mulDivRoundingUp(art, rate, RAY);
+    // get MCR
+    (,uint256 mat) = ICdp(cdp).spotter().ilks(ilk);
+    // calculate the minimum required collateral
+    uint256 minRequiredCollateral = FullMath.mulDivRoundingUp(debt, mat, RAY);
+    // if collateral value is less than or equal to the minimum required collateral,
+    if (collateralValue <= minRequiredCollateral) return 0;
+    // calculate the withdrawable amount
+    withdrawableAmount = collateralValue - minRequiredCollateral;
   }
 }
