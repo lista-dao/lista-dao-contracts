@@ -227,6 +227,9 @@ IERC721Receiver
     require(lpOwners[tokenId] == user, "PcsV3LpProvider: not-token-owner");
     require(!userLiquidations[user].ongoing, "PcsV3LpProvider: liquidation-ongoing");
 
+    // Cache old LP value
+    uint256 oldLpValue = lpValues[tokenId];
+
     // fully sync. user CDP position
     _syncUserCdpPosition(user, true);
     uint256 withdrawableAmount = PcsV3LpNumbersHelper._getMaxCdpWithdrawable(cdp, lpUsd, user);
@@ -244,7 +247,7 @@ IERC721Receiver
     // transfer LP token back to the user
     IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
 
-    emit WithdrawLp(msg.sender, tokenId, lpValues[tokenId]);
+    emit WithdrawLp(msg.sender, tokenId, oldLpValue);
   }
 
   /**
