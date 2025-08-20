@@ -493,10 +493,16 @@ IERC721Receiver
     bytes memory data
   ) internal returns (uint256 amount0, uint256 amount1, uint256 rewards) {
     // decode data for decrease liquidity params
-    (uint256 amount0Min, uint256 amount1Min, uint256 tokenId) = abi.decode(data, (uint256, uint256, uint256));
+    (
+      uint256 amount0Min,
+      uint256 amount1Min,
+      uint256 tokenId,
+      uint256 deadline
+    ) = abi.decode(data, (uint256, uint256, uint256, uint256));
     // amount0Min and amount1Min can't be zero at the same time and non-zero tokenId
     require(!(amount1Min == 0 && amount0Min == 0) && tokenId > 0, "PcsV3LpProvider: invalid-data");
     require(lpOwners[tokenId] == owner, "PcsV3LpProvider: not-lp-owner");
+    require(deadline > block.timestamp, "PcsV3LpProvider: deadline-expired");
     // remove token from records
     _removeToken(owner, tokenId);
     // burn LP and collects token0, token1 and rewards
@@ -504,7 +510,12 @@ IERC721Receiver
       amount0,
       amount1,
       rewards
-    ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(tokenId, amount0Min, amount1Min);
+    ) = IPancakeSwapV3LpStakingHub(pancakeStakingHub).burnAndCollect(
+      tokenId,
+      amount0Min,
+      amount1Min,
+      deadline
+    );
     // refresh user TotalLpValue
     _syncUserLpTotalValue(owner, true);
   }

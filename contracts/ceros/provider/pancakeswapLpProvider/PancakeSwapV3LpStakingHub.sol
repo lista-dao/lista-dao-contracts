@@ -169,11 +169,12 @@ IERC721Receiver
     * @param tokenId ID of the NFT token to burn
     * @param amount0Min minimum amount of token0 to collect
     * @param amount1Min minimum amount of token1 to collect
+    * @param deadline deadline for the transaction
     * @return amount0 collected amount of token0
     * @return amount1 collected amount of token1
     * @return rewards collected amount of rewards
     */
-  function burnAndCollect(uint256 tokenId, uint256 amount0Min, uint256 amount1Min)
+  function burnAndCollect(uint256 tokenId, uint256 amount0Min, uint256 amount1Min, uint256 deadline)
   override
   external
   checkTokenIdWithProvider(tokenId)
@@ -182,17 +183,21 @@ IERC721Receiver
   nonReentrant
   returns (uint256 amount0, uint256 amount1, uint256 rewards) {
     require(tokenId > 0, "PancakeSwapStakingHub: non-zero-tokenId");
-    // pre-balance of reward
-    uint256 preRewardBalance = IERC20(rewardToken).balanceOf(address(this));
-    // decrease liquidity then burn LP
-    // @note will harvest reward as well
-    (amount0, amount1) = _burnAndCollectTokens(
+    address provider = msg.sender;
+    
+    // decrease liquidity
+    rewards = _decreaseLiquidityAndHarvest(
       tokenId,
       amount0Min,
-      amount1Min
+      amount1Min,
+      deadline
     );
-    // get rewards amount
-    rewards = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
+    // burn LP and collect token0, token1 & reward token
+    (amount0, amount1) = _burnAndCollectTokens(
+      tokenId,
+      IPancakeSwapV3LpProvider(provider).token0(),
+      IPancakeSwapV3LpProvider(provider).token1()
+    );
     // send rewards to provider
     if (rewards > 0) {
       IERC20(rewardToken).safeTransfer(msg.sender, rewards);
@@ -232,37 +237,59 @@ IERC721Receiver
   ///////////////////////////////////////////////////////////////
 
   /**
-    * @notice to avoid stack too deep error, this function is separated from burnAndCollect()
-    * @dev burn LP token, collect fees and rewards, then send them to the provider
+    * @notice decrease liquidity for a specific tokenId and collect rewards
     * @param tokenId ID of the NFT token to burn
     * @param amount0Min minimum amount of token0 to collect
     * @param amount1Min minimum amount of token1 to collect
-    * @return collectedAmount0WithFees collected amount of token0
-    * @return collectedAmount1WithFees collected amount of token1
     */
-  function _burnAndCollectTokens(
+  function _decreaseLiquidityAndHarvest(
     uint256 tokenId,
     uint256 amount0Min,
-    uint256 amount1Min
-  ) internal returns (uint256 collectedAmount0WithFees, uint256 collectedAmount1WithFees) {
-    address provider = msg.sender;
-    IERC20 token0 = IERC20(IPancakeSwapV3LpProvider(provider).token0());
-    IERC20 token1 = IERC20(IPancakeSwapV3LpProvider(provider).token1());
-
-    uint256 preToken0Balance = token0.balanceOf(address(this));
-    uint256 preToken1Balance = token1.balanceOf(address(this));
-
+    uint256 amount1Min,
+    uint256 deadline
+  ) internal returns (uint256 rewardAmount) {
     // fully remove liquidity from the tokenId
-    // after this tokens including fees are ready to collect
+    // @note at this moment all rewards will be cached to the token's position too
     IMasterChefV3(masterChefV3).decreaseLiquidity(
       IMasterChefV3.DecreaseLiquidityParams({
         tokenId: tokenId,
         liquidity: getLiquidity(tokenId),
         amount0Min: amount0Min,
         amount1Min: amount1Min,
-        deadline: block.timestamp + 20 minutes // 20 minutes deadline
+        deadline: deadline
       })
     );
+    // Harvest will revert if no rewards + zero liquidity
+    if(IMasterChefV3(masterChefV3).pendingCake(tokenId) > 0) {
+        uint256 preRewardBalance = IERC20(rewardToken).balanceOf(address(this));
+        // harvest reward
+        IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
+        // calculate reward amount
+        rewardAmount = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
+    }
+  }
+
+  /**
+    * @notice to avoid stack too deep error, this function is separated from burnAndCollect()
+    * @dev burn LP token, collect fees and rewards, then send them to the provider
+    * @param tokenId ID of the NFT token to burn
+    * @param token0 address of token0
+    * @param token1 address of token1
+    * @return collectedAmount0WithFees collected amount of token0
+    * @return collectedAmount1WithFees collected amount of token1
+    */
+  function _burnAndCollectTokens(
+    uint256 tokenId,
+    address token0,
+    address token1
+  ) internal returns (
+    uint256 collectedAmount0WithFees,
+    uint256 collectedAmount1WithFees
+  ) {    
+    // ------ Collect then burn the LP -------
+    uint256 preToken0Balance = IERC20(token0).balanceOf(address(this));
+    uint256 preToken1Balance = IERC20(token1).balanceOf(address(this));
+
     // collect token0 and token1 including fees from the tokenId
     (uint256 collectedAmount0, uint256 collectedAmount1) = IMasterChefV3(masterChefV3).collect(
       IMasterChefV3.CollectParams({
@@ -275,11 +302,8 @@ IERC721Receiver
     // burn the LP
     IMasterChefV3(masterChefV3).burn(tokenId);
 
-    uint256 postToken0Balance = token0.balanceOf(address(this));
-    uint256 postToken1Balance = token1.balanceOf(address(this));
-
-    collectedAmount0WithFees = postToken0Balance - preToken0Balance;
-    collectedAmount1WithFees = postToken1Balance - preToken1Balance;
+    collectedAmount0WithFees = IERC20(token0).balanceOf(address(this)) - preToken0Balance;
+    collectedAmount1WithFees = IERC20(token1).balanceOf(address(this)) - preToken1Balance;
 
     // verify amount0 and amount1
     require(
@@ -288,10 +312,10 @@ IERC721Receiver
     );
     // transfer token0 & token 1 to provider
     if (collectedAmount0WithFees > 0) {
-      token0.safeTransfer(provider, collectedAmount0WithFees);
+      IERC20(token0).safeTransfer(msg.sender, collectedAmount0WithFees);
     }
     if (collectedAmount1WithFees > 0) {
-      token1.safeTransfer(provider, collectedAmount1WithFees);
+      IERC20(token1).safeTransfer(msg.sender, collectedAmount1WithFees);
     }
   }
 

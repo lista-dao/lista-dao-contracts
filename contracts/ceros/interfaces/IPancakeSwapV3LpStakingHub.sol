@@ -10,7 +10,8 @@ interface IPancakeSwapV3LpStakingHub {
   function burnAndCollect(
     uint256 tokenId,
     uint256 amount0Min,
-    uint256 amount1Min
+    uint256 amount1Min,
+    uint256 deadline
   ) external returns (uint256 amount0, uint256 amount1, uint256 rewards);
 
   /// @dev Events
