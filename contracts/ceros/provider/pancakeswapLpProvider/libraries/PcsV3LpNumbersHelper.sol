@@ -7,6 +7,7 @@ import "../../../../oracle/interfaces/IResilientOracle.sol";
 import "../../../../libraries/LiquidityAmounts.sol";
 import "../../../../libraries/TickMath.sol";
 import "../../../interfaces/ICdp.sol";
+import "../../../interfaces/IPancakeSwapV3LpProvider.sol";
 
 library PcsV3LpNumbersHelper {
   /**
@@ -80,19 +81,10 @@ library PcsV3LpNumbersHelper {
     address token0,
     address token1
   ) private view returns (uint160 sqrtPriceX96) {
-    // @note: ResilientOracle returns 8-decimal prices
-    uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
-    uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
-    
-    // we will ensure the decimal places will be less than or equals to 18
-    uint256 token0Decimals = uint256(IERC20Metadata(token0).decimals());
-    uint256 token1Decimals = uint256(IERC20Metadata(token1).decimals());
-
-    require(price0 != 0 && price1 != 0, "PcsV3LpNumbersHelper: zero-price");
-
-    // scale both to 18 decimals (8 + (18 - tokenDecimals))
-    uint256 p0 = price0 * 10 ** (18 - token0Decimals);
-    uint256 p1 = price1 * 10 ** (18 - token1Decimals);
+    // get prices in 18 decimal places
+    uint256 p0 = getTokenPrice(resilientOracle, token0);
+    uint256 p1 = getTokenPrice(resilientOracle, token1);
+    require(p0 != 0 && p1 != 0, "PcsV3LpNumbersHelper: zero-price");
 
     sqrtPriceX96 = toUint160(
       sqrt(_mul(p0, (1 << 96)) / p1) << 48
@@ -129,6 +121,21 @@ library PcsV3LpNumbersHelper {
       uint256 r1 = _x / r;
       return uint128 (r < r1 ? r : r1);
     }
+  }
+
+  /**
+   * @dev Get the price of a token from the Resilient Oracle
+   * @param oracle the address of the Resilient Oracle
+   * @param token the address of the token
+   * @return price the price of the token in 18 decimal places
+   */
+  function getTokenPrice(address oracle, address token) public view returns (uint256 price) {
+    // Get token decimals
+    uint256 decimals = uint256(IERC20Metadata(token).decimals());
+    // Resilient Oracle will only return prices in 8 decimal places
+    uint256 oraclePrice = IResilientOracle(oracle).peek(token);
+    // return price in 18 decimal places
+    price = oraclePrice * 10 ** (18 - decimals);
   }
 
   /**

@@ -67,8 +67,8 @@ IERC721Receiver
   address public pancakeLpStakingVault;
   // resilient oracle address
   address public resilientOracle;
-  // Resilient oracle decimal places
-  uint256 public constant RESILIENT_ORACLE_DECIMALS = 1e8;
+  // token price decimal places
+  uint256 public constant ORACLE_PRICE_DECIMALS = 1e18;
   // DENOMINATOR of lpDiscountRate
   uint256 public constant DENOMINATOR = 10000;
 
@@ -389,10 +389,10 @@ IERC721Receiver
     } else {
       // get token0 and token1's price
       // and calculate their values
-      uint256 token0Price = IResilientOracle(resilientOracle).peek(token0);
-      uint256 token1Price = IResilientOracle(resilientOracle).peek(token1);
-      uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, RESILIENT_ORACLE_DECIMALS);
-      uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, RESILIENT_ORACLE_DECIMALS);
+      uint256 token0Price = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token0);
+      uint256 token1Price = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token1);
+      uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
+      uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
       // leftover tokens can't cover the amount to be paid
       if ((token0Value + token1Value) < amount) {
         // burn LP to get more token0 and token1
@@ -411,8 +411,8 @@ IERC721Receiver
         record.token1Left += amount1;
       }
       // after LP burn, recalculate token0 and token1 values
-      token0Value = FullMath.mulDiv(record.token0Left, token0Price, RESILIENT_ORACLE_DECIMALS);
-      token1Value = FullMath.mulDiv(record.token1Left, token1Price, RESILIENT_ORACLE_DECIMALS);
+      token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
+      token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
       // make sure enough tokens to cover the amount
       require((token0Value + token1Value) >= amount, "PcsV3LpProvider: insufficient-lp-value");
       // step 5. pay by tokens
@@ -677,17 +677,17 @@ IERC721Receiver
   /**
     * @dev Get the appraised value of a LP token in USD
     * @param tokenId the tokenId of the LP token
-    * @return appraisedValue the appraised value in USD with 8 decimal places
+    * @return appraisedValue the appraised value in USD with 18 decimal places
     */
   function getLpValue(uint256 tokenId) public view returns (uint256 appraisedValue) {
     // get amounts of token0 and token1
     (uint256 amount0, uint256 amount1) = getAmounts(tokenId);
     // get price of token0 and token1 from oracle
-    uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
-    uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
+    uint256 price0 = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token0);
+    uint256 price1 = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token1);
     // calculate appraised value in USD with 18 decimal places
-    appraisedValue = FullMath.mulDiv(amount0, price0, RESILIENT_ORACLE_DECIMALS) +
-                     FullMath.mulDiv(amount1, price1, RESILIENT_ORACLE_DECIMALS);
+    appraisedValue = FullMath.mulDiv(amount0, price0, ORACLE_PRICE_DECIMALS) +
+                     FullMath.mulDiv(amount1, price1, ORACLE_PRICE_DECIMALS);
   }
 
   /**
