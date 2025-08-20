@@ -362,7 +362,7 @@ IERC721Receiver
     uint256 amount,
     bytes memory data,
     bool isLeftOver
-  ) external nonReentrant onlyCdp {
+  ) external whenNotPaused nonReentrant onlyCdp {
     require(owner != address(0), "PcsV3LpProvider: invalid-owner");
     require(recipient != address(0), "PcsV3LpProvider: invalid-recipient");
     require(amount > 0, "PcsV3LpProvider: invalid-amount");
