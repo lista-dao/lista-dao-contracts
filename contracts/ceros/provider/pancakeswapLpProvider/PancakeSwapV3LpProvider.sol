@@ -363,39 +363,22 @@ IERC721Receiver
     require(owner != address(0), "PcsV3LpProvider: invalid-owner");
     require(recipient != address(0), "PcsV3LpProvider: invalid-recipient");
     require(amount > 0, "PcsV3LpProvider: invalid-amount");
+    require(userLiquidations[owner].ongoing || isLeftOver, "PcsV3LpProvider: no-ongoing-liquidation");
     // get user token0 and token1 leftover from previous liquidation(if any)
     UserLiquidation storage record = userLiquidations[owner];
-    // liquidation ended, send leftover tokens and LP to the owner
-    if (isLeftOver) {
-      // sweep the leftover lpUsd at cdp after liquidation
-      PcsV3LpLiquidationHelper.sweepLeftoverLpUsd(
-        owner,
-        lpUsd,
-        cdp
-      );
-      if (userLps[owner].length > 0) {
-        // re-init user's position at CDP
-        _syncUserCdpPosition(owner, true);
-      }
-      // returns all leftover token0 and token1 to user
-      if (record.token1Left > 0) {
-        IERC20(token1).safeTransfer(owner, record.token1Left);
-      }
-      if (record.token0Left > 0) {
-        IERC20(token0).safeTransfer(owner, record.token0Left);
-      }
-      // delete user's liquidation record
-      delete userLiquidations[owner];
-    } else {
-      // get token0 and token1's price
-      // and calculate their values
+    // liquidation, send leftover tokens and LP to the owner
+    if (!isLeftOver) {
+      // get token0 and token1's price and calculate their values
       uint256 token0Price = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token0);
       uint256 token1Price = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token1);
       uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
       uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
-      // leftover tokens can't cover the amount to be paid
-      if ((token0Value + token1Value) < amount) {
-        // burn LP to get more token0 and token1
+      // before burn any LP, check if user wealth can cover all lot
+      bool notEnoughValue = PcsV3LpLiquidationHelper.canUserWealthCoversAllLot(cdp, lpUsd, owner, token0Value, token1Value);
+
+      // Step 1. leftover tokens can't cover the amount to be paid and the user still has LPs to burn 
+      if ((token0Value + token1Value) < amount && userLps[owner].length > 0) {
+        // Step 2. burn LP to get more token0 and token1
         (
           uint256 amount0,
           uint256 amount1,
@@ -413,8 +396,27 @@ IERC721Receiver
       // after LP burn, recalculate token0 and token1 values
       token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
       token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
-      // make sure enough tokens to cover the amount
-      require((token0Value + token1Value) >= amount, "PcsV3LpProvider: insufficient-lp-value");
+
+      /*
+        ------- IMPORTANT NOTE -------
+
+        In order to let the liquidation process to complete, 
+        omit the value check at CASE 3
+
+        1. Partial Liquidation: If the user is being partially liquidated (i.e., userLps[owner].length > 0 after burning),
+          we must ensure that the sum of token0Value and token1Value is enough to cover the required amount. This prevents
+          under-collateralization in normal cases and ensures the liquidator receives sufficient value for the debt repaid.
+        2. Normal CDP Bad Debt: 
+          - All token0/token1 covers all collateral(LPUSD), but collateral couldn't cover debt
+            i.e. Sale.tab > Sale.lot && Sale.lot < all LP's value 
+        3. CDP + Liquidator Bad Debt : 
+          - All token0/token1 COULD NOT cover all collateral(LPUSD), but collateral couldn't cover debt
+            i.e. Sale.tab > Sale.lot && Sale.lot > all LP's value
+          - at this case, we will by pass the value check, liquidator repay the debt but receive NO token0 and token1
+      */
+      if (!notEnoughValue) {
+        require((token0Value + token1Value) >= amount, "PcsV3LpProvider: insufficient-lp-value");
+      }
       // step 5. pay by tokens
       PcsV3LpLiquidationHelper.PaymentParams memory paymentParams = PcsV3LpLiquidationHelper.PaymentParams({
         recipient: recipient,
@@ -432,11 +434,35 @@ IERC721Receiver
       record.token0Left = newToken0Left;
       record.token1Left = newToken1Left;
     }
+
+    // -------- Post Liquidation
+    // Do check whether liquidation is ended each time the bot bought some collateral
+    PcsV3LpLiquidationHelper.PostLiquidationParams memory postLiquidationParams = PcsV3LpLiquidationHelper.PostLiquidationParams({
+      cdp: cdp,
+      collateral: lpUsd,
+      user: owner,
+      token0: token0,
+      token1: token1,
+      token0Left: record.token0Left,
+      token1Left: record.token1Left,
+      isLeftOver: isLeftOver
+    });
+    bool liquidationEnded = PcsV3LpLiquidationHelper.postLiquidation(postLiquidationParams);
+    // liquidation ended, send leftover tokens and LP to the owner
+    if (liquidationEnded) {
+      if (userLps[owner].length > 0) {
+          // re-init user's position at CDP
+          _syncUserCdpPosition(owner, true);
+      }
+      // delete user's liquidation record
+      delete userLiquidations[owner];
+    }
+    
     emit Liquidated(
       owner,
       recipient,
       amount,
-      isLeftOver,
+      liquidationEnded,
       record.token0Left,
       record.token1Left
     );

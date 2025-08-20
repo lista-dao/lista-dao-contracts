@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../../interfaces/IPancakeSwapV3LpStakingHub.sol";
 import "../../../interfaces/IPancakeSwapV3LpProvider.sol";
 import "../../../interfaces/ICdp.sol";
+import { Sale } from "../../../interfaces/ICdp.sol";
 import "../../../interfaces/ILpUsd.sol";
 import "../../../../oracle/libraries/FullMath.sol";
 
@@ -13,6 +14,19 @@ import "../../../../oracle/libraries/FullMath.sol";
 library PcsV3LpLiquidationHelper {
 
   using SafeERC20 for IERC20;
+
+  struct PostLiquidationParams {
+    address cdp;
+    address collateral;
+    address user;
+    address token0;
+    address token1;
+    uint256 token0Left;
+    uint256 token1Left;
+    // when is true, either all debt is repaid or all collateral is seized
+    // but it as `true` might never happen
+    bool isLeftOver;
+  }
 
   struct PaymentParams {
     address recipient;
@@ -81,19 +95,81 @@ library PcsV3LpLiquidationHelper {
   }
 
   /**
-    * @dev sweep leftover LpUsd after liquidation
-    * @param user user address
-    * @param lpUsd LpUsd token address
-    * @param cdp cdp address
+    * @dev Post liquidation logic
+    *      - Check if liquidation ended by checking user's remaining debt and collateral
+    *      - Sweep leftover LpUsd after liquidation
+    *      - Send leftover token0 and token1 to user
+    * @param postLiquidationParams The parameters for post-liquidation processing
     */
-  function sweepLeftoverLpUsd(address user, address lpUsd, address cdp) public {
-    // fetch the remaining value of LpUsd after liquidation
-    uint256 remaining = ICdp(cdp).free(lpUsd, user);
-    // has leftover LpUsd
-    if (remaining > 0) {
-      // withdraw the remaining and burn
-      ICdp(cdp).withdraw(user, lpUsd, remaining);
-      ILpUsd(lpUsd).burn(address(this), remaining);
+  function postLiquidation(PostLiquidationParams memory postLiquidationParams) public returns (bool liquidationEnded) {
+    address cdp = postLiquidationParams.cdp;
+    address collateral = postLiquidationParams.collateral;
+    address user = postLiquidationParams.user;
+    address token0 = postLiquidationParams.token0;
+    address token1 = postLiquidationParams.token1;
+    bool isLeftOver = postLiquidationParams.isLeftOver;
+    liquidationEnded = false;
+    // Get user's remaining debt and collateral
+    (uint256 remainingDebt, uint256 remainingCollateral) = getUserRemainingDebtAndCollaterals(cdp, collateral, user);
+    // no collateral or debt is left, liquidation ended
+    if (remainingDebt == 0 || remainingCollateral == 0 || isLeftOver) {
+      // send leftover token0 and token1 to user
+      uint256 token0Left = postLiquidationParams.token0Left;
+      uint256 token1Left = postLiquidationParams.token1Left;
+      if (token1Left > 0) {
+        IERC20(token1).safeTransfer(user, token1Left);
+      }
+      if (token0Left > 0) {
+        IERC20(token0).safeTransfer(user, token0Left);
+      }
+      liquidationEnded = true;
     }
+  }
+
+  /**
+    * @dev Search a liquidating position with user address
+    *      If either of user's debt or/and leftover collateral is 0, liquidation is considered done
+    * @param cdp CDP address
+    * @param token Token address
+    * @param user User address
+    */
+  function getUserRemainingDebtAndCollaterals(address cdp, address token, address user) internal view returns (uint256 remainingDebt, uint256 remainingCollateral) {
+    // get clipper of LpUsd
+    (,,,address clipper) = ICdp(cdp).collaterals(token);
+    // get all acitve auction ids from clipper
+    uint256[] memory auctionIds = ClipperLike(clipper).list();
+    // search user's auction Id by matching
+    for (uint256 i = 0; i < auctionIds.length; ++i) {
+      Sale memory sale = ClipperLike(clipper).sales(auctionIds[i]);
+      // Check if the sale belongs to the user
+      if (sale.usr == user) {
+        remainingDebt = sale.tab;
+        remainingCollateral = sale.lot;
+        break;
+      }
+    }
+  }
+
+  /**
+   * @dev Check if user's total LP value can cover all lot
+   * @param cdp CDP address
+   * @param lpUsd LP token address
+   * @param user User address
+   * @param token0Value Token0 value in USD
+   * @param token1Value Token1 value in USD
+   */
+  function canUserWealthCoversAllLot(
+    address cdp,
+    address lpUsd,
+    address user,
+    uint256 token0Value,
+    uint256 token1Value
+  ) public returns (bool) {
+    // get user's latest total Lp Value
+    uint256 totalLpValue = IPancakeSwapV3LpProvider(address(this)).getLatestUserTotalLpValue(user);
+    // get user lot left
+    (,uint256 remainingCollateral) = getUserRemainingDebtAndCollaterals(cdp, lpUsd, user);
+    // tells if user's total LP value is enough to cover the debt
+    return totalLpValue + token0Value + token1Value >= remainingCollateral;
   }
 }
