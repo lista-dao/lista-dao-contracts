@@ -105,7 +105,7 @@ IERC721Receiver
   }
 
   modifier onlyStakingVault() {
-    require(msg.sender == pancakeLpStakingVault, "PancakeSwapStakingHub: only-staking-vault");
+    require(msg.sender == pancakeLpStakingVault, "PancakeSwapStakingHub: caller-only-staking-vault");
     _;
   }
 
