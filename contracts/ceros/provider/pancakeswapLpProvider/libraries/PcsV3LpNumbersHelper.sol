@@ -83,11 +83,16 @@ library PcsV3LpNumbersHelper {
     // @note: ResilientOracle returns 8-decimal prices
     uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
     uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
+    
+    // we will ensure the decimal places will be less than or equals to 18
+    uint256 token0Decimals = uint256(IERC20Metadata(token0).decimals());
+    uint256 token1Decimals = uint256(IERC20Metadata(token1).decimals());
+
     require(price0 != 0 && price1 != 0, "PcsV3LpNumbersHelper: zero-price");
 
-    // scale both to 18 decimals (8 + 10)
-    uint256 p0 = price0 * 1e10;
-    uint256 p1 = price1 * 1e10;
+    // scale both to 18 decimals (8 + (18 - tokenDecimals))
+    uint256 p0 = price0 * 10 ** (18 - token0Decimals);
+    uint256 p1 = price1 * 10 ** (18 - token1Decimals);
 
     sqrtPriceX96 = toUint160(
       sqrt(_mul(p0, (1 << 96)) / p1) << 48
