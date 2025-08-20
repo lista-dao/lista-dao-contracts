@@ -364,6 +364,8 @@ IERC721Receiver
     require(recipient != address(0), "PcsV3LpProvider: invalid-recipient");
     require(amount > 0, "PcsV3LpProvider: invalid-amount");
     require(userLiquidations[owner].ongoing || isLeftOver, "PcsV3LpProvider: no-ongoing-liquidation");
+    // burn all received LPUSD (all LPUSD will send to provider first whenever is leftover or not)
+    ILpUsd(lpUsd).burn(address(this), amount);
     // get user token0 and token1 leftover from previous liquidation(if any)
     UserLiquidation storage record = userLiquidations[owner];
     // liquidation, send leftover tokens and LP to the owner
