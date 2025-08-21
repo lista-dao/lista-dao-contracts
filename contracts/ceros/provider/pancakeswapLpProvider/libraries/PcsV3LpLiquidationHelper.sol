@@ -152,24 +152,20 @@ library PcsV3LpLiquidationHelper {
 
   /**
    * @dev Check if user's total LP value can cover all lot
-   * @param cdp CDP address
-   * @param lpUsd LP token address
    * @param user User address
    * @param token0Value Token0 value in USD
    * @param token1Value Token1 value in USD
+   * @param amount amount of `lot` to cover
    */
-  function canUserWealthCoversAllLot(
-    address cdp,
-    address lpUsd,
+  function canUserWealthCoversAmount(
     address user,
     uint256 token0Value,
-    uint256 token1Value
+    uint256 token1Value,
+    uint256 amount
   ) public returns (bool) {
     // get user's latest total Lp Value
     uint256 totalLpValue = IPancakeSwapV3LpProvider(address(this)).getLatestUserTotalLpValue(user);
-    // get user lot left
-    (,uint256 remainingCollateral) = getUserRemainingDebtAndCollaterals(cdp, lpUsd, user);
     // tells if user's total LP value is enough to cover the debt
-    return totalLpValue + token0Value + token1Value >= remainingCollateral;
+    return totalLpValue + token0Value + token1Value >= amount;
   }
 }

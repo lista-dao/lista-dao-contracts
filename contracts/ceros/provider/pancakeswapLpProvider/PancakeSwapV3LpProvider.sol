@@ -350,6 +350,21 @@ IERC721Receiver
     *      when `isLeftOver` is true, the CDP position is fully liquidated
     *      the remaining LP token, including token0 and token1 will be transferred to user
     *
+    * @notice -------------- IMPORTANT NOTE --------------
+    *      In order to let the liquidation process to complete, 
+    *      omit the value check at CASE 3
+    *
+    *      Case 1. Partial Liquidation: If the user is being partially liquidated (i.e., userLps[owner].length > 0 after burning),
+    *              we must ensure that the sum of token0Value and token1Value is enough to cover the required amount. This prevents
+    *              under-collateralization in normal cases and ensures the liquidator receives sufficient value for the debt repaid.
+    *      Case 2. Normal CDP Bad Debt: 
+    *              - All token0/token1 covers all collateral(LPUSD), but collateral couldn't cover debt
+    *                i.e. Sale.tab > Sale.lot && Sale.lot < all LP's value 
+    *      Case 3. CDP + Liquidator Bad Debt : 
+    *              - All token0/token1 COULD NOT cover all collateral(LPUSD), but collateral couldn't cover debt
+    *                i.e. Sale.tab > Sale.lot && Sale.lot > all LP's value
+    *              - at this case, we will by pass the value check, liquidator repay the debt but receive NO token0 and token1
+    *
     * @param owner the address of the user to liquidate
     * @param recipient the address of the liquidator or user
     * @param amount the amount of LP_USD to be bought by the liquidator
@@ -378,8 +393,14 @@ IERC721Receiver
       uint256 token1Price = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token1);
       uint256 token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
       uint256 token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
-      // before burn any LP, check if user wealth can cover all lot
-      bool notEnoughValue = PcsV3LpLiquidationHelper.canUserWealthCoversAllLot(cdp, lpUsd, owner, token0Value, token1Value);
+      // before burn any LP, check if user wealth can cover amount
+      bool totalWealthCanCoverAmount = PcsV3LpLiquidationHelper
+      .canUserWealthCoversAmount(
+        owner,
+        token0Value,
+        token1Value,
+        amount
+      );
 
       // Step 1. leftover tokens can't cover the amount to be paid and the user still has LPs to burn 
       if ((token0Value + token1Value) < amount && userLps[owner].length > 0) {
@@ -402,24 +423,9 @@ IERC721Receiver
       token0Value = FullMath.mulDiv(record.token0Left, token0Price, ORACLE_PRICE_DECIMALS);
       token1Value = FullMath.mulDiv(record.token1Left, token1Price, ORACLE_PRICE_DECIMALS);
 
-      /*
-        ------- IMPORTANT NOTE -------
-
-        In order to let the liquidation process to complete, 
-        omit the value check at CASE 3
-
-        1. Partial Liquidation: If the user is being partially liquidated (i.e., userLps[owner].length > 0 after burning),
-          we must ensure that the sum of token0Value and token1Value is enough to cover the required amount. This prevents
-          under-collateralization in normal cases and ensures the liquidator receives sufficient value for the debt repaid.
-        2. Normal CDP Bad Debt: 
-          - All token0/token1 covers all collateral(LPUSD), but collateral couldn't cover debt
-            i.e. Sale.tab > Sale.lot && Sale.lot < all LP's value 
-        3. CDP + Liquidator Bad Debt : 
-          - All token0/token1 COULD NOT cover all collateral(LPUSD), but collateral couldn't cover debt
-            i.e. Sale.tab > Sale.lot && Sale.lot > all LP's value
-          - at this case, we will by pass the value check, liquidator repay the debt but receive NO token0 and token1
-      */
-      if (!notEnoughValue) {
+      // If user's latest total wealth can cover the amount
+      // then we have to verify token0 and token1 we have is enough to cover the amount
+      if (totalWealthCanCoverAmount) {
         require((token0Value + token1Value) >= amount, "PcsV3LpProvider: insufficient-lp-value");
       }
       // step 5. pay by tokens
