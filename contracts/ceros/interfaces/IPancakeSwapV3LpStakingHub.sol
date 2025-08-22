@@ -21,6 +21,4 @@ interface IPancakeSwapV3LpStakingHub {
   event WithdrawLp(address provider, uint256 tokenId, uint256 rewardAmount);
   event BurnLp(address provider, uint256 tokenId, uint256 rewardAmount, uint256 amount1, uint256 amount0);
   event Harvest(address provider, uint256 tokenId, uint256 rewardAmount);
-  event StopEmergencyMode();
-  event EmergencyWithdraw();
 }

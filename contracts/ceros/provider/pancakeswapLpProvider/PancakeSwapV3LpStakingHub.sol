@@ -39,11 +39,15 @@ IERC721Receiver
   address public immutable masterChefV3;
   // CAKE token
   address public immutable rewardToken;
+  
   // emergency mode
   // when it's turned on, all LP tokens will be withdrawn from MasterChefV3
+  // @todo deprecate
   bool public emergencyMode;
   // holding of tokenIds
+  // @todo deprecate
   uint256[] private tokenIds;
+
   // provider => bool(isActive)
   mapping(address => bool) public lpProviders;
   // tokenId => provider
@@ -120,10 +124,12 @@ IERC721Receiver
     address provider = msg.sender;
     // transfer token from provider to MasterChefV3
     IERC721(nonFungiblePositionManager).safeTransferFrom(provider, address(this), tokenId);
-    // transfer to MasterChefV3
-    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), masterChefV3, tokenId);
+    // stake LP only if MasterChef is not in emergency mode
+    if (!IMasterChefV3(masterChefV3).emergency()) {
+      // transfer to MasterChefV3
+      IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), masterChefV3, tokenId);
+    }
     // record tokenId
-    tokenIds.push(tokenId);
     tokenIdToProvider[tokenId] = provider;
 
     emit DepositLp(provider, tokenId);
@@ -145,8 +151,11 @@ IERC721Receiver
     address provider = msg.sender;
     // reward token pre-balance
     uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
-    // withdraw token from MasterChefV3
-    rewards = IMasterChefV3(masterChefV3).withdraw(tokenId, address(this));
+    // check if token is staked
+    if (_isStaked(tokenId)) {
+      // withdraw token from MasterChefV3
+      rewards = IMasterChefV3(masterChefV3).withdraw(tokenId, address(this));
+    }
     // post balance of reward token
     uint256 postBalance = IERC20(rewardToken).balanceOf(address(this));
     require(postBalance == preBalance + rewards, "PancakeSwapStakingHub: invalid-reward-balance");
@@ -158,8 +167,8 @@ IERC721Receiver
     }
     // transfer NFT back to the provider
     IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), provider, tokenId);
-    // remove if from tokenIds
-    _removeTokenRecord(tokenId);
+    // remove token record
+    delete tokenIdToProvider[tokenId];
     // emit event
     emit WithdrawLp(provider, tokenId, rewards);
   }
@@ -204,7 +213,7 @@ IERC721Receiver
       emit Harvest(msg.sender, tokenId, rewards);
     }
     // remove tokenId record
-    _removeTokenRecord(tokenId);
+    delete tokenIdToProvider[tokenId];
     // emit event
     emit BurnLp(msg.sender, tokenId, rewards, amount1, amount0);
   }
@@ -237,6 +246,16 @@ IERC721Receiver
   ///////////////////////////////////////////////////////////////
 
   /**
+   * @dev Check if the token is staked at MasterChefV3
+   *      otherwise, it should be inside this contract
+   * @return true if the token is staked, false otherwise
+   */
+  function _isStaked(uint256 tokenId) internal view returns (bool) {
+    // if the token is owned by MasterChefV3, then it's staked
+    return IERC721(nonFungiblePositionManager).ownerOf(tokenId) == masterChefV3;
+  }
+
+  /**
     * @notice decrease liquidity for a specific tokenId and collect rewards
     * @param tokenId ID of the NFT token to burn
     * @param amount0Min minimum amount of token0 to collect
@@ -248,24 +267,31 @@ IERC721Receiver
     uint256 amount1Min,
     uint256 deadline
   ) internal returns (uint256 rewardAmount) {
-    // fully remove liquidity from the tokenId
-    // @note at this moment all rewards will be cached to the token's position too
-    IMasterChefV3(masterChefV3).decreaseLiquidity(
-      IMasterChefV3.DecreaseLiquidityParams({
+    // DecreaseLiquidity param
+    DecreaseLiquidityParams memory params = 
+      DecreaseLiquidityParams({
         tokenId: tokenId,
         liquidity: getLiquidity(tokenId),
         amount0Min: amount0Min,
         amount1Min: amount1Min,
         deadline: deadline
-      })
-    );
-    // Harvest will revert if no rewards + zero liquidity
-    if(IMasterChefV3(masterChefV3).pendingCake(tokenId) > 0) {
-        uint256 preRewardBalance = IERC20(rewardToken).balanceOf(address(this));
-        // harvest reward
-        IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
-        // calculate reward amount
-        rewardAmount = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
+      });
+    // check if it's inside the MasterChef contract
+    if (_isStaked(tokenId)) {
+      // fully remove liquidity from the tokenId
+      // @note at this moment all rewards will be cached to the token's position too
+      IMasterChefV3(masterChefV3).decreaseLiquidity(params);
+      // Harvest will revert if no rewards + zero liquidity
+      if(IMasterChefV3(masterChefV3).pendingCake(tokenId) > 0) {
+          uint256 preRewardBalance = IERC20(rewardToken).balanceOf(address(this));
+          // harvest reward
+          IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
+          // calculate reward amount
+          rewardAmount = IERC20(rewardToken).balanceOf(address(this)) - preRewardBalance;
+      }
+    } else {
+      // if not staked, decrease liquidity using NonfungiblePositionManager
+      INonfungiblePositionManager(nonFungiblePositionManager).decreaseLiquidity(params);
     }
   }
 
@@ -285,23 +311,34 @@ IERC721Receiver
   ) internal returns (
     uint256 collectedAmount0WithFees,
     uint256 collectedAmount1WithFees
-  ) {    
+  ) {
+    CollectParams memory collectParams = CollectParams({
+      tokenId: tokenId,
+      recipient: address(this),
+      amount0Max: type(uint128).max, // just put max value to collect all fees
+      amount1Max: type(uint128).max // just put max value to collect all fees
+    });
+
     // ------ Collect then burn the LP -------
     uint256 preToken0Balance = IERC20(token0).balanceOf(address(this));
     uint256 preToken1Balance = IERC20(token1).balanceOf(address(this));
 
+    uint256 collectedAmount0; 
+    uint256 collectedAmount1;
     // collect token0 and token1 including fees from the tokenId
-    (uint256 collectedAmount0, uint256 collectedAmount1) = IMasterChefV3(masterChefV3).collect(
-      IMasterChefV3.CollectParams({
-        tokenId: tokenId,
-        recipient: address(this),
-        amount0Max: type(uint128).max, // just put max value to collect all fees
-        amount1Max: type(uint128).max // just put max value to collect all fees
-      })
-    );
-    // burn the LP
-    IMasterChefV3(masterChefV3).burn(tokenId);
-
+    // check whether the token the staked
+    if (_isStaked(tokenId)) {
+      // collect tokens through MasterChefV3
+      (collectedAmount0, collectedAmount1) = IMasterChefV3(masterChefV3).collect(collectParams);
+      // burn the LP through MasterChefV3
+      IMasterChefV3(masterChefV3).burn(tokenId);
+    } else {
+      // collect then burn through NonfungiblePositionManager
+      (collectedAmount0, collectedAmount1) = INonfungiblePositionManager(nonFungiblePositionManager).collect(collectParams);
+      // burn the LP through NonfungiblePositionManager
+      INonfungiblePositionManager(nonFungiblePositionManager).burn(tokenId);
+    }
+    
     collectedAmount0WithFees = IERC20(token0).balanceOf(address(this)) - preToken0Balance;
     collectedAmount1WithFees = IERC20(token1).balanceOf(address(this)) - preToken1Balance;
 
@@ -317,23 +354,6 @@ IERC721Receiver
     if (collectedAmount1WithFees > 0) {
       IERC20(token1).safeTransfer(msg.sender, collectedAmount1WithFees);
     }
-  }
-
-  /**
-    * @dev remove tokenId from the tokenIds array and mapping
-    * @param tokenId ID of the NFT token to remove
-    */
-  function _removeTokenRecord(uint256 tokenId) internal {
-    // remove if from tokenIds
-    for (uint256 i = 0; i < tokenIds.length; i++) {
-      if (tokenIds[i] == tokenId) {
-        tokenIds[i] = tokenIds[tokenIds.length - 1];
-        tokenIds.pop();
-        break;
-      }
-    }
-    // remove tokenId from mapping
-    delete tokenIdToProvider[tokenId];
   }
 
   /**
@@ -415,36 +435,6 @@ IERC721Receiver
     require(provider != address(0), "PancakeSwapStakingHub: zero-address-provided");
     lpProviders[provider] = false;
     emit DeregisterProvider(provider);
-  }
-
-  /**
-    * @dev stop emergency mode
-    */
-  function stopEmergencyMode() external nonReentrant onlyRole(MANAGER) {
-    require(emergencyMode, "PancakeSwapStakingHub: not-in-emergency-mode");
-    require(!IMasterChefV3(masterChefV3).emergency(), "PancakeSwapStakingHub: masterChefV3-is-in-emergency-mode");
-    emergencyMode = false;
-    // transfer all LP back to MasterChefV3 for farming
-    for (uint256 i = 0; i < tokenIds.length; i++) {
-      // transfer token to MasterChefV3
-      IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), masterChefV3, tokenIds[i]);
-    }
-    emit StopEmergencyMode();
-  }
-
-  /**
-    * @dev emergency withdraw all LPs from the farming contract of specific LP version
-    * @notice No staking is required for Infinity LP, so this function is only applicable for V3 LP
-    */
-  function emergencyWithdraw() external nonReentrant onlyRole(MANAGER) {
-    require(!emergencyMode, "PancakeSwapStakingHub: already-in-emergency-mode");
-    require(IMasterChefV3(masterChefV3).emergency(), "PancakeSwapStakingHub: masterChefV3-not-in-emergency-mode");
-    emergencyMode = true;
-    // withdraw all tokenIds from MasterChefV3
-    for (uint256 i = 0; i < tokenIds.length; i++) {
-      IMasterChefV3(masterChefV3).withdraw(tokenIds[i], address(this));
-    }
-    emit EmergencyWithdraw();
   }
 
   /**
