@@ -114,7 +114,7 @@ library AuctionProxy {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        helioProvider.liquidation(urn, param.receiverAddress, leftover, data, true); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, urn, leftover, data, true); // Router burns them and gives abnbc remaining
       }
     } else {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(param.receiverAddress, gemBal);
