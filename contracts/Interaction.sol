@@ -240,6 +240,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             dart += 1; //ceiling
         }
 
+        vat.behalf(msg.sender, address(this));
         vat.frob(collateralType.ilk, msg.sender, msg.sender, msg.sender, 0, dart);
         vat.move(msg.sender, address(this), hayAmount * RAY);
         hayJoin.exit(msg.sender, hayAmount);
@@ -381,7 +382,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
                 "Interaction/Caller must be the same address as participant"
             );
         }
-
+        // make sure we have permission to alter user's position
+        vat.behalf(participant, address(this));
         uint256 unlocked = free(token, participant);
         if (unlocked < dink) {
             int256 diff = int256(dink) - int256(unlocked);
@@ -615,6 +617,10 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     ) external auctionWhitelisted {
         CollateralType memory collateral = collaterals[token];
         IHelioProvider helioProvider = IHelioProvider(helioProviders[token]);
+        address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
+
+        // make sure we have permission to alter user's position
+        vat.behalf(urn, address(this));
 
         AuctionProxy.AuctionParam memory auctionParam = AuctionProxy.AuctionParam({
             auctionId: auctionId,
@@ -622,7 +628,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             maxPrice: maxPrice,
             receiverAddress: receiverAddress
         });
-
         uint256 leftover = AuctionProxy.buyFromAuction(
             auctionParam,
             hay,
@@ -633,7 +638,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             data // format V2: amount0, amount1 ; V3: amount0, amount1, tokenId
         );
 
-        address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
 
         emit Liquidation(urn, token, collateralAmount, leftover);
     }
