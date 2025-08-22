@@ -165,4 +165,21 @@ library PcsV3LpNumbersHelper {
     // calculate the withdrawable amount
     withdrawableAmount = collateralValue - minRequiredCollateral;
   }
+
+  /**
+    * @dev Get the latest appraised value of a user's total LPs
+    * @notice for external use only
+    * @param userLps the array of token IDs representing the user's LPs
+    * @return userLpTotalValue the total appraised value of the user's LPs in USD with 8 decimal places
+    */
+  function getLatestUserTotalLpValue(uint256[] calldata userLps) public view returns (uint256 userLpTotalValue) {
+    userLpTotalValue = 0;
+    // iterate through user's LPs and sum up the appraised value
+    IPancakeSwapV3LpProvider provider = IPancakeSwapV3LpProvider(address(this));
+    for (uint256 i = 0; i < userLps.length; i++) {
+      uint256 tokenId = userLps[i];
+      uint256 lpValue = provider.getLpValue(tokenId);
+      userLpTotalValue += lpValue;
+    }
+  }
 }
