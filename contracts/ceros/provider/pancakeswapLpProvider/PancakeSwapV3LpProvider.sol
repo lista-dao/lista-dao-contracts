@@ -236,16 +236,10 @@ IERC721Receiver
     uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpDiscountRate, DENOMINATOR);
     require(wishToWithdraw <= withdrawableAmount, "PcsV3LpProvider: lp-value-exceeds-withdrawable-amount");
 
-    // withdraw from Staking Hub with the harvested rewards
-    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
-    // remove token
-    _removeToken(user, tokenId);
+    // withdraw token from staking hub and send rewards to user
+    _withdrawAndSendRewards(tokenId, user);
     // sync user position
     _syncUserCdpPosition(msg.sender, false);
-    // send reward and cut fee
-    _sendRewardAfterFeeCut(rewardAmount, user);
-    // transfer LP token back to the user
-    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
 
     emit WithdrawLp(msg.sender, tokenId, oldLpValue);
   }
@@ -461,12 +455,19 @@ IERC721Receiver
     bool liquidationEnded = PcsV3LpLiquidationHelper.postLiquidation(postLiquidationParams);
     // liquidation ended, send leftover tokens and LP to the owner
     if (liquidationEnded) {
-      if (userLps[owner].length > 0) {
-          // re-init user's position at CDP
-          _syncUserCdpPosition(owner, true);
-      }
       // delete user's liquidation record
       delete userLiquidations[owner];
+      // return all leftover LP to user
+      if (userLps[owner].length > 0) {
+        uint256[] memory userTokenIds = userLps[owner];
+        for (uint256 i = 0; i < userTokenIds.length; i++) {
+          uint256 tokenId = userTokenIds[i];
+          // send LP & rewards back to user + remove token record
+          _withdrawAndSendRewards(tokenId, owner);
+          // zeroize userTotalLpValue
+          userTotalLpValue[owner] = 0;
+        }
+      }
     }
     
     emit Liquidated(
@@ -524,6 +525,23 @@ IERC721Receiver
     );
     // refresh user TotalLpValue
     _syncUserLpTotalValue(owner, true);
+  }
+
+  /**
+    * @dev withdraws token and harvest rewards from the Staking Hub
+    *      harvested reward will be sent to user
+    * @param tokenId the tokenId of the LP token
+    * @param user the address of the user
+    */
+  function _withdrawAndSendRewards(uint256 tokenId, address user) internal {
+    // withdraw from Staking Hub with the harvested rewards
+    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
+    // remove token
+    _removeToken(user, tokenId);
+    // send reward and cut fee
+    _sendRewardAfterFeeCut(rewardAmount, user);
+    // transfer LP token back to the user
+    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
   }
 
   /**
@@ -766,14 +784,7 @@ IERC721Receiver
     * @return userLpTotalValue the total appraised value of the user's LPs in USD with 8 decimal places
     */
   function getLatestUserTotalLpValue(address user) override public view returns (uint256 userLpTotalValue) {
-    userLpTotalValue = 0;
-    // iterate through user's LPs and sum up the appraised value
-    uint256[] storage userLpTokens = userLps[user];
-    for (uint256 i = 0; i < userLpTokens.length; i++) {
-      uint256 tokenId = userLpTokens[i];
-      uint256 lpValue = getLpValue(tokenId);
-      userLpTotalValue += lpValue;
-    }
+    userLpTotalValue = PcsV3LpNumbersHelper.getLatestUserTotalLpValue(userLps[user]);
   }
 
   /**
