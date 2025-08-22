@@ -149,7 +149,7 @@ ReentrancyGuardUpgradeable
         _ceETHRouter.liquidation(recipient, amount);
     }
 
-    function liquidation(address user, address recipient, uint256 amount, bool isLeftover)
+    function liquidation(address user, address recipient, uint256 amount, bytes memory data, bool isLeftover)
     external
     override
     onlyProxy
