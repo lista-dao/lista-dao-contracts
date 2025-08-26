@@ -143,7 +143,6 @@ IERC721Receiver
   override
   external
   checkTokenIdWithProvider(tokenId)
-  onlyProvider
   whenNotPaused
   nonReentrant
   returns (uint256 rewards) {
@@ -187,7 +186,6 @@ IERC721Receiver
   override
   external
   checkTokenIdWithProvider(tokenId)
-  onlyProvider
   whenNotPaused
   nonReentrant
   returns (uint256 amount0, uint256 amount1, uint256 rewards) {
