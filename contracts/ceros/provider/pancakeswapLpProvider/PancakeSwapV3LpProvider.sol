@@ -599,7 +599,7 @@ IERC721Receiver
     require(to != address(0), "PcsV3LpProvider: invalid-recipient");
     if (amount > 0) {
       // approve rewardToken to the vault
-      IERC20(rewardToken).safeApprove(pancakeLpStakingVault, amount);
+      IERC20(rewardToken).safeIncreaseAllowance(pancakeLpStakingVault, amount);
       // transfer rewards to the vault
       uint256 rewardAfterCut = IPancakeSwapV3LpStakingVault(pancakeLpStakingVault).feeCut(amount);
       // transfer rewards to the user
