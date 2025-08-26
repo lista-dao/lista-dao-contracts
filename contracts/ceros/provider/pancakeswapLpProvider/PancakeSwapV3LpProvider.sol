@@ -574,7 +574,7 @@ IERC721Receiver
     address from,
     uint256 tokenId,
     bytes calldata /*data*/
-  ) external returns (bytes4) {
+  ) external whenNotPaused returns (bytes4) {
     // only accept NFT sent from NonFungiblePositionManager
     require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider: invalid-lp-sender");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
