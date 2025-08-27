@@ -271,7 +271,6 @@ abstract contract BaseTokenProvider is IHelioTokenProvider,
     )
     external
     virtual
-    nonReentrant
     whenNotPaused
     onlyRole(PROXY)
     {

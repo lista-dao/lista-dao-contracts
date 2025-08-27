@@ -160,7 +160,7 @@ contract mBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reentran
     uint256 _lpAmount,
     bytes memory /*_data*/,
     bool /*isLeftover*/
-  ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+  ) external virtual whenNotPaused onlyRole(PROXY) {
     liquidation(_recipient, _lpAmount);
   }
 

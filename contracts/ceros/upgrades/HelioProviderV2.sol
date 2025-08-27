@@ -237,7 +237,7 @@ ReentrancyGuardUpgradeable
     override
     onlyProxy
     whenNotPaused
-    nonReentrant {
+    {
         liquidation(recipient, amount);
     }
 

@@ -160,7 +160,7 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     uint256 _lpAmount,
     bytes memory /*data*/,
     bool /*isLeftover*/
-  ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+  ) external virtual whenNotPaused onlyRole(PROXY) {
     liquidation(_recipient, _lpAmount);
   }
 
