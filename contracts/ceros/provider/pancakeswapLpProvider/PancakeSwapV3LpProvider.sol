@@ -239,9 +239,9 @@ IERC721Receiver
     // withdraw token from staking hub and send rewards to user
     _withdrawAndSendRewards(tokenId, user);
     // sync user position
-    _syncUserCdpPosition(msg.sender, false);
+    _syncUserCdpPosition(user, false);
 
-    emit WithdrawLp(msg.sender, tokenId, oldLpValue);
+    emit WithdrawLp(user, tokenId, oldLpValue);
   }
 
   /**
