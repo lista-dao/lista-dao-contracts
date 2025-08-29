@@ -159,10 +159,12 @@ UUPSUpgradeable
     uint256 total;
     for (uint16 i = 0; i < providers.length; ++i) {
       uint256[] memory _tokenIds = tokenIds[i];
+      address provider = providers[i];
       require(_tokenIds.length > 0, "PancakeSwapLpStakingVault: no-tokenIds");
-      uint256 amount = IPancakeSwapV3LpProvider(providers[i]).vaultClaimStakingReward(account, _tokenIds);
+      require(lpProviders[provider], "PancakeSwapLpStakingVault: provider-not-registered");
+      uint256 amount = IPancakeSwapV3LpProvider(provider).vaultClaimStakingReward(account, _tokenIds);
       // cut fee
-      uint256 feeRate = feeRates[providers[i]];
+      uint256 feeRate = feeRates[provider];
       if (feeRate > 0) {
           uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
           availableFees += fee;
