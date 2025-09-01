@@ -8,6 +8,7 @@ import "../../../contracts/oracle/priceFeeds/uniBTCPriceFeed.sol";
 import "../../../contracts/oracle/interfaces/IResilientOracle.sol";
 import "../../../contracts/oracle/interfaces/AggregatorV3Interface.sol";
 import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
 
 
 contract PriceFeedTest is Test {
@@ -35,5 +36,15 @@ contract PriceFeedTest is Test {
         uint256 yUSD_USDT_Price = feed.yUSD().convertToAssets(1e18);
 
         assertEq(int256(Math.mulDiv(yUSD_USDT_Price, USDTPrice, 1e18)), answer);
+    }
+
+    function test_wstUSRPriceFeed() public {
+        address wstUSR_stUSR_PriceFeed = 0xA40a0dC23D3A821fF5Ea9E23080B74DAC031158d;
+        wstUSRPriceFeed feed = new wstUSRPriceFeed(resilientOracle, wstUSR_stUSR_PriceFeed);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        (, int256 wstUSR_stUSR_Price,,,) = AggregatorV3Interface(wstUSR_stUSR_PriceFeed).latestRoundData();
+
+        assertEq(wstUSR_stUSR_Price / 1e10, answer);
     }
 }
