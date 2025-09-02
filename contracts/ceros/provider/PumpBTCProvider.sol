@@ -148,6 +148,8 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
     uint256 _lpAmount
   ) public virtual nonReentrant whenNotPaused onlyRole(PROXY) {
     require(_recipient != address(0));
+    // burn ceToken
+    ICertToken(ceToken).burn(address(this), _lpAmount);
     uint256 _amount = _lpAmount / scale;
     IERC20(token).safeTransfer(_recipient, _amount);
 
