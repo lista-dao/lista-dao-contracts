@@ -748,11 +748,11 @@ IERC721Receiver
     * @return appraisedValue the appraised value in USD with 18 decimal places
     */
   function getLpValue(uint256 tokenId) public view returns (uint256 appraisedValue) {
-    // get amounts of token0 and token1
+    // get amounts of token0 and token1 (18 decimal places)
     (uint256 amount0, uint256 amount1) = getAmounts(tokenId);
-    // get price of token0 and token1 from oracle
-    uint256 price0 = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token0);
-    uint256 price1 = PcsV3LpNumbersHelper.getTokenPrice(resilientOracle, token1);
+    // get price of token0 and token1 from oracle (8 decimal places)
+    uint256 price0 = IResilientOracle(resilientOracle).peek(token0);
+    uint256 price1 = IResilientOracle(resilientOracle).peek(token1);
     // calculate appraised value in USD with 18 decimal places
     appraisedValue = FullMath.mulDiv(amount0, price0, ORACLE_PRICE_DECIMALS) +
                      FullMath.mulDiv(amount1, price1, ORACLE_PRICE_DECIMALS);
