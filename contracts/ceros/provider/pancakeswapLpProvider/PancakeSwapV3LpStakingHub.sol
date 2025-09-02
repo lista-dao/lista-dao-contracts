@@ -223,20 +223,24 @@ IERC721Receiver
     */
   function harvest(uint256 tokenId) override external onlyProvider whenNotPaused nonReentrant returns (uint256 rewards) {
     require(tokenId > 0, "PancakeSwapStakingHub: non-zero-tokenId");
-    address provider = msg.sender;
-    // reward token pre-balance
-    uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
-    // withdraw rewards from MasterChefV3
-    rewards = IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
-    // post balance of reward token
-    uint256 postBalance = IERC20(rewardToken).balanceOf(address(this));
-    require(postBalance == preBalance + rewards, "PancakeSwapStakingHub: invalid-reward-balance");
-    // send rewards to provider
-    if (rewards > 0) {
-      IERC20(rewardToken).safeTransfer(provider, rewards);
-      emit Harvest(provider, tokenId, rewards);
+    // if token is not staked, no rewards will be harvested
+    if (!_isStaked(tokenId)) {
+      rewards = 0;
+    } else {
+      address provider = msg.sender;
+      // reward token pre-balance
+      uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
+      // withdraw rewards from MasterChefV3
+      rewards = IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
+      // post balance of reward token
+      uint256 postBalance = IERC20(rewardToken).balanceOf(address(this));
+      require(postBalance == preBalance + rewards, "PancakeSwapStakingHub: invalid-reward-balance");
+      // send rewards to provider
+      if (rewards > 0) {
+        IERC20(rewardToken).safeTransfer(provider, rewards);
+        emit Harvest(provider, tokenId, rewards);
+      }
     }
-    return rewards;
   }
 
   ///////////////////////////////////////////////////////////////
