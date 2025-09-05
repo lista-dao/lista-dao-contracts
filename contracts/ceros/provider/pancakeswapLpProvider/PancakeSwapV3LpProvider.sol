@@ -26,7 +26,7 @@ import "./libraries/PcsV3LpNumbersHelper.sol";
 
 /// @title PancakeSwapV3LpProvider
 /// @author ListaDAO
-/// @notice This contract allows user to lend LisUSD from the ListaDAO CDP by depositing PancakeSwap V3 LP tokens
+/// @notice This contract allows users to lend LisUSD from the ListaDAO CDP by depositing PancakeSwap V3 LP tokens
 contract PancakeSwapV3LpProvider is
 IPancakeSwapV3LpProvider,
 PausableUpgradeable,
