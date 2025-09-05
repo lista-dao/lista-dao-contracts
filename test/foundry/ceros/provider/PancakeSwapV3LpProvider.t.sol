@@ -215,7 +215,8 @@ contract PancakeSwapV3LpProviderTest is Test {
         address(oracle),
         5, // Max Lp can be deposit
         1000 * 1e18, // 1000 LP USD
-        8000 // 80% exchange rate
+        8000, // 80% exchange rate
+        "Lista-PancakeSwap LP V3 Provider"
       )
     );
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));

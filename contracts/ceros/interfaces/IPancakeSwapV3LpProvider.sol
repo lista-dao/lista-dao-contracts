@@ -31,6 +31,7 @@ interface IPancakeSwapV3LpProvider {
     uint256 token0Left,
     uint256 token1Left
   );
+  event LeftoverLpWithdrawn(address user, uint256 tokenId);
 
   // @dev External methods
   function token0() external view returns (address);

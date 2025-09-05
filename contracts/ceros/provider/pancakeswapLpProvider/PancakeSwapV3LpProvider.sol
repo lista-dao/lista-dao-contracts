@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -93,6 +92,9 @@ IERC721Receiver
   // 0 <= lpDiscountRate <= EXCHANGE_RATE_DENOMINATOR
   uint256 public lpDiscountRate;
 
+  // leftover LP tokens awaiting to be withdrawn by the user after liquidation
+  mapping(address => uint256[]) public leftoverLpTokens;
+
   /// @dev MODIFIERS
   modifier onlyCdp() {
     require(msg.sender == cdp, "PcsV3LpProvider: caller-only-cdp");
@@ -161,7 +163,8 @@ IERC721Receiver
     address _resilientOracle,
     uint256 _maxLpPerUser,
     uint256 _minLpValue,
-    uint256 _lpDiscountRate
+    uint256 _lpDiscountRate,
+    string memory _name
   ) public initializer {
     require(
       _admin != address(0) &&
@@ -176,6 +179,7 @@ IERC721Receiver
     require(_maxLpPerUser > 0, "invalid maxLpPerUser value");
     require(_minLpValue > 0, "invalid minLpValue value");
     require(_lpDiscountRate <= DENOMINATOR, "invalid lpDiscountRate value");
+    require(bytes(_name).length > 0, "empty name");
 
     __AccessControlEnumerable_init();
     __Pausable_init();
@@ -192,11 +196,7 @@ IERC721Receiver
     maxLpPerUser = _maxLpPerUser;
     minLpValue = _minLpValue;
     lpDiscountRate = _lpDiscountRate;
-
-    // set provider name
-    string memory token0Name = IERC20Metadata(token0).symbol();
-    string memory token1Name = IERC20Metadata(token1).symbol();
-    name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "-", token1Name, " V3 LP Provider"));
+    name = _name;
   }
 
 
@@ -236,11 +236,17 @@ IERC721Receiver
     uint256 wishToWithdraw = FullMath.mulDiv(lpValues[tokenId], lpDiscountRate, DENOMINATOR);
     require(wishToWithdraw <= withdrawableAmount, "PcsV3LpProvider: lp-value-exceeds-withdrawable-amount");
 
-    // withdraw token from staking hub and send rewards to user
-    _withdrawAndSendRewards(tokenId, user);
-    // sync user position
+    // withdraw from Staking Hub with the harvested rewards
+    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
+    // remove token
+    _removeToken(user, tokenId);
+    // send reward and cut fee
+    _sendRewardAfterFeeCut(rewardAmount, user);
+    // refresh user CDP position
     _syncUserCdpPosition(user, false);
-
+    // transfer LP token back to the user
+    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
+    
     emit WithdrawLp(user, tokenId, oldLpValue);
   }
 
@@ -315,6 +321,25 @@ IERC721Receiver
       totalRewards += IMasterChefV3(masterChefV3).pendingCake(tokenId);
     }
     return totalRewards;
+  }
+
+  /**
+   * @dev Claim leftover LP tokens after liquidation
+   *      this will transfer all leftover LP tokens back to the user
+   */
+  function claimLeftOverLpTokens() external nonReentrant whenNotPaused {
+    address user = msg.sender;
+    uint256[] storage tokenIds = leftoverLpTokens[user];
+    require(tokenIds.length > 0, "PcsV3LpProvider: no-leftover-lp-tokens");
+    for (uint256 i = 0; i < tokenIds.length; i++) {
+      uint256 tokenId = tokenIds[i];
+      // transfer LP token back to the user
+      IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
+      // emit event
+      emit LeftoverLpWithdrawn(user, tokenId);
+    }
+    // clear record
+    delete leftoverLpTokens[user];
   }
   ///////////////////////////////////////////////////////////////
   ////////////                CDP Only               ////////////
@@ -457,15 +482,16 @@ IERC721Receiver
     if (liquidationEnded) {
       // delete user's liquidation record
       delete userLiquidations[owner];
-      // return all leftover LP to user
+      // zeroize userTotalLpValue
+      userTotalLpValue[owner] = 0;
       if (userLps[owner].length > 0) {
         uint256[] memory userTokenIds = userLps[owner];
         for (uint256 i = 0; i < userTokenIds.length; i++) {
           uint256 tokenId = userTokenIds[i];
-          // send LP & rewards back to user + remove token record
-          _withdrawAndSendRewards(tokenId, owner);
-          // zeroize userTotalLpValue
-          userTotalLpValue[owner] = 0;
+          // awaiting user to withdraw
+          leftoverLpTokens[owner].push(tokenId);
+          // remove token from records
+          _removeToken(owner, tokenId);
         }
       }
     }
@@ -525,23 +551,6 @@ IERC721Receiver
     );
     // refresh user TotalLpValue
     _syncUserLpTotalValue(owner, true);
-  }
-
-  /**
-    * @dev withdraws token and harvest rewards from the Staking Hub
-    *      harvested reward will be sent to user
-    * @param tokenId the tokenId of the LP token
-    * @param user the address of the user
-    */
-  function _withdrawAndSendRewards(uint256 tokenId, address user) internal {
-    // withdraw from Staking Hub with the harvested rewards
-    uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
-    // remove token
-    _removeToken(user, tokenId);
-    // send reward and cut fee
-    _sendRewardAfterFeeCut(rewardAmount, user);
-    // transfer LP token back to the user
-    IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
   }
 
   /**
