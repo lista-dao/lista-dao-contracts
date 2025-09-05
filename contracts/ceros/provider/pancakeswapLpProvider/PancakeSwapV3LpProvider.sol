@@ -210,7 +210,7 @@ IERC721Receiver
    * @param tokenId the tokenId of the LP token
    */
   function provide(uint256 tokenId) override external nonReentrant whenNotPaused {
-    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider: Not owner of token");
+    require(IERC721(nonFungiblePositionManager).ownerOf(tokenId) == msg.sender, "PcsV3LpProvider: not-token-owner");
     // @note we don't check user whether is liquidating, we do it at onERC721Received
     // transfer user's LP token to this contract
     IERC721(nonFungiblePositionManager).safeTransferFrom(msg.sender, address(this), tokenId);
@@ -570,13 +570,15 @@ IERC721Receiver
    * @inheritdoc IERC721Receiver
    */
   function onERC721Received(
-    address /*operator*/,
+    address operator,
     address from,
     uint256 tokenId,
     bytes calldata /*data*/
   ) external whenNotPaused returns (bytes4) {
     // only accept NFT sent from NonFungiblePositionManager
     require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider: invalid-lp-sender");
+    // ownership verification
+    require(operator == from, "PcsV3LpProvider: not-token-owner");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
     if (from != pancakeStakingHub) {
       // user is not allowed to deposit LP if liquidation is ongoing
