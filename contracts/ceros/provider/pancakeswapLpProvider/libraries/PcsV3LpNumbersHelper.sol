@@ -154,16 +154,14 @@ library PcsV3LpNumbersHelper {
     (,bytes32 ilk,,) = ICdp(cdp).collaterals(lpUsd);
     // refresh interest
     ICdp(cdp).drip(address(lpUsd));
-    // get rate
-    (,uint256 rate,,,) = ICdp(cdp).vat().ilks(ilk);
+    // get rate and LP_USD price with safety margin
+    (,uint256 rate, uint256 spot,,) = ICdp(cdp).vat().ilks(ilk);
     // get user debt
     (,uint256 art) = ICdp(cdp).vat().urns(ilk, user);
-    // get debt
-    uint256 debt = FullMath.mulDivRoundingUp(art, rate, RAY);
-    // get MCR
-    (,uint256 mat) = ICdp(cdp).spotter().ilks(ilk);
     // calculate the minimum required collateral
-    uint256 minRequiredCollateral = FullMath.mulDivRoundingUp(debt, mat, RAY);
+    // align with vat.sol: minCollateral * spot >= totalDebt
+    //                     minCollateral >= totalDebt / spot
+    uint256 minRequiredCollateral = FullMath.mulDivRoundingUp(art, rate, spot);
     // if collateral value is less than or equal to the minimum required collateral,
     if (collateralValue <= minRequiredCollateral) return 0;
     // calculate the withdrawable amount

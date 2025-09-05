@@ -29,7 +29,7 @@ interface VatLike {
   function ilks(bytes32) external view returns (
     uint256 normalisedDebt, // Normalised Debt
     uint256 interestRate, // Accumulated Rates, refreshed when called drip() at CDP
-    uint256 ltv, // loan to value - debt < collateral * ltv
+    uint256 spot, // price with safety margin
     uint256 maxLoan, // max. debt - user can only borrow at most this amount
     uint256 minLoan // min. debt - user must borrow at least this amount
   );
