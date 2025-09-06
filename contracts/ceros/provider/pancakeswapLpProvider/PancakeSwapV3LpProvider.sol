@@ -327,9 +327,9 @@ IERC721Receiver
    * @dev Claim leftover LP tokens after liquidation
    *      this will transfer all leftover LP tokens back to the user
    */
-  function claimLeftOverLpTokens() external nonReentrant whenNotPaused {
+  function claimLeftOverLpTokens() external override nonReentrant whenNotPaused {
     address user = msg.sender;
-    uint256[] storage tokenIds = leftoverLpTokens[user];
+    uint256[] memory tokenIds = leftoverLpTokens[user];
     require(tokenIds.length > 0, "PcsV3LpProvider: no-leftover-lp-tokens");
     for (uint256 i = 0; i < tokenIds.length; i++) {
       uint256 tokenId = tokenIds[i];
@@ -487,7 +487,8 @@ IERC721Receiver
       // delete user's liquidation record
       delete userLiquidations[owner];
       // zeroize userTotalLpValue
-      userTotalLpValue[owner] = 0;
+      delete userTotalLpValue[owner];
+      // if user has leftover LP tokens, add them to leftoverLpTokens for user to withdraw
       if (userLps[owner].length > 0) {
         uint256[] memory userTokenIds = userLps[owner];
         for (uint256 i = 0; i < userTokenIds.length; i++) {

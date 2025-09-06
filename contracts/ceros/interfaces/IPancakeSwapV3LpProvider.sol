@@ -45,4 +45,5 @@ interface IPancakeSwapV3LpProvider {
   function getLpValue(uint256 tokenId) external view returns (uint256);
   function getLatestUserTotalLpValue(address user) external returns (uint256);
   function peek() external view returns (bytes32, bool);
+  function claimLeftOverLpTokens() external;
 }
