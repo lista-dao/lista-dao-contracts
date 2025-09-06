@@ -333,6 +333,10 @@ IERC721Receiver
     require(tokenIds.length > 0, "PcsV3LpProvider: no-leftover-lp-tokens");
     for (uint256 i = 0; i < tokenIds.length; i++) {
       uint256 tokenId = tokenIds[i];
+      // withdraw from Staking Hub with the harvested rewards
+      uint256 rewardAmount = IPancakeSwapV3LpStakingHub(pancakeStakingHub).withdraw(tokenId);
+      // send reward and cut fee
+      _sendRewardAfterFeeCut(rewardAmount, user);
       // transfer LP token back to the user
       IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), user, tokenId);
       // emit event
