@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { GemJoinLike } from "../../contracts/interfaces/GemJoinLike.sol";
-import { Interaction } from "../../contracts/Interaction.sol";
+import { Interaction } from "../../contracts/old/InteractionV4.sol";
 import { Vat } from "../../contracts/vat.sol";
 import { Spotter } from "../../contracts/spot.sol";
 import { LisUSD } from "../../contracts/LisUSD.sol";

@@ -272,3 +272,14 @@ contract ExponentialDecrease is Abacus, Initializable {
         return rmul(top, rpow(cut, dur, RAY));
     }
 }
+
+contract AlwaysOneDollarCalc is Abacus {
+
+    uint256 constant RAY = 10 ** 27;
+
+    // @note a workaround for the auction price drop for V3 LP provider
+    // always return 1 USD (as collateral is LP_USD)
+    function price(uint256 /*top*/, uint256 /*dur*/) override external pure returns (uint256) {
+        return RAY;
+    }
+}

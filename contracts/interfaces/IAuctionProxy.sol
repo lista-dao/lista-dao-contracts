@@ -23,7 +23,8 @@ interface IAuctionProxy {
         uint256 auctionId,
         uint256 collateralAmount,
         uint256 maxPrice,
-        address receiverAddress
+        address receiverAddress,
+        bytes calldata data
     ) external;
 
     function getAllActiveAuctionsForToken(address token) external view returns (Sale[] memory sales);
