@@ -811,6 +811,15 @@ IERC721Receiver
     return userLps[user];
   }
 
+  /**
+   * @dev Get the leftover LP tokens of a user
+   * @param user the address of the user
+   * @return an array of tokenIds of the user's leftover LPs
+   */
+  function getUserLeftoverLpTokens(address user) external view returns (uint256[] memory) {
+    return leftoverLpTokens[user];
+  }
+
   ///////////////////////////////////////////////////////////////
   ////////////             Administrative            ////////////
   ///////////////////////////////////////////////////////////////
