@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "forge-std/Script.sol";
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { PancakeSwapV3LpProvider } from "../../../contracts/ceros/provider/pancakeswapLpProvider/PancakeSwapV3LpProvider.sol";
 import { PancakeSwapV3LpStakingHub } from "../../../contracts/ceros/provider/pancakeswapLpProvider/PancakeSwapV3LpStakingHub.sol";
@@ -73,6 +74,10 @@ contract PcsV3Deployment is Script {
     lpUsd = new LpUsd(token0, token1);
     console.log("LpUsd deployed at: ", address(lpUsd));
 
+    string memory token0Name = IERC20Metadata(token0).symbol();
+    string memory token1Name = IERC20Metadata(token1).symbol();
+    string memory name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "-", token1Name, " V3 LP Provider"));
+
     // Deploy PCS LpProvider
     PancakeSwapV3LpProvider pcsProviderImpl = new PancakeSwapV3LpProvider(
       address(interaction),
@@ -96,7 +101,8 @@ contract PcsV3Deployment is Script {
         address(oracle),
         MAX_LP_DEPOSIT, // Max Lp can be deposit
         MIN_LP_USD, // 1000 LP USD
-        DISCOUNT_RATE // 80% discount rate
+        DISCOUNT_RATE, // 80% discount rate
+        name
       )
     );
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));

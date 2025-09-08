@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "forge-std/Script.sol";
 import { PancakeSwapV3LpStakingHub } from "../../../contracts/ceros/provider/pancakeswapLpProvider/PancakeSwapV3LpStakingHub.sol";
 
-contract DeployPcsV3LpStakingHub is Script {
+contract DeployPcsV3LpStakingHubImpl is Script {
 
   address masterChefV3;
   address nonfungiblePositionManager;
@@ -34,7 +34,7 @@ contract DeployPcsV3LpStakingHub is Script {
       cake
     );
 
-    console.log("PancakeSwapV3LpStakingHub deployed at: ", address(pcsStakingHubImpl));
+    console.log("PancakeSwapV3LpStakingHub Impl. deployed at: ", address(pcsStakingHubImpl));
 
     vm.stopBroadcast();
   }
