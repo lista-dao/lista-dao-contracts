@@ -9,9 +9,11 @@ import "../../ceros/interfaces/IVault.sol";
 import "../../ceros/interfaces/IDex.sol";
 import "../../ceros/interfaces/IDao.sol";
 import "../../ceros/interfaces/ICerosRouter.sol";
-import "../../ceros/interfaces/IHelioProvider.sol";
 import "../../ceros/interfaces/IBinancePool.sol";
 import "../../ceros/interfaces/ICertToken.sol";
+
+import "./interfaces/IHelioProvider.sol";
+
 contract HelioProvider is
 IHelioProvider,
 OwnableUpgradeable,
