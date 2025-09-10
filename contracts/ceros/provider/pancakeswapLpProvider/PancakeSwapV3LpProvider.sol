@@ -331,6 +331,9 @@ IERC721Receiver
     address user = msg.sender;
     uint256[] memory tokenIds = leftoverLpTokens[user];
     require(tokenIds.length > 0, "PcsV3LpProvider: no-leftover-lp-tokens");
+    // clear record
+    delete leftoverLpTokens[user];
+    // tranfer LP tokens one by one
     for (uint256 i = 0; i < tokenIds.length; i++) {
       uint256 tokenId = tokenIds[i];
       // withdraw from Staking Hub with the harvested rewards
@@ -342,8 +345,6 @@ IERC721Receiver
       // emit event
       emit LeftoverLpWithdrawn(user, tokenId);
     }
-    // clear record
-    delete leftoverLpTokens[user];
   }
   ///////////////////////////////////////////////////////////////
   ////////////                CDP Only               ////////////
