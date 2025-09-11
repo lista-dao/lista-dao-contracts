@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 interface IPancakeSwapV3LpStakingVault {
 
   /// @dev Functions
-  function feeCut(uint256 amount) external returns (uint256 rewardsAfterFeeCut);
+  function feeCut(uint256 amount) external returns (uint256 rewardsAfterFeeCut, uint256 fee);
 
   /// @dev Events
   event FeeCut(address indexed recipient, uint256 amount, uint256 fee);

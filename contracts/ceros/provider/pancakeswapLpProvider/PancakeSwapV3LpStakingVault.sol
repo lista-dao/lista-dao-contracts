@@ -110,23 +110,21 @@ UUPSUpgradeable
   /**
     * @dev fee cut before give user
     * @param amount amount of rewards
-    * @return amount after fee cut
+    * @return rewardAfterFeeCut amount after fee cut
+    * @return fee amount of fee cut
     */
-  function feeCut(uint256 amount) override external onlyLpProvider whenNotPaused nonReentrant returns (uint256) {
+  function feeCut(uint256 amount) override external onlyLpProvider whenNotPaused nonReentrant returns (uint256 rewardAfterFeeCut, uint256 fee) {
     require(amount > 0, "PancakeSwapLpStakingVault: zero-amount-provided");
-    IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
     // cut fee
     uint256 feeRate = feeRates[msg.sender];
+    rewardAfterFeeCut = amount;
     if (feeRate > 0) {
-      uint256 fee = FullMath.mulDivRoundingUp(amount, feeRate, DENOMINATOR);
+      fee = FullMath.mulDivRoundingUp(amount, feeRate, DENOMINATOR);
       availableFees += fee;
-      amount -= fee;
+      rewardAfterFeeCut -= fee;
     }
-    // transfer remaining amount to lpProxy
-    IERC20(rewardToken).safeTransfer(msg.sender, amount);
     // emit Fee cut event (provider address, amount, fee rate)
     emit FeeCut(msg.sender, amount, feeRate);
-    return amount;
   }
 
   /**

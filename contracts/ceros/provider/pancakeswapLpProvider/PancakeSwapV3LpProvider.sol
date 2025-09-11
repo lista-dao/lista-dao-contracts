@@ -614,10 +614,11 @@ IERC721Receiver
   function _sendRewardAfterFeeCut(uint256 amount, address to) internal {
     require(to != address(0), "PcsV3LpProvider: invalid-recipient");
     if (amount > 0) {
-      // approve rewardToken to the vault
-      IERC20(rewardToken).safeIncreaseAllowance(pancakeLpStakingVault, amount);
       // transfer rewards to the vault
-      uint256 rewardAfterCut = IPancakeSwapV3LpStakingVault(pancakeLpStakingVault).feeCut(amount);
+      (uint256 rewardAfterCut, uint256 fee) = 
+        IPancakeSwapV3LpStakingVault(pancakeLpStakingVault).feeCut(amount);
+      //transfer fees to the staking vault
+      IERC20(rewardToken).safeTransfer(pancakeLpStakingVault, fee);
       // transfer rewards to the user
       IERC20(rewardToken).safeTransfer(to, rewardAfterCut);
     }
