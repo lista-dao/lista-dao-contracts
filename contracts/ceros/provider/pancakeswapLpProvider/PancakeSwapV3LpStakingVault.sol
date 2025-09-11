@@ -230,6 +230,7 @@ UUPSUpgradeable
       !lpProviders[provider],
       "PancakeSwapLpStakingVault: provider-already-registered"
     );
+    require(feeRate <= DENOMINATOR, "PancakeSwapLpStakingVault: invalid-fee-rate");
     lpProviders[provider] = true;
     feeRates[provider] = feeRate;
     emit LpProviderRegistered(provider, feeRate);
