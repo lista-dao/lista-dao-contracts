@@ -126,16 +126,17 @@ IERC721Receiver
       _nonFungiblePositionManager != address(0) &&
       _masterChefV3 != address(0) &&
       _lpUsd != address(0) &&
-      _token0 != address(0) &&
-      _token1 != address(0) &&
+      _token0 != _token1 &&
       _rewardToken != address(0),
       "zero address provided"
     );
+    // make sure token0 < token1 (same checking in PCS's factory)
+    (token0, token1) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
+    require(token0 != address(0));
+
     cdp = _cdp;
     nonFungiblePositionManager = _nonFungiblePositionManager;
     masterChefV3 = _masterChefV3;
-    token0 = _token0;
-    token1 = _token1;
     rewardToken = _rewardToken;
     lpUsd = _lpUsd;
 
