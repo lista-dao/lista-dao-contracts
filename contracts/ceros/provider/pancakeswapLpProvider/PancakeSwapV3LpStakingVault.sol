@@ -118,7 +118,7 @@ UUPSUpgradeable
     // cut fee
     uint256 feeRate = feeRates[msg.sender];
     if (feeRate > 0) {
-      uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
+      uint256 fee = FullMath.mulDivRoundingUp(amount, feeRate, DENOMINATOR);
       availableFees += fee;
       amount -= fee;
     }
@@ -166,7 +166,7 @@ UUPSUpgradeable
       // cut fee
       uint256 feeRate = feeRates[provider];
       if (feeRate > 0) {
-          uint256 fee = FullMath.mulDiv(amount, feeRate, DENOMINATOR);
+          uint256 fee = FullMath.mulDivRoundingUp(amount, feeRate, DENOMINATOR);
           availableFees += fee;
           amount -= fee;
       }
