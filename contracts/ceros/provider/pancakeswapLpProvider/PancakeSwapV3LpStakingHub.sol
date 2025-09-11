@@ -417,6 +417,21 @@ IERC721Receiver
   }
 
   /**
+   * @dev restake LPs incase MasterChefV3 disabled the emergency mode
+   * @param _tokenIds array of tokenIds to restake (obtained from NonfungiblePositionManager's balanceOf and token)
+   */
+  function restake(uint256[] memory _tokenIds) external onlyRole(MANAGER) {
+    require(_tokenIds.length > 0, "PancakeSwapStakingHub: empty-tokenIds");
+    for (uint256 i = 0; i < _tokenIds.length; i++) {
+      uint256 tokenId = _tokenIds[i];
+      if (!_isStaked(tokenId)) {
+        IERC721(nonFungiblePositionManager).safeTransferFrom(address(this), masterChefV3, tokenId);
+        emit ReStaked(address(this), tokenId);
+      }
+    }
+  }
+
+  /**
     * @dev register provider
     * @param provider address of the PancakeSwap V3 LP provider
     */
