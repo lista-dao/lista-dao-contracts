@@ -147,16 +147,15 @@ IERC721Receiver
   returns (uint256 rewards) {
     require(tokenId > 0, "PancakeSwapStakingHub: non-zero-tokenId");
     address provider = msg.sender;
-    // reward token pre-balance
-    uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
     // check if token is staked
     if (_isStaked(tokenId)) {
+      // reward token pre-balance
+      uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
       // withdraw token from MasterChefV3
-      rewards = IMasterChefV3(masterChefV3).withdraw(tokenId, address(this));
+      IMasterChefV3(masterChefV3).withdraw(tokenId, address(this));
+      // post balance of reward token
+      rewards = IERC20(rewardToken).balanceOf(address(this)) - preBalance;
     }
-    // post balance of reward token
-    uint256 postBalance = IERC20(rewardToken).balanceOf(address(this));
-    require(postBalance == preBalance + rewards, "PancakeSwapStakingHub: invalid-reward-balance");
     // send rewards and NFT to provider
     if (rewards > 0) {
       // send rewards to provider
@@ -230,10 +229,9 @@ IERC721Receiver
       // reward token pre-balance
       uint256 preBalance = IERC20(rewardToken).balanceOf(address(this));
       // withdraw rewards from MasterChefV3
-      rewards = IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
+      IMasterChefV3(masterChefV3).harvest(tokenId, address(this));
       // post balance of reward token
-      uint256 postBalance = IERC20(rewardToken).balanceOf(address(this));
-      require(postBalance == preBalance + rewards, "PancakeSwapStakingHub: invalid-reward-balance");
+      rewards = IERC20(rewardToken).balanceOf(address(this)) - preBalance;
       // send rewards to provider
       if (rewards > 0) {
         IERC20(rewardToken).safeTransfer(provider, rewards);
@@ -418,7 +416,7 @@ IERC721Receiver
 
   /**
    * @dev restake LPs incase MasterChefV3 disabled the emergency mode
-   * @param _tokenIds array of tokenIds to restake (obtained from NonfungiblePositionManager's balanceOf and token)
+   * @param _tokenIds array of tokenIds to restake (obtained from NonfungiblePositionManager's balanceOf and tokenIdAtIndexOf)
    */
   function restake(uint256[] memory _tokenIds) external onlyRole(MANAGER) {
     require(_tokenIds.length > 0, "PancakeSwapStakingHub: empty-tokenIds");
