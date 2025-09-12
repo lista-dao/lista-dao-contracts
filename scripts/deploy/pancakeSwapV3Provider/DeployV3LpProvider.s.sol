@@ -18,7 +18,6 @@ contract PcsV3Deployment is Script {
   PancakeSwapV3LpStakingVault public pcsStakingVault;
   LpUsd public lpUsd;
 
-  address pancakeSwapV3Factory;
   address masterChefV3;
   address nonfungiblePositionManager;
   address interaction;
@@ -30,10 +29,11 @@ contract PcsV3Deployment is Script {
   address token1;
   address cake;
   address oracle;
+  address timelock;
 
   uint256 MAX_LP_DEPOSIT = 5; // Max Lp can be deposit
   uint256 MIN_LP_USD = 1000 * 1e18; // 1000 LP USD
-  uint256 DISCOUNT_RATE = 8000; // 80% discount rate
+  uint256 DISCOUNT_RATE = 10000; // 100% discount rate
   uint256 REWARD_FEE_RATE = 300; // 3% reward fee rate
 
   uint256 deployerPrivateKey;
@@ -51,7 +51,6 @@ contract PcsV3Deployment is Script {
       vm.envAddress("PCS_STAKING_HUB")
     );
 
-    pancakeSwapV3Factory = vm.envAddress("PCS_V3_FACTORY");
     masterChefV3 = vm.envAddress("MASTER_CHEF_V3");
     nonfungiblePositionManager = vm.envAddress("NON_FUNGIBLE_POSITION_MANAGER");
     admin = deployer;
@@ -63,6 +62,7 @@ contract PcsV3Deployment is Script {
     token1 = vm.envAddress("TOKEN1");
     cake = vm.envAddress("CAKE");
     oracle = vm.envAddress("ORACLE");
+    timelock = vm.envAddress("TIMELOCK");
   }
 
   function run() public {
@@ -76,7 +76,7 @@ contract PcsV3Deployment is Script {
 
     string memory token0Name = IERC20Metadata(token0).symbol();
     string memory token1Name = IERC20Metadata(token1).symbol();
-    string memory name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "-", token1Name, " V3 LP Provider"));
+    string memory name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "/", token1Name, " V3-LP Provider"));
 
     // Deploy PCS LpProvider
     PancakeSwapV3LpProvider pcsProviderImpl = new PancakeSwapV3LpProvider(
@@ -93,7 +93,7 @@ contract PcsV3Deployment is Script {
       abi.encodeWithSelector(
         PancakeSwapV3LpProvider.initialize.selector,
         admin,
-        manager,
+        admin,
         bot,
         pauser,
         address(pcsStakingHub),
@@ -109,12 +109,16 @@ contract PcsV3Deployment is Script {
     console.log("PancakeSwapV3LpProvider deployed at: ", address(pcsProvider));
 
     lpUsd.setMinter(address(pcsProvider));
-    // @note should be called by Manager, after deployer has transferred ownership to Manager
     pcsStakingHub.registerProvider(address(pcsProvider));
     pcsStakingVault.registerLpProvider(address(pcsProvider), REWARD_FEE_RATE);
+    lpUsd.transferOwnership(timelock);
+
+    // grant manager as MANAGER as well
+    bytes32 MANAGER = keccak256("MANAGER");
+    bytes32 DEFAULT_ADMIN_ROLE = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    pcsProvider.grantRole(MANAGER, manager);
+    pcsProvider.grantRole(DEFAULT_ADMIN_ROLE, timelock);
 
     vm.stopBroadcast();
   }
-
-
 }

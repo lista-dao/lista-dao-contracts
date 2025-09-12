@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "forge-std/Script.sol";
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { PancakeSwapV3LpProvider } from "../../../contracts/ceros/provider/pancakeswapLpProvider/PancakeSwapV3LpProvider.sol";
 import { PancakeSwapV3LpStakingHub } from "../../../contracts/ceros/provider/pancakeswapLpProvider/PancakeSwapV3LpStakingHub.sol";
@@ -17,7 +18,6 @@ contract PcsV3Deployment is Script {
   PancakeSwapV3LpStakingVault public pcsStakingVault;
   LpUsd public lpUsd;
 
-  address pancakeSwapV3Factory;
   address masterChefV3;
   address nonfungiblePositionManager;
   address interaction;
@@ -29,10 +29,12 @@ contract PcsV3Deployment is Script {
   address token1;
   address cake;
   address oracle;
+  address lpProxy;
+  address timelock;
 
   uint256 MAX_LP_DEPOSIT = 5; // Max Lp can be deposit
   uint256 MIN_LP_USD = 1000 * 1e18; // 1000 LP USD
-  uint256 DISCOUNT_RATE = 8000; // 80% discount rate
+  uint256 DISCOUNT_RATE = 10000; // 100% discount rate
   uint256 REWARD_FEE_RATE = 300; // 3% reward fee rate
 
   uint256 deployerPrivateKey;
@@ -43,11 +45,10 @@ contract PcsV3Deployment is Script {
     deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     deployer = vm.addr(deployerPrivateKey);
 
-    pancakeSwapV3Factory = vm.envAddress("PCS_V3_FACTORY");
     masterChefV3 = vm.envAddress("MASTER_CHEF_V3");
     nonfungiblePositionManager = vm.envAddress("NON_FUNGIBLE_POSITION_MANAGER");
     admin = deployer;
-    manager = deployer;
+    manager = vm.envAddress("MANAGER");
     pauser = vm.envAddress("PAUSER");
     bot = vm.envAddress("BOT");
     interaction = vm.envAddress("INTERACTION");
@@ -55,6 +56,8 @@ contract PcsV3Deployment is Script {
     token1 = vm.envAddress("TOKEN1");
     cake = vm.envAddress("CAKE");
     oracle = vm.envAddress("ORACLE");
+    lpProxy = vm.envAddress("LP_PROXY");
+    timelock = vm.envAddress("TIMELOCK");
   }
 
   function run() public {
@@ -77,7 +80,7 @@ contract PcsV3Deployment is Script {
       abi.encodeWithSelector(
         PancakeSwapV3LpStakingHub.initialize.selector,
         admin,
-        manager,
+        admin,
         pauser
       )
     );
@@ -94,15 +97,19 @@ contract PcsV3Deployment is Script {
       abi.encodeWithSelector(
         pcsStakingVaultImpl.initialize.selector,
         admin,
-        manager,
+        admin,
         pauser,
-        address(0x5A0E3291514F5F1797A0C7eFefdac81eeC70ec01)
+        lpProxy
       )
     );
     pcsStakingVault = PancakeSwapV3LpStakingVault(address(pcsStakingVaultProxy));
     console.log("PancakeSwapV3LpStakingVault deployed at: ", address(pcsStakingVault));
 
     // Deploy PCS LpProvider
+    string memory token0Name = IERC20Metadata(token0).symbol();
+    string memory token1Name = IERC20Metadata(token1).symbol();
+    string memory name = string(abi.encodePacked("Lista-PancakeSwap ", token0Name, "/", token1Name, " V3-LP Provider"));
+
     PancakeSwapV3LpProvider pcsProviderImpl = new PancakeSwapV3LpProvider(
       address(interaction),
       nonfungiblePositionManager,
@@ -117,7 +124,7 @@ contract PcsV3Deployment is Script {
       abi.encodeWithSelector(
         PancakeSwapV3LpProvider.initialize.selector,
         admin,
-        manager,
+        admin,
         bot,
         pauser,
         address(pcsStakingHub),
@@ -125,7 +132,8 @@ contract PcsV3Deployment is Script {
         address(oracle),
         MAX_LP_DEPOSIT, // Max Lp can be deposit
         MIN_LP_USD, // 1000 LP USD
-        DISCOUNT_RATE // 80% discount rate
+        DISCOUNT_RATE, // 100% discount rate
+        name
       )
     );
     pcsProvider = PancakeSwapV3LpProvider(address(pcsProviderProxy));
@@ -134,6 +142,18 @@ contract PcsV3Deployment is Script {
     lpUsd.setMinter(address(pcsProvider));
     pcsStakingHub.registerProvider(address(pcsProvider));
     pcsStakingVault.registerLpProvider(address(pcsProvider), REWARD_FEE_RATE);
+    lpUsd.transferOwnership(timelock);
+
+    // grant manager role
+    bytes32 MANAGER = keccak256("MANAGER");
+    bytes32 DEFAULT_ADMIN_ROLE = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    pcsProvider.grantRole(MANAGER, manager);
+    pcsStakingHub.grantRole(MANAGER, manager);
+    pcsStakingVault.grantRole(MANAGER, manager);
+    // grant timelock as default admin role
+    pcsProvider.grantRole(DEFAULT_ADMIN_ROLE, timelock);
+    pcsStakingHub.grantRole(DEFAULT_ADMIN_ROLE, timelock);
+    pcsStakingVault.grantRole(DEFAULT_ADMIN_ROLE, timelock);
 
     vm.stopBroadcast();
   }
