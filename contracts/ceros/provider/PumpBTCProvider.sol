@@ -146,12 +146,24 @@ contract PumpBTCProvider is AccessControlUpgradeable, PausableUpgradeable, Reent
   function liquidation(
     address _recipient,
     uint256 _lpAmount
-  ) external virtual nonReentrant whenNotPaused onlyRole(PROXY) {
+  ) public virtual nonReentrant whenNotPaused onlyRole(PROXY) {
     require(_recipient != address(0));
+    // burn ceToken
+    ICertToken(ceToken).burn(address(this), _lpAmount);
     uint256 _amount = _lpAmount / scale;
     IERC20(token).safeTransfer(_recipient, _amount);
 
     emit Liquidation(_recipient, _amount, _lpAmount);
+  }
+
+  function liquidation(
+    address /*_user*/,
+    address _recipient,
+    uint256 _lpAmount,
+    bytes memory /*data*/,
+    bool /*isLeftover*/
+  ) external virtual whenNotPaused onlyRole(PROXY) {
+    liquidation(_recipient, _lpAmount);
   }
 
   /**
