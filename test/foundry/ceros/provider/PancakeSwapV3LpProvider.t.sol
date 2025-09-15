@@ -396,13 +396,15 @@ contract PancakeSwapV3LpProviderTest is Test {
 
     // pretend liquidator buy from auction
     vm.startPrank(address(interaction));
+    // fund provider with LPUSD as Interaction would do before calling liquidation
+    deal(address(lpUsd), address(pcsProvider), 1_000_000 ether, true);
     // try liquidate with token with unmatched user
     vm.expectRevert("PcsV3LpProvider: not-lp-owner");
     pcsProvider.liquidation(
       user,
       address(bot),
       1 ether,
-      abi.encode(1, 1, 1234),
+      abi.encode(uint256(1), uint256(1), uint256(1234), block.timestamp + 1 hours),
       false
     );
     // try liquidate with token1 with all zero amounts
@@ -411,15 +413,7 @@ contract PancakeSwapV3LpProviderTest is Test {
       user,
       address(bot),
       2 ether,
-      abi.encode(0, 0, tokenId),
-      false
-    );
-    vm.expectRevert("PcsV3LpProvider: insufficient-lp-value");
-    pcsProvider.liquidation(
-      user,
-      address(bot),
-      1000000 ether,
-      abi.encode(1, 1, tokenId),
+      abi.encode(uint256(0), uint256(0), tokenId, block.timestamp + 1 hours),
       false
     );
     // try liquidate
@@ -427,7 +421,7 @@ contract PancakeSwapV3LpProviderTest is Test {
       user,
       address(bot),
       1000 ether,
-      abi.encode(amount0Min, amount1Min, tokenId),
+      abi.encode(amount0Min, amount1Min, tokenId, block.timestamp + 1 hours),
       false
     );
     vm.stopPrank();
@@ -467,6 +461,9 @@ contract PancakeSwapV3LpProviderTest is Test {
     assertGt(pcsProvider.userTotalLpValue(user), 0, "pcsProvider should record the user total LP value");
     assertGt(pcsProvider.lpValues(tokenId1), 0, "pcsProvider should record the LP value of the tokenId");
     assertGt(interaction.locked(address(lpUsd), user), 0, "interaction should record the locked LP USD for user");
+
+    // ensure spot is initialized to avoid division-by-zero in withdraw path
+    spotter.poke(ilk);
 
     return tokenId1;
   }

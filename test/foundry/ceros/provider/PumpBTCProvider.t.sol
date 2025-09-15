@@ -22,7 +22,16 @@ import { BtcOracle } from "../../../../contracts/oracle/BtcOracle.sol";
 
 import { ERC20UpgradeableMock } from "../../../../contracts/mock/ERC20UpgradeableMock.sol";
 
+contract DummyDutyCalculator {
+  function calculateDuty(address, uint256 currentDuty, bool) external pure returns (uint256) {
+    return currentDuty;
+  }
+}
+
+import { MockListaDistributor } from "../mock/MockListaDistributor.sol";
+
 contract PumpBTCProviderTest is Test {
+  using stdStorage for StdStorage;
   address admin = address(0x1A11AA);
   address manager = address(0x2A11AA);
   address pauser = address(0x2A11AB);
@@ -119,6 +128,13 @@ contract PumpBTCProviderTest is Test {
 
     interaction.setCollateralType(address(cePumpBTC), address(gemJoin), ilk, address(clip), mat);
     vm.stopPrank();
+
+    // Ensure Interaction has required external deps set after potential upgrades in other tests
+    // 1) set lista distributor so takeSnapshot doesn't call zero address
+    vm.startPrank(wards);
+    interaction.setListaDistributor(address(new MockListaDistributor()));
+    vm.stopPrank();
+    // dutyCalculator is configured on mainnet; no override needed here
   }
 
   function test_provide() public {

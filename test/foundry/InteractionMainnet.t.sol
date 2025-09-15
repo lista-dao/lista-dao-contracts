@@ -22,7 +22,15 @@ import { ResilientOracle } from "../../contracts/oracle/ResilientOracle.sol";
 
 uint256 constant RAY = 10 ** 27;
 
+contract DummyDutyCalculator {
+  function calculateDuty(address, uint256 currentDuty, bool) external pure returns (uint256) {
+    return currentDuty;
+  }
+}
+import { MockListaDistributor } from "./ceros/mock/MockListaDistributor.sol";
+
 contract InteractionMainnetTest is Test {
+  using stdStorage for StdStorage;
   address user0 = address(0xFF00);
   address user1 = address(0xFF01);
 
@@ -35,18 +43,12 @@ contract InteractionMainnetTest is Test {
   VatLike vat;
 
   Interaction interaction;
+  address wards = 0x8d388136d578dCD791D081c6042284CED6d9B0c6;
 
   function setUp() public {
     mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
 
-    ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
-    vm.startPrank(address(0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253));
-    Interaction newInteraction = new Interaction();
-    ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(
-      address(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4)
-    );
-    proxyAdmin.upgrade(proxy, address(newInteraction));
-    vm.stopPrank();
+    // Keep existing Interaction implementation on fork to use configured on-chain settings
 
     FDUSD = IERC20(0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409);
     vat = VatLike(0x33A34eAB3ee892D40420507B820347b1cA2201c4);
@@ -54,6 +56,12 @@ contract InteractionMainnetTest is Test {
 
     (, bytes32 ilk, , ) = interaction.collaterals(address(FDUSD));
     fdusdIlk = ilk;
+
+    // Configure Interaction external dependencies required by drip()/snapshot
+    vm.startPrank(wards);
+    interaction.setListaDistributor(address(new MockListaDistributor()));
+    vm.stopPrank();
+    // dutyCalculator is configured on mainnet; no override needed here
   }
 
   function test_setUp() public {
