@@ -586,13 +586,15 @@ IERC721Receiver
    * @inheritdoc IERC721Receiver
    */
   function onERC721Received(
-    address /*operator*/,
+    address operator,
     address from,
     uint256 tokenId,
     bytes calldata /*data*/
   ) external whenNotPaused returns (bytes4) {
     // only accept NFT sent from NonFungiblePositionManager
     require(msg.sender == nonFungiblePositionManager, "PcsV3LpProvider: invalid-lp-sender");
+    // only accept NFTs sent from PancakeSwapV3LpStakingHub or operator is the contract itself
+    require(from == pancakeStakingHub || operator == address(this), "PcsV3LpProvider: use-provide()");
     // process deposit if NFT send from other than PancakeSwapV3LpStakingHub.sol
     if (from != pancakeStakingHub) {
       // user is not allowed to deposit LP if liquidation is ongoing
