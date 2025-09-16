@@ -43,15 +43,28 @@ library FullMath {
   ) internal pure returns (uint256) {
     (uint256 l, uint256 h) = fullMul(x, y);
 
-  unchecked {
-    uint256 mm = mulmod(x, y, d);
-    if (mm > l) h -= 1;
-    l -= mm;
+    unchecked {
+      uint256 mm = mulmod(x, y, d);
+      if (mm > l) h -= 1;
+      l -= mm;
 
-    if (h == 0) return l / d;
+      if (h == 0) return l / d;
 
-    require(h < d, "FullMath: FULLDIV_OVERFLOW");
-    return fullDiv(l, h, d);
+      require(h < d, "FullMath: FULLDIV_OVERFLOW");
+      return fullDiv(l, h, d);
+    }
   }
+
+  /// @notice ported from https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/FullMath.sol
+  function mulDivRoundingUp(
+      uint256 a,
+      uint256 b,
+      uint256 denominator
+  ) internal pure returns (uint256 result) {
+      result = mulDiv(a, b, denominator);
+      if (mulmod(a, b, denominator) > 0) {
+          require(result < type(uint256).max);
+          result++;
+      }
   }
 }

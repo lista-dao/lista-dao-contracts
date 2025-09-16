@@ -12,8 +12,15 @@ import "../../../../contracts/ceros/slisBNBx.sol";
 import "../../../../contracts/ceros/provider/SlisBNBProvider.sol";
 import {Interaction} from "../../../../contracts/Interaction.sol";
 
+contract DummyDutyCalculator {
+    function calculateDuty(address, uint256 currentDuty, bool) external pure returns (uint256) {
+        return currentDuty;
+    }
+}
+import { MockListaDistributor } from "../mock/MockListaDistributor.sol";
 
 contract SlisBNBProviderTest is Test {
+    using stdStorage for StdStorage;
     address admin = address(0x1A11AA);
     address manager = address(0x2A11AA);
     address user = address(0x3A11AA);
@@ -69,13 +76,7 @@ contract SlisBNBProviderTest is Test {
         clisBnb.changeMinter(address(slisBNBLpProvider));
         vm.stopPrank();
 
-        ProxyAdmin proxyAdmin = ProxyAdmin(address(0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C));
-        address adminOwner = proxyAdmin.owner();
-        vm.startPrank(address(adminOwner));
-        Interaction newInteraction = new Interaction();
-        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(address(0xB68443Ee3e828baD1526b3e0Bdf2Dfc6b1975ec4));
-        proxyAdmin.upgrade(proxy, address(newInteraction));
-        vm.stopPrank();
+        // Keep existing Interaction implementation on fork to use configured on-chain settings
 
         vm.startPrank(proxyAdminOwner);
         interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider), true);
@@ -83,6 +84,13 @@ contract SlisBNBProviderTest is Test {
 
         (, bytes32 ilk, ,) = interaction.collaterals(address(slisBnb));
         slisBNBIlk = ilk;
+
+        // Set external deps on Interaction after upgrade
+        // 1) Lista distributor to satisfy takeSnapshot
+        vm.startPrank(proxyAdminOwner);
+        interaction.setListaDistributor(address(new MockListaDistributor()));
+        vm.stopPrank();
+        // dutyCalculator is configured on mainnet; no override needed here
     }
 
     function test_setUp() public {

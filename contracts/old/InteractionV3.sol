@@ -14,13 +14,12 @@ import "../interfaces/DogLike.sol";
 import "../interfaces/PipLike.sol";
 import "../interfaces/SpotLike.sol";
 import "../interfaces/IRewards.sol";
-import "../interfaces/IAuctionProxy.sol";
 import "../interfaces/IBorrowLisUSDListaDistributor.sol";
 import "../interfaces/IDynamicDutyCalculator.sol";
-import "../ceros/interfaces/IHelioProvider.sol";
+//import "../ceros/interfaces/IHelioProvider.sol";
 import "../ceros/interfaces/IDao.sol";
-
-import "../libraries/AuctionProxy.sol";
+import "./interfaces/IAuctionProxy.sol";
+import "./libraries/AuctionProxy.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAD = 10 ** 45;

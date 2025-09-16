@@ -11,9 +11,9 @@ import "../interfaces/VatLike.sol";
 import "../ceros/interfaces/IHelioProvider.sol";
 import "../oracle/libraries/FullMath.sol";
 
-import { CollateralType } from  "../ceros/interfaces/IDao.sol";
+import { CollateralType } from "../ceros/interfaces/IDao.sol";
 
-uint256 constant RAY = 10**27;
+uint256 constant RAY = 10 ** 27;
 
 library AuctionProxy {
   using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -56,38 +56,44 @@ library AuctionProxy {
     uint256 hayBal = hay.balanceOf(address(this));
     _clip.redo(auctionId, address(this));
 
-
     hayJoin.exit(address(this), vat.hay(address(this)) / RAY);
     hayBal = hay.balanceOf(address(this)) - hayBal;
     hay.safeTransfer(keeper, hayBal);
   }
 
+  struct AuctionParam {
+    uint256 auctionId;
+    uint256 collateralAmount;
+    uint256 maxPrice;
+    address receiverAddress;
+  }
+
   // Returns lefover from auction
   function buyFromAuction(
-    uint256 auctionId,
-    uint256 collateralAmount,
-    uint256 maxPrice,
-    address receiverAddress,
+    AuctionParam calldata param,
     IERC20Upgradeable hay,
     HayJoinLike hayJoin,
     VatLike vat,
     IHelioProvider helioProvider,
-    CollateralType calldata collateral
+    CollateralType calldata collateral,
+    bytes calldata data
   ) public returns (uint256 leftover) {
     // Balances before
     uint256 hayBal = hay.balanceOf(address(this));
     uint256 gemBal = collateral.gem.gem().balanceOf(address(this));
 
-    uint256 hayMaxAmount = FullMath.mulDiv(maxPrice, collateralAmount, RAY) + 1;
-
-    hay.safeTransferFrom(msg.sender, address(this), hayMaxAmount);
-    hayJoin.join(address(this), hayMaxAmount);
+    // Pay max hay before taking auction
+    _payMaxHay(hay, hayJoin, msg.sender, param);
+//    move the logic to a private function to avoid stack too deep error
+//    uint256 hayMaxAmount = FullMath.mulDiv(param.maxPrice, param.collateralAmount, RAY) + 1;
+//    hay.safeTransferFrom(msg.sender, address(this), hayMaxAmount);
+//    hayJoin.join(address(this), hayMaxAmount);
 
     vat.hope(address(collateral.clip));
-    address urn = ClipperLike(collateral.clip).sales(auctionId).usr; // Liquidated address
+    address urn = ClipperLike(collateral.clip).sales(param.auctionId).usr; // Liquidated address
 
     leftover = vat.gem(collateral.ilk, urn); // userGemBalanceBefore
-    ClipperLike(collateral.clip).take(auctionId, collateralAmount, maxPrice, address(this), "");
+    ClipperLike(collateral.clip).take(param.auctionId, param.collateralAmount, param.maxPrice, address(this), "");
     leftover = vat.gem(collateral.ilk, urn) - leftover; // leftover
 
     collateral.gem.exit(address(this), vat.gem(collateral.ilk, address(this)));
@@ -96,35 +102,43 @@ library AuctionProxy {
     // Balances rest
     hayBal = hay.balanceOf(address(this)) - hayBal;
     gemBal = collateral.gem.gem().balanceOf(address(this)) - gemBal;
-    hay.safeTransfer(receiverAddress, hayBal);
+    hay.safeTransfer(param.receiverAddress, hayBal);
 
     vat.nope(address(collateral.clip));
 
     if (address(helioProvider) != address(0)) {
       IERC20Upgradeable(collateral.gem.gem()).safeTransfer(address(helioProvider), gemBal);
-      helioProvider.liquidation(receiverAddress, gemBal); // Burn router ceToken and mint abnbc to receiver
+      helioProvider.liquidation(urn, param.receiverAddress, gemBal, data, false); // Burn router ceToken and mint abnbc to receiver
 
       if (leftover != 0) {
         // Auction ended with leftover
         vat.flux(collateral.ilk, urn, address(this), leftover);
         collateral.gem.exit(address(helioProvider), leftover); // Router (disc) gets the remaining ceabnbc
-        helioProvider.liquidation(urn, leftover); // Router burns them and gives abnbc remaining
+        helioProvider.liquidation(urn, urn, leftover, data, true); // Router burns them and gives abnbc remaining
       }
     } else {
-      IERC20Upgradeable(collateral.gem.gem()).safeTransfer(receiverAddress, gemBal);
+      IERC20Upgradeable(collateral.gem.gem()).safeTransfer(param.receiverAddress, gemBal);
     }
   }
 
-  function getAllActiveAuctionsForClip(ClipperLike clip)
-    external
-    view
-    returns (Sale[] memory sales)
-  {
+  function getAllActiveAuctionsForClip(ClipperLike clip) external view returns (Sale[] memory sales) {
     uint256[] memory auctionIds = clip.list();
     uint256 auctionsCount = auctionIds.length;
     sales = new Sale[](auctionsCount);
     for (uint256 i = 0; i < auctionsCount; i++) {
       sales[i] = clip.sales(auctionIds[i]);
     }
+  }
+
+  function _payMaxHay(
+    IERC20Upgradeable hay,
+    HayJoinLike hayJoin,
+    address user,
+    AuctionParam calldata param
+  ) private {
+    uint256 hayMaxAmount = FullMath.mulDiv(param.maxPrice, param.collateralAmount, RAY) + 1;
+
+    hay.safeTransferFrom(user, address(this), hayMaxAmount);
+    hayJoin.join(address(this), hayMaxAmount);
   }
 }

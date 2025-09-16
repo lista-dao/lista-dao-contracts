@@ -220,7 +220,7 @@ ReentrancyGuardUpgradeable
      * DAO FUNCTIONALITY
      */
     function liquidation(address recipient, uint256 amount)
-    external
+    public
     override
     onlyProxy
     whenNotPaused
@@ -231,6 +231,17 @@ ReentrancyGuardUpgradeable
         _masterVault.withdrawInTokenFromStrategy(_liquidationStrategy, recipient, amount);
         emit WithdrawalInToken(msg.sender, recipient, amount);
     }
+
+    function liquidation(address, address recipient, uint256 amount, bytes memory, bool)
+    external
+    override
+    onlyProxy
+    whenNotPaused
+    {
+        liquidation(recipient, amount);
+    }
+
+
     function daoBurn(address account, uint256 value)
     external
     override
