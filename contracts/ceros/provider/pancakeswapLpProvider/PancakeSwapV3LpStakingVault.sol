@@ -212,7 +212,6 @@ UUPSUpgradeable
     require(provider != address(0) && lpProviders[provider], "PancakeSwapLpStakingVault: provider-not-registered");
     uint256 oldFeeRate = feeRates[provider];
     require(feeRate != oldFeeRate && feeRate <= DENOMINATOR, "PancakeSwapLpStakingVault: invalid-fee-rate");
-    lpProviders[provider] = true;
     feeRates[provider] = feeRate;
     emit FeeRateUpdated(provider, oldFeeRate, feeRate);
   }

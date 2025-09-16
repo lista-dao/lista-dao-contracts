@@ -354,7 +354,6 @@ IERC721Receiver
     * @dev liquidation is being kick started by the cdp
     * @param user the address of the user to liquidate
     * @param lpAmount the amount of collateral(LpUsd)
-    * @notice this function will burn LP_USD from the user
     */
   function daoBurn(address user, uint256 lpAmount) external nonReentrant onlyCdp {
     require(user != address(0), "PcsV3LpProvider: invalid-user");
@@ -368,8 +367,8 @@ IERC721Receiver
 
   /**
     * @dev User's position is being liquidated
-    *      when `isLeftOver` is false, a liquidator buys the LP token from the user and paid the debt
-    *      liquidity will be removed from user's LP and transform to token0 and token1, then transfer them to the recipient(liquidator)
+    *      when `isLeftOver` is false, a liquidator buys the LP token from the user and pays the debt
+    *      liquidity will be removed from user's LP and transformed to token0 and token1, then transferred them to the recipient(liquidator)
     *      if user has multiple LPs, the function will liquidate from the lowest value LP to the highest value LP until `amount` is covered
     *
     *      when `isLeftOver` is true, the CDP position is fully liquidated
@@ -394,7 +393,7 @@ IERC721Receiver
     * @param recipient the address of the liquidator or user
     * @param amount the amount of LP_USD to be bought by the liquidator
     * @param isLeftOver whether the liquidation is left over or not
-    * @param data bytes consist of 3 uint256 variables: amount0min, amount1Min, tokenId
+    * @param data bytes consist of 4 uint256 variables: amount0min, amount1Min, tokenId, deadline
     */
   function liquidation(
     address owner,
@@ -523,7 +522,7 @@ IERC721Receiver
     *      Liquidator determines the amount of LP_USD to be bought and which LP token to burn
     *      this can maintain the flexibility while not sacrifice the security
     * @param owner the address of the user to liquidate
-    * @param data bytes consist of 3 uint256 variables: amount0min, amount1Min, tokenId
+    * @param data bytes consist of 4 uint256 variables: amount0min, amount1Min, tokenId, deadline
     * @return amount0 the amount of token0 returned to the recipient
     * @return amount1 the amount of token1 returned to the recipient
     * @return rewards the amount of rewards returned to the owner
