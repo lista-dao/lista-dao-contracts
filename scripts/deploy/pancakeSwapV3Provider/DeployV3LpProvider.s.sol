@@ -31,10 +31,10 @@ contract PcsV3Deployment is Script {
   address oracle;
   address timelock;
 
-  uint256 MAX_LP_DEPOSIT = 5; // Max Lp can be deposit
+  uint256 MAX_LP_DEPOSIT = 20; // Max Lp can be deposit
   uint256 MIN_LP_USD = 1000 * 1e18; // 1000 LP USD
   uint256 DISCOUNT_RATE = 10000; // 100% discount rate
-  uint256 REWARD_FEE_RATE = 300; // 3% reward fee rate
+  uint256 REWARD_FEE_RATE = 0; // 0% reward fee rate
 
   uint256 deployerPrivateKey;
   address deployer;
