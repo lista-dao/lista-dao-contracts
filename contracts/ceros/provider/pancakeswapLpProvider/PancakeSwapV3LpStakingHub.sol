@@ -38,14 +38,6 @@ IERC721Receiver
   address public immutable masterChefV3;
   // CAKE token
   address public immutable rewardToken;
-  
-  // emergency mode
-  // when it's turned on, all LP tokens will be withdrawn from MasterChefV3
-  // @todo deprecate
-  bool public emergencyMode;
-  // holding of tokenIds
-  // @todo deprecate
-  uint256[] private tokenIds;
 
   // provider => bool(isActive)
   mapping(address => bool) public lpProviders;
