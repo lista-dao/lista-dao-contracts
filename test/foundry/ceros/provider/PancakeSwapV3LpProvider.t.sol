@@ -156,7 +156,16 @@ contract PancakeSwapV3LpProviderTest is Test {
       0xf3afD82A4071f272F403dC176916141f44E6c750
     );
     // 2. LP USD
-    lpUsd = new LpUsd(token0, token1);
+    LpUsd lpUsdImpl = new LpUsd();
+    ERC1967Proxy lpUsdProxy = new ERC1967Proxy(
+      address(lpUsdImpl),
+      abi.encodeWithSelector(
+        LpUsd.initialize.selector,
+        token0,
+        token1
+      )
+    );
+    lpUsd = LpUsd(address(lpUsdProxy));
 
     // 3. PCS Staking hub
     PancakeSwapV3LpStakingHub pcsStakingHubImpl = new PancakeSwapV3LpStakingHub(

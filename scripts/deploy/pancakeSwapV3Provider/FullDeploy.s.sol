@@ -66,7 +66,16 @@ contract PcsV3Deployment is Script {
     vm.startBroadcast(deployerPrivateKey);
 
     // deploy LpUSD
-    lpUsd = new LpUsd(token0, token1);
+    LpUsd lpUsdImpl = new LpUsd();
+    ERC1967Proxy lpUsdProxy = new ERC1967Proxy(
+      address(lpUsdImpl),
+      abi.encodeWithSelector(
+        LpUsd.initialize.selector,
+        token0,
+        token1
+      )
+    );
+    lpUsd = LpUsd(address(lpUsdProxy));
     console.log("LpUsd deployed at: ", address(lpUsd));
 
     // deploy PCS StakingHub
