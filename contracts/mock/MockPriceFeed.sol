@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract MockPriceFeed is AggregatorV3Interface,AccessControl {
     uint80 public roundId = 1;
-    int256 public answer = 2000000000000000000;
+    int256 public answer = 1e8;
     uint256 public startedAt = block.timestamp;
     uint256 public updatedAt = block.timestamp;
     uint80 public answeredInRound = 1;
@@ -18,11 +18,11 @@ contract MockPriceFeed is AggregatorV3Interface,AccessControl {
     }
 
     function decimals() external view override returns (uint8) {
-        return 18;
+        return 8;
     }
 
     function description() external view override returns (string memory) {
-        return "Mock Oracle Price Feed";
+        return "Mock USDT Oracle Price Feed";
     }
 
     function version() external view override returns (uint256) {
