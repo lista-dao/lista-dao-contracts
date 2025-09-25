@@ -1,36 +1,41 @@
 pragma solidity ^0.8.10;
 
-import "../../contracts/LisUSD.sol";
-import "../../contracts/hMath.sol";
-import "../../contracts/psm/LisUSDPoolSet.sol";
+import "forge-std/Test.sol";
 import "../../contracts/psm/PSM.sol";
 import "../../contracts/psm/VaultManager.sol";
 import "../../contracts/psm/VenusAdapter.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "forge-std/Test.sol";
+import "../../contracts/interfaces/IVBep20Delegate.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 contract PSMTest is Test {
   PSM psm;
   VaultManager vaultManager;
   VenusAdapter venusAdapter;
+  MockERC20PSM usdcToken;
+  MockERC20PSM lisUSDToken;
+  MockVBep20PSM vUsdcToken;
   address admin = address(0x10);
   address user1 = address(0x2);
-  ProxyAdmin proxyAdmin = ProxyAdmin(0xBd8789025E91AF10487455B692419F82523D29Be);
-  address lisUSD = 0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5;
-  address USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
-  address vUSDC = 0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8;
-  uint256 quotaAmount = 1e18;
+  address USDC;
+  address lisUSD;
+  address vUSDC;
 
-  address lisUSDAuth = 0xAca0ed4651ddA1F43f00363643CFa5EBF8774b37;
-
-  uint256 MAX_UINT = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+  uint256 constant MAX_UINT = type(uint256).max;
 
   function setUp() public {
-    vm.createSelectFork("bsc-main");
-
     vm.deal(admin, 100 ether);
     vm.deal(user1, 100 ether);
+
+    usdcToken = new MockERC20PSM("Mock USDC", "mUSDC");
+    lisUSDToken = new MockERC20PSM("Mock LisUSD", "mLisUSD");
+    vUsdcToken = new MockVBep20PSM(IERC20(address(usdcToken)));
+
+    USDC = address(usdcToken);
+    lisUSD = address(lisUSDToken);
+    vUSDC = address(vUsdcToken);
 
     vm.startPrank(admin);
     PSM psmImpl = new PSM();
@@ -77,7 +82,6 @@ contract PSMTest is Test {
         address(vaultManager),
         USDC,
         vUSDC,
-        quotaAmount,
         admin
       )
     );
@@ -88,14 +92,13 @@ contract PSMTest is Test {
 
     vm.stopPrank();
 
-    deal(lisUSD, admin, 1000000 ether);
-    vm.startPrank(admin);
-    IERC20(lisUSD).transfer(address(psm), 10000 ether);
-    vm.stopPrank();
+    lisUSDToken.mint(admin, 1000000 ether);
+    vm.prank(admin);
+    lisUSDToken.transfer(address(psm), 10000 ether);
   }
 
   function test_depositAndWithdraw() public {
-    deal(USDC, user1, 1000 ether);
+    usdcToken.mint(user1, 1000 ether);
 
     vm.startPrank(user1);
     IERC20(USDC).approve(address(psm), MAX_UINT);
@@ -457,8 +460,8 @@ contract PSMTest is Test {
   }
 
   function test_harvest() public {
-    deal(USDC, user1, 100 ether);
-    deal(lisUSD, user1, 100 ether);
+    usdcToken.mint(user1, 100 ether);
+    lisUSDToken.mint(user1, 100 ether);
 
     uint256 feeReceiverLisUSDBalance = IERC20(lisUSD).balanceOf(admin);
 
@@ -468,8 +471,8 @@ contract PSMTest is Test {
     vm.stopPrank();
 
     vm.startPrank(user1);
-    IERC20(USDC).approve(address(psm), UINT256_MAX);
-    IERC20(lisUSD).approve(address(psm), UINT256_MAX);
+    IERC20(USDC).approve(address(psm), MAX_UINT);
+    IERC20(lisUSD).approve(address(psm), MAX_UINT);
 
     psm.sell(100 ether);
     assertEq(psm.fees(), 1 ether, "0 fees error");
@@ -482,5 +485,63 @@ contract PSMTest is Test {
 
     assertEq(IERC20(lisUSD).balanceOf(admin), feeReceiverLisUSDBalance + 2 ether, "0 feeReceiver lisUSD balance error");
     vm.stopPrank();
+  }
+}
+
+contract MockERC20PSM is ERC20 {
+  constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+
+  function mint(address to, uint256 amount) external {
+    _mint(to, amount);
+  }
+}
+
+contract MockVBep20PSM is ERC20("Mock vToken", "mvToken"), IVBep20Delegate {
+  using Math for uint256;
+
+  IERC20 public immutable underlying;
+  uint256 public exchangeRate = 1e18;
+
+  constructor(IERC20 underlying_) {
+    underlying = underlying_;
+  }
+
+  function setExchangeRate(uint256 newRate) external {
+    require(newRate > 0, "exchange rate zero");
+    exchangeRate = newRate;
+  }
+
+  function mint(uint256 mintAmount) external override returns (uint256) {
+    require(mintAmount > 0, "mint amount zero");
+    underlying.transferFrom(msg.sender, address(this), mintAmount);
+
+    uint256 shares = Math.mulDiv(mintAmount, 1e18, exchangeRate);
+    require(shares > 0, "shares zero");
+    _mint(msg.sender, shares);
+    return 0;
+  }
+
+  function redeem(uint256 redeemTokens) external override returns (uint256) {
+    require(redeemTokens > 0, "redeem tokens zero");
+    uint256 underlyingAmount = Math.mulDiv(redeemTokens, exchangeRate, 1e18);
+    _burn(msg.sender, redeemTokens);
+    underlying.transfer(msg.sender, underlyingAmount);
+    return 0;
+  }
+
+  function redeemUnderlying(uint256 redeemAmount) external override returns (uint256) {
+    require(redeemAmount > 0, "redeem amount zero");
+    uint256 shares = Math.mulDiv(redeemAmount, 1e18, exchangeRate);
+    if (Math.mulDiv(shares, exchangeRate, 1e18) < redeemAmount) {
+      shares += 1;
+    }
+    require(balanceOf(msg.sender) >= shares, "insufficient shares");
+    _burn(msg.sender, shares);
+    underlying.transfer(msg.sender, redeemAmount);
+    return 0;
+  }
+
+  function balanceOfUnderlying(address owner) external view override returns (uint256) {
+    return Math.mulDiv(balanceOf(owner), exchangeRate, 1e18);
   }
 }
