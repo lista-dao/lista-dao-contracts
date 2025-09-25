@@ -18,3 +18,7 @@ This directory the reports of audits performed on Lista DAO smart contracts by d
 | OFT                                   | BlockSec   | [`2024-06-19`](./BlockSec_190624.pdf)                 |
 | Emission Voting & clicBNB Launch Pool | BlockSec   | [`2024-10-21`](./blocksec_emission_voting_211024.pdf) |
 | Emission Voting & clicBNB Launch Pool | Salus      | [`2024-10-21`](./salus_emission_voting_211024.pdf)    |
+| PancakeSwap V3 LP Collateral          | BailSec    | [`2025-09-20`](./Bailsec_V3_LP_20Sept_2025.pdf)       |
+| PancakeSwap V3 LP Collateral          | BlockSec   | [`2025-09-04`](./BlockSec_V3_LP_04Sept_2025.pdf)      |
+| PancakeSwap V3 LP Collateral          | SpearBit   | [`2025-09-01`](./SpearBit_V3_LP_01Sept_2025.pdf)      |
+| PancakeSwap V3 LP Collateral          | CertiK     | [`2025-09-04`](./CertiK_V3_LP_04Sept_2025.pdf)        |
