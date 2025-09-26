@@ -147,7 +147,7 @@ ReentrancyGuardUpgradeable
         return shares;
     }
 
-    /// @dev attemps withdrawal from the strategies
+    /// @dev attempts withdrawal from the strategies
     /// @param amount assets to withdraw from strategy
     /// @return withdrawn - assets withdrawn from the strategy
     function withdrawFromActiveStrategies(address recipient, uint256 amount) private returns(uint256 withdrawn) {
@@ -323,7 +323,7 @@ ReentrancyGuardUpgradeable
         _deactivateStrategy(strategy);
     }
 
-    // /// @dev internal function to check strategy's debt and deactive it.
+    // /// @dev internal function to check strategy's debt and deactivate it.
     // /// @param strategy address of the strategy
     function _deactivateStrategy(address strategy) private returns(bool success) {
         if (strategyParams[strategy].debt <= 10) {
