@@ -4,26 +4,24 @@ pragma solidity ^0.8.10;
 import "../../interfaces/IResilientOracle.sol";
 import "../../libraries/FullMath.sol";
 import { AggregatorV3Interface } from "../../interfaces/OracleInterface.sol";
+import { IStEth } from "../../interfaces/IStEth.sol";
 
 /**
  * @title WstETHPriceFeed
- * @dev TODO; change impl accroding to price feeds. This contract is used to get the price of wstETH/ETH from Red Stone and ETH/USD from ChainLink
+ * @dev This contract is used to get the price of price of wstETH/stETH from wstETH exchangeRate and ETH/USD from ResilientOracle
  */
 contract WstETHPriceFeed {
   IResilientOracle public resilientOracle;
-  AggregatorV3Interface public wstETH_ETH_PriceFeed;
   address public constant WETH_TOKEN_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-  address public constant WSTETH_TOKEN_ADDR = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+  IStEth public constant ST_ETH = IStEth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
   /**
    * @dev Constructor
    * @param _resilientOracle The address of the Resilient Oracle contract
-   * @param _wstEth_ETH_PriceFeed The address of the wstETH/ETH price feed contract
    */
-  constructor(address _resilientOracle, address _wstEth_ETH_PriceFeed) {
-    require(_resilientOracle != address(0) && _wstEth_ETH_PriceFeed != address(0), "Zero address provided");
+  constructor(address _resilientOracle) {
+    require(_resilientOracle != address(0), "Zero address provided");
     resilientOracle = IResilientOracle(_resilientOracle);
-    wstETH_ETH_PriceFeed = AggregatorV3Interface(_wstEth_ETH_PriceFeed);
   }
 
   function decimals() external pure returns (uint8) {
@@ -60,27 +58,17 @@ contract WstETHPriceFeed {
   }
 
   /**
-   * @dev Get the price of wBETH in 8 DPs
-   *      wstETH/ETH from Red Stone and ETH/USD from ChainLink
-   *      multiply them and divide by 1e8
-   * @return price The price of wBETH in 8 decimals
+   * @dev Get the price of wstETH in 8 DPs
+   *      wstETH/stETH from stETH contract and ETH/USD from ResilientOracle
+   * @return price The price of wstETH in 8 decimals
    */
   function getPrice() private view returns (uint256 price) {
-    // wstETH/ETH in 18 DPs
-    (
-      ,
-      /*uint80 roundID*/ int256 wstETH_ETH_Price,
-      ,
-      /*uint startedAt*/ uint256 updatedAt,
-
-    ) = /*uint80 answeredInRound*/
-      wstETH_ETH_PriceFeed.latestRoundData();
-    require(wstETH_ETH_Price > 0, "wstETH_ETH_PriceFeed/price-not-valid");
-    require(block.timestamp - updatedAt < (6 * 3600 + 300), "wstETH_ETH_PriceFeed/timestamp-too-old");
+    // wstETH/stETH in 18 DPs
+    uint256 exchangeRate = ST_ETH.getPooledEthByShares(1e18);
 
     // ETH/USD in 8 DPs
     uint256 ethPrice = resilientOracle.peek(WETH_TOKEN_ADDR);
 
-    return FullMath.mulDiv(uint256(int256(wstETH_ETH_Price)), ethPrice, 1e8);
+    return FullMath.mulDiv(exchangeRate, ethPrice, 1e18);
   }
 }

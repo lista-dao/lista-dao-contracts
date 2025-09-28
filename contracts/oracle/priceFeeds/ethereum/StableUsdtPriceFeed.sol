@@ -12,7 +12,7 @@ contract StableUsdtPriceFeed {
 
   IResilientOracle public resilientOracle;
 
-  address public constant USDT_TOKEN_ADDR = 0xC5543Af4dE1a3972e8D1dBd0831dE97941ACd358; // sepolia USDT token address
+  address public constant USDT_TOKEN_ADDR = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // ethereum USDT token address
   uint256 public constant UPPER_BOUND = 102000000; // 1.02 USD
   uint256 public constant LOWER_BOUND = 98000000; // 0.98 USD
 

@@ -2,11 +2,10 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { WBETHPriceFeed } from "../../contracts/oracle/priceFeeds/ethereum/WBETHPriceFeed.sol";
+import { WstETHPriceFeed } from "../../contracts/oracle/priceFeeds/ethereum/WstETHPriceFeed.sol";
 
-contract WBETHPriceFeedDeploy is Script {
+contract WstETHPriceFeedDeploy is Script {
   address resilientOracle = 0xA64FE284EB8279B9b63946DD51813b0116099301;
 
   function run() public {
@@ -15,9 +14,9 @@ contract WBETHPriceFeedDeploy is Script {
     console.log("Deployer: ", deployer);
     vm.startBroadcast(deployerPrivateKey);
 
-    // Deploy WBETHPriceFeed
-    WBETHPriceFeed wBETHPriceFeed = new WBETHPriceFeed(resilientOracle);
-    console.log("WBETHPriceFeed deployed at: ", address(wBETHPriceFeed));
+    // Deploy WstETHPriceFeed
+    WstETHPriceFeed wstETHPriceFeed = new WstETHPriceFeed(resilientOracle);
+    console.log("WstETHPriceFeed deployed at: ", address(wstETHPriceFeed));
 
     vm.stopBroadcast();
   }

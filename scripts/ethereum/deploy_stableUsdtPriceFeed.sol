@@ -8,16 +8,16 @@ import { StableUsdtPriceFeed } from "../../contracts/oracle/priceFeeds/ethereum/
 
 contract StableUsdtPriceFeedDeploy is Script {
 
-  address resilientOracleAddr_mock = 0x05F8B0D79CA88A6B91419068b2Cd7eDA5a1A9b8d;
+  address resilientOracle = 0xA64FE284EB8279B9b63946DD51813b0116099301;
 
   function run() public {
-    uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+    uint256 deployerPrivateKey = vm.envUint("DEPLOYER_BSC_PRIVATE_KEY");
     address deployer = vm.addr(deployerPrivateKey);
     console.log("Deployer: ", deployer);
     vm.startBroadcast(deployerPrivateKey);
 
     // Deploy StableUsdtPriceFeed
-    StableUsdtPriceFeed stableUsdtPriceFeed = new StableUsdtPriceFeed(resilientOracleAddr_mock);
+    StableUsdtPriceFeed stableUsdtPriceFeed = new StableUsdtPriceFeed(resilientOracle);
     console.log("StableUsdtPriceFeed deployed at: ", address(stableUsdtPriceFeed));
 
     vm.stopBroadcast();
