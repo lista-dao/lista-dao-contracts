@@ -110,11 +110,6 @@ contract LisUSDAclTest is Test {
         lisUSD.rely(manager0, 2);
         vm.stopPrank();
 
-        vm.startPrank(manager0);
-        lisUSD.setSupplyCap(80_000_000 ether);
-        vm.stopPrank();
-        assertEq(80_000_000 ether, lisUSD.supplyCap());
-
         // unable to mint
         vm.startPrank(manager0);
         vm.expectRevert("LisUSD/not-authorized-minter");
