@@ -9,6 +9,7 @@ import "../../../contracts/oracle/interfaces/IResilientOracle.sol";
 import "../../../contracts/oracle/interfaces/AggregatorV3Interface.sol";
 import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/mXRPPriceFeed.sol";
 
 
 contract PriceFeedTest is Test {
@@ -46,5 +47,16 @@ contract PriceFeedTest is Test {
         (, int256 wstUSR_stUSR_Price,,,) = AggregatorV3Interface(wstUSR_stUSR_PriceFeed).latestRoundData();
 
         assertEq(wstUSR_stUSR_Price / 1e10, answer);
+    }
+
+    function test_mXRPPriceFeed() public {
+        address mXRP_XRP_PriceFeed = 0x3BdE0b7B59769Ec00c44C77090D88feB4516E731;
+        mXRPPriceFeed feed = new mXRPPriceFeed(resilientOracle, mXRP_XRP_PriceFeed);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        uint256 xrpPrice = IResilientOracle(resilientOracle).peek(feed.XRP_TOKEN_ADDR());
+        (, int256 mXRP_XRP_Price,,,) = AggregatorV3Interface(mXRP_XRP_PriceFeed).latestRoundData();
+
+        assertEq(int256(Math.mulDiv(uint256(mXRP_XRP_Price), xrpPrice, 1e8)), answer);
     }
 }
