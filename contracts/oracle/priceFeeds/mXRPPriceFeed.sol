@@ -85,7 +85,7 @@ contract mXRPPriceFeed {
     /*uint256 updatedAt*/,
     /*uint80 answeredInRound*/
     ) = mXRP_XRP_PriceFeed.latestRoundData();
-    require(mXRP_XRP_Price > 0, "mXRP_XRP_PriceFeed/price-not-valid");
+    require(mXRP_XRP_Price >= 1e8 && mXRP_XRP_Price <= 15e7, "mXRP_XRP_PriceFeed/price-not-valid");
 
     // XRP/USD in 8 DPs
     uint256 xrpPrice = resilientOracle.peek(XRP_TOKEN_ADDR);
