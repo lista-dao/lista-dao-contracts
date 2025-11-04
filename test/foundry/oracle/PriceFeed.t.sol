@@ -11,6 +11,7 @@ import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/mXRPPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/sUSD1PriceFeed.sol";
 
 
 contract PriceFeedTest is Test {
@@ -70,5 +71,16 @@ contract PriceFeedTest is Test {
         uint256 usdtPrice = IResilientOracle(resilientOracle).peek(feed.USDT_TOKEN_ADDR());
 
         assertEq(FullMath.mulDiv(uint256(wsrUSD_srUSD_Price), usdtPrice, 1e18), uint256(answer));
+    }
+
+    function test_sUSD1PriceFeed() public {
+        address sUSD1_USD1_PriceFeed = 0x08CA3ac4dE41F2791e8A247859d637a8977473D7;
+        sUSD1PriceFeed feed = new sUSD1PriceFeed(resilientOracle, sUSD1_USD1_PriceFeed);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        (, int256 sUSD1_USD1_Price,,,) = AggregatorV3Interface(sUSD1_USD1_PriceFeed).latestRoundData();
+        uint256 usd1Price = IResilientOracle(resilientOracle).peek(feed.USD1_TOKEN_ADDR());
+
+        assertEq(int256(Math.mulDiv(uint256(sUSD1_USD1_Price), usd1Price, 1e18)), answer);
     }
 }
