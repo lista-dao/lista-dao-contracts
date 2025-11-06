@@ -12,6 +12,8 @@ import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/mXRPPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/sUSD1PriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/sUSDXLiquidationPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/USDXLiquidationPriceFeed.sol";
 
 
 contract PriceFeedTest is Test {
@@ -82,5 +84,42 @@ contract PriceFeedTest is Test {
         uint256 usd1Price = IResilientOracle(resilientOracle).peek(feed.USD1_TOKEN_ADDR());
 
         assertEq(int256(Math.mulDiv(uint256(sUSD1_USD1_Price), usd1Price, 1e18)), answer);
+    }
+
+    function test_sUSDXPriceFeed() public {
+        uint256 sUSDX_USDX_Price = 0.932 ether;
+        sUSDXLiquidationPriceFeed feed = new sUSDXLiquidationPriceFeed(resilientOracle, sUSDX_USDX_Price);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        uint256 usdxPrice = IResilientOracle(resilientOracle).peek(feed.USDX_TOKEN_ADDR());
+
+        assertEq(int256(Math.mulDiv(usdxPrice, sUSDX_USDX_Price, 1e18)), answer);
+
+        vm.startPrank(0x8d388136d578dCD791D081c6042284CED6d9B0c6);
+        sUSDX_USDX_Price = 0.94 ether;
+        feed.setExchangeRate(sUSDX_USDX_Price);
+        vm.stopPrank();
+
+        (, answer,,,) = feed.latestRoundData();
+        usdxPrice = IResilientOracle(resilientOracle).peek(feed.USDX_TOKEN_ADDR());
+
+        assertEq(int256(Math.mulDiv(usdxPrice, sUSDX_USDX_Price, 1e18)), answer);
+    }
+
+    function test_USDXPriceFeed() public {
+        uint256 USDX_USDX_Price = 8 * 1e7;
+        USDXLiquidationPriceFeed feed = new USDXLiquidationPriceFeed(USDX_USDX_Price);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        assertEq(int256(USDX_USDX_Price), answer);
+
+        vm.startPrank(0x8d388136d578dCD791D081c6042284CED6d9B0c6);
+        USDX_USDX_Price = 7 * 1e7;
+        feed.setPrice(USDX_USDX_Price);
+        vm.stopPrank();
+
+        (, answer,,,) = feed.latestRoundData();
+
+        assertEq(int256(USDX_USDX_Price), answer);
     }
 }
