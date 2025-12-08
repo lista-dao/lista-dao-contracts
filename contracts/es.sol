@@ -9,25 +9,33 @@ contract EmergencyShutdown is Ownable {
     event MultiSigUpdated(address oldAdd, address newAdd);
     
     modifier auth {
-        require(msg.sender == multisig, "EmergencyShutdown/not-authorized");
+        require(msg.sender == emergencySwitchHub, "EmergencyShutdown/not-authorized");
         _;
     }
 
     address public vat;
-    address public multisig;
+    address public emergencySwitchHub;
 
-    constructor(address _vat, address _multisig) {
+    constructor(address _vat, address _emergencySwitchHub) {
         vat = _vat;
-        multisig = _multisig;
+        emergencySwitchHub = _emergencySwitchHub;
     }
 
-    function cage() external auth {
+    function pause() external auth {
         VatLike(vat).cage();
     }
+    
+    function unpause() external auth {
+        VatLike(vat).uncage();
+    }
 
-    function setMultiSig(address _multisig) external onlyOwner {
-        address oldAdd = multisig;
-        multisig = _multisig;
-        emit MultiSigUpdated(oldAdd, _multisig);
+    function paused() external view returns (bool) {
+        return VatLike(vat).live() == 0;
+    }
+
+    function setEmergencySwitchHub(address _emergencySwitchHub) external onlyOwner {
+        address oldAdd = emergencySwitchHub;
+        emergencySwitchHub = _emergencySwitchHub;
+        emit MultiSigUpdated(oldAdd, _emergencySwitchHub);
     }
 }
