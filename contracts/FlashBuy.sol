@@ -111,7 +111,8 @@ contract FlashBuy is IERC3156FlashBorrower, OwnableUpgradeable {
             auctionId,
             collateralAm,
             maxPrice,
-            address(this)
+            address(this),
+            ""
         );
 
         uint256 amountIn = IERC20(collateralReal).balanceOf(address(this)) - before;

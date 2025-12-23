@@ -21,6 +21,7 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         uint256 maxPrice;
         address collateralReal;
         address pair;
+        address spender;
         bytes swapData;
     }
 
@@ -128,18 +129,48 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         uint256 amountOutMin,
         bytes calldata swapData
     ) external onlyRole(BOT) {
+        _sellToken(pair, pair, tokenIn, amountIn, amountOutMin, swapData);
+    }
+
+    /// @dev sell tokens.
+    /// @param pair The address of the pair.
+    /// @param spender The address of the spender.
+    /// @param tokenIn The address of the input token.
+    /// @param amountIn The amount to sell.
+    /// @param amountOutMin The minimum amount to receive.
+    /// @param swapData The swap data.
+    function sellToken(
+        address pair,
+        address spender,
+        address tokenIn,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        bytes calldata swapData
+    ) external onlyRole(BOT) {
+        _sellToken(pair, spender, tokenIn, amountIn, amountOutMin, swapData);
+    }
+
+    function _sellToken(
+        address pair,
+        address spender,
+        address tokenIn,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        bytes calldata swapData
+    ) private {
         require(tokenWhitelist[tokenIn], "not whitelisted");
         require(pairWhitelist[pair], "not whitelisted");
+        require(pairWhitelist[spender], "not whitelisted");
 
         require(IERC20(tokenIn).balanceOf(address(this)) >= amountIn, "exceed amount");
 
         uint256 beforeTokenIn = IERC20(tokenIn).balanceOf(address(this));
         uint256 beforeTokenOut = IERC20(lisUSD).balanceOf(address(this));
 
-        IERC20(tokenIn).safeApprove(pair, amountIn);
+        IERC20(tokenIn).safeApprove(spender, amountIn);
         (bool success, ) = pair.call(swapData);
         require(success, "swap failed");
-        IERC20(tokenIn).safeApprove(pair, 0);
+        IERC20(tokenIn).safeApprove(spender, 0);
 
         uint256 actualAmountIn = beforeTokenIn - IERC20(tokenIn).balanceOf(address(this));
         uint256 actualAmountOut = IERC20(lisUSD).balanceOf(address(this)) - beforeTokenOut;
@@ -149,7 +180,6 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
 
         emit SellToken(pair, tokenIn, actualAmountIn, actualAmountOut);
     }
-
 
 
     /// @dev ERC-3156 Flash loan callback
@@ -178,16 +208,17 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
             liquidationData.auctionId,
             liquidationData.collateralAm,
             liquidationData.maxPrice,
-            address(this)
+            address(this),
+            ""
         );
         uint256 amountIn = IERC20(liquidationData.collateralReal).balanceOf(address(this)) - before;
 
-        IERC20(liquidationData.collateralReal).safeApprove(liquidationData.pair, amountIn);
+        IERC20(liquidationData.collateralReal).safeApprove(liquidationData.spender, amountIn);
         (bool success,) = liquidationData.pair.call(liquidationData.swapData);
         require(success, "swap failed");
 
         IERC20(lisUSD).safeApprove(address(interaction), 0);
-        IERC20(liquidationData.collateralReal).safeApprove(liquidationData.pair, 0);
+        IERC20(liquidationData.collateralReal).safeApprove(liquidationData.spender, 0);
 
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -212,10 +243,49 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         address pair,
         bytes memory swapData
     ) external onlyRole(BOT) auctionWhitelisted {
+        _flashLiquidate(auctionId, borrowAm, collateral, collateralAm, maxPrice, collateralReal, pair, pair, swapData);
+    }
+
+    /// @dev flash liquidates a position.
+    /// @param auctionId The id of the auction.
+    /// @param borrowAm The amount to borrow.
+    /// @param collateral The address of the collateral token.
+    /// @param collateralAm The amount of collateral to liquidate.
+    /// @param maxPrice The maximum price to pay for the collateral.
+    /// @param collateralReal The real address of the collateral token.
+    /// @param pair The address of the pair to swap.
+    /// @param spender The address of the spender.
+    /// @param swapData The swap data to execute.
+    function flashLiquidate(
+        uint256 auctionId,
+        uint256 borrowAm,
+        address collateral,
+        uint256 collateralAm,
+        uint256 maxPrice,
+        address collateralReal,
+        address pair,
+        address spender,
+        bytes memory swapData
+    ) external onlyRole(BOT) auctionWhitelisted {
+        _flashLiquidate(auctionId, borrowAm, collateral, collateralAm, maxPrice, collateralReal, pair, spender, swapData);
+    }
+
+    function _flashLiquidate(
+        uint256 auctionId,
+        uint256 borrowAm,
+        address collateral,
+        uint256 collateralAm,
+        uint256 maxPrice,
+        address collateralReal,
+        address pair,
+        address spender,
+        bytes memory swapData
+    ) private {
         require(pairWhitelist[pair], "Pair not whitelisted");
+        require(pairWhitelist[spender], "Pair not whitelisted");
         require(borrowAm <= lender.maxFlashLoan(lisUSD));
         bytes memory data = abi.encode(
-            LiquidationData(auctionId, collateral, collateralAm, maxPrice, collateralReal, pair, swapData)
+            LiquidationData(auctionId, collateral, collateralAm, maxPrice, collateralReal, pair, spender, swapData)
         );
         uint256 _repayment = borrowAm + lender.flashFee(lisUSD, borrowAm);
         uint256 _allowance = IERC20(lisUSD).allowance(
@@ -238,7 +308,7 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
     /// @param maxPrice The maximum price to pay for the collateral.
     function liquidate(uint256 auctionId, address collateral, uint256 collateralAm, uint256 maxPrice) external onlyRole(BOT) auctionWhitelisted {
         IERC20(lisUSD).safeApprove(address(interaction), type(uint256).max);
-        interaction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this));
+        interaction.buyFromAuction(collateral, auctionId, collateralAm, maxPrice, address(this), "");
         IERC20(lisUSD).safeApprove(address(interaction), 0);
     }
 

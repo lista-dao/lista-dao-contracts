@@ -8,7 +8,8 @@ interface IInteraction {
         uint256 auctionId,
         uint256 collateralAmount,
         uint256 maxPrice,
-        address receiverAddress
+        address receiverAddress,
+        bytes calldata data
     ) external;
 
     function collateralPrice(address token) external view returns (uint256);
