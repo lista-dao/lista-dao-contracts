@@ -42,7 +42,7 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
 
     event TokenWhitelistChanged(address indexed token, bool added);
     event PairWhitelistChanged(address pair, bool added);
-    event SellToken(address pair, address tokenIn, uint256 amountIn, uint256 amountOutMin);
+    event SellToken(address pair, address spender, address tokenIn, uint256 amountIn, uint256 amountOutMin);
 
     /* CONSTRUCTOR */
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -147,6 +147,8 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         uint256 amountOutMin,
         bytes calldata swapData
     ) external onlyRole(BOT) {
+        require(pair != spender, "pair and spender cannot be same address");
+        require(pairWhitelist[spender], "not whitelisted");
         _sellToken(pair, spender, tokenIn, amountIn, amountOutMin, swapData);
     }
 
@@ -160,7 +162,6 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
     ) private {
         require(tokenWhitelist[tokenIn], "not whitelisted");
         require(pairWhitelist[pair], "not whitelisted");
-        require(pairWhitelist[spender], "not whitelisted");
 
         require(IERC20(tokenIn).balanceOf(address(this)) >= amountIn, "exceed amount");
 
@@ -178,7 +179,7 @@ contract CDPLiquidator is IERC3156FlashBorrower, UUPSUpgradeable, AccessControlE
         require(actualAmountIn <= amountIn, "exceed amount in");
         require(actualAmountOut >= amountOutMin, "no profit");
 
-        emit SellToken(pair, tokenIn, actualAmountIn, actualAmountOut);
+        emit SellToken(pair, spender, tokenIn, actualAmountIn, actualAmountOut);
     }
 
 
