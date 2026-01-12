@@ -4,7 +4,7 @@
 
 Assume user has some aBNBc tokens.
 
-aBNBc is ERC20 complaint contract. 
+aBNBc is ERC20 compliant contract. 
 
 1. Approve aBNBc(token) with deposit amount against interaction contract
 2. Call `interaction.deposit(<participant>, <token>, <amount>)`
@@ -30,10 +30,10 @@ Check that you have HAY present in the wallet
 
 ### Repay
 
-1. Approve HAY (it is also ERC20 complaint contract) against interaction
+1. Approve HAY (it is also ERC20 compliant contract) against interaction
 2. Call `interaction.payback(<token>, <amount_of_hay>)`
 
-Note: aBNBc will stay collaterized(locked) in the vault.
+Note: aBNBc will stay collateralized (locked) in the vault.
 
 ### Withdraw
 
