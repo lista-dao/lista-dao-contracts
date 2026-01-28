@@ -1,19 +1,20 @@
 pragma solidity ^0.8.10;
 
-import "forge-std/Test.sol";
-
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
-import "../../../contracts/oracle/priceFeeds/uniBTCPriceFeed.sol";
-import "../../../contracts/oracle/interfaces/IResilientOracle.sol";
 import "../../../contracts/oracle/interfaces/AggregatorV3Interface.sol";
-import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
-import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
+
+import "../../../contracts/oracle/interfaces/IResilientOracle.sol";
+
+import "../../../contracts/oracle/priceFeeds/USDXLiquidationPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/mXRPPriceFeed.sol";
-import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/sUSD1PriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/sUSDXLiquidationPriceFeed.sol";
-import "../../../contracts/oracle/priceFeeds/USDXLiquidationPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/uniBTCPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/wNLPUSDTPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "forge-std/Test.sol";
 
 
 contract PriceFeedTest is Test {
@@ -121,5 +122,16 @@ contract PriceFeedTest is Test {
         (, answer,,,) = feed.latestRoundData();
 
         assertEq(int256(USDX_USDX_Price), answer);
+    }
+
+    function test_wNLPUSDTPriceFeed() public {
+        IWNLP wNLP = IWNLP(0xEA5FF211eF700DccC521a1e6501C9fe1B95D8EE7);
+        wNLPUSDTPriceFeed feed = new wNLPUSDTPriceFeed(resilientOracle);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        uint256 usdtPrice = IResilientOracle(resilientOracle).peek(feed.USDT_TOKEN_ADDR());
+        uint256 wNLP_USDT_Rate = wNLP.getNlpByWnlp(1e18);
+
+        assertEq(int256(Math.mulDiv(usdtPrice, wNLP_USDT_Rate, 1e18)), answer);
     }
 }
