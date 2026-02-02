@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
 
-import { Interaction } from "../contracts/Interaction.sol";
+import { CDPLiquidator } from "../contracts/CDPLiquidator.sol";
 
 contract ImplDeploy is Script {
   function run() public {
@@ -12,9 +12,9 @@ contract ImplDeploy is Script {
     console.log("Deployer: ", deployer);
     vm.startBroadcast(deployerPrivateKey);
 
-    // Deploy Interaction implementation
-    Interaction impl = new Interaction();
-    console.log("Interaction implementation: ", address(impl));
+    // Deploy CDPLiquidator implementation
+    CDPLiquidator impl = new CDPLiquidator();
+    console.log("CDPLiquidator implementation: ", address(impl));
 
     vm.stopBroadcast();
   }
