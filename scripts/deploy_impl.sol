@@ -3,18 +3,18 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
 
-import { CDPLiquidator } from "../contracts/CDPLiquidator.sol";
+import { Interaction } from "../contracts/Interaction.sol";
 
 contract ImplDeploy is Script {
   function run() public {
-    uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+    uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address deployer = vm.addr(deployerPrivateKey);
     console.log("Deployer: ", deployer);
     vm.startBroadcast(deployerPrivateKey);
 
-    // Deploy CDPLiquidator implementation
-    CDPLiquidator impl = new CDPLiquidator();
-    console.log("CDPLiquidator implementation: ", address(impl));
+    // Deploy Interaction implementation
+    Interaction impl = new Interaction();
+    console.log("Interaction implementation: ", address(impl));
 
     vm.stopBroadcast();
   }

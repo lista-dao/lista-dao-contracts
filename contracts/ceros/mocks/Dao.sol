@@ -45,4 +45,8 @@ contract Dao is IDao {
   function free(address token, address usr) public view returns (uint256) {
     return 0;
   }
+
+  function migrator() public view returns (address) {
+    return address(0);
+  }
 }
