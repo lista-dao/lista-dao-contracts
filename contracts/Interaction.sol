@@ -346,6 +346,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
     function withdrawFor(address account, address token, uint256 dink) external nonReentrant returns (uint256) {
         address _migrator = migrator();
         require(_migrator != address(0), "zero address");
+        require(msg.sender == _migrator, "only migrator");
 
         return _withdraw(msg.sender, account, _migrator, token, dink); // recipient is migrator
     }
