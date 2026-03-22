@@ -329,7 +329,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             takeSnapshot(token, user, ink, 0, true, false);
         }
     }
-    function migrator() public pure returns (address) {
+    function migrator() public view virtual returns (address) {
         return address(0); // TODO: set migrator address after deployment
     }
 
@@ -339,6 +339,12 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address token,
         uint256 dink
     ) external nonReentrant returns (uint256) {
+        if (helioProviders[token] == address(0)) {
+            require(
+                msg.sender == participant,
+                "Interaction/Caller must be the same address as participant"
+            );
+        }
         return _withdraw(msg.sender, participant, msg.sender, token, dink); // recipient is caller
     }
 
@@ -375,11 +381,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
                     "Interaction/Only helio provider can call this function for this token"
                 );
             }
-        } else {
-            require(
-                caller == participant,
-                "Interaction/Caller must be the same address as participant"
-            );
         }
         // make sure we have permission to alter user's position
         vat.behalf(participant, address(this));
