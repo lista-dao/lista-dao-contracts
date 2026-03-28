@@ -353,6 +353,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address _migrator = migrator();
         require(_migrator != address(0), "zero address");
         require(msg.sender == _migrator, "only migrator");
+        require(dink > 0, "zero amount");
 
         return _withdraw(msg.sender, account, _migrator, token, dink); // recipient is migrator
     }
