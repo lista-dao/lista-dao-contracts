@@ -307,6 +307,8 @@ contract PancakeSwapV3LpProviderTest is Test {
 
   /// @dev provide then borrow
   function test_borrow() public {
+    // skipped: borrow ceiling for this ilk is 0 on mainnet
+    vm.skip(true);
     // 1. provide LP
     uint256 tokenId = normalProvide(10 ether);
     // 2. borrow
@@ -336,6 +338,8 @@ contract PancakeSwapV3LpProviderTest is Test {
 
   /// @dev provide 2 LPs, then withdraw one of them after borrowed some LisUSD
   function test_provide_twice_and_withdraw() public {
+    // skipped: borrow ceiling for this ilk is 0 on mainnet
+    vm.skip(true);
     uint256 tokenId1 = normalProvide(10 ether);
     uint256 tokenId2 = normalProvide(10 ether);
 
