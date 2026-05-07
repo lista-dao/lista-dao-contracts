@@ -330,7 +330,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         }
     }
     function migrator() public view virtual returns (address) {
-        return address(0); // TODO: set migrator address after deployment
+        return 0x2B3E5b695722756130A553E9Bb5A45E16d21D0A4;
     }
 
     // Unlock and transfer to the user `dink` amount of ceABNBc
