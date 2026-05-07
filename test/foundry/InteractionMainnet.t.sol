@@ -85,6 +85,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_deposit_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     deal(address(FDUSD), user0, 1000 ether);
 
     vm.startPrank(user0);
@@ -97,6 +99,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_borrow_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_deposit_fdusd();
 
     vm.startPrank(user0);
@@ -113,6 +117,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_payback_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 101 ether);
@@ -128,6 +134,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 0);
@@ -144,6 +152,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd_self() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 101 ether);
@@ -159,6 +169,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd_invalid_allowance() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 0);
