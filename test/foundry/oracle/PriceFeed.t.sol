@@ -8,6 +8,7 @@ import "../../../contracts/oracle/priceFeeds/USDXLiquidationPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/mXRPPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/sUSD1PriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/sUSDXLiquidationPriceFeed.sol";
+import "../../../contracts/oracle/priceFeeds/SyrupUSDTPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/uniBTCPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wNLPUSDTPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
@@ -133,5 +134,16 @@ contract PriceFeedTest is Test {
         uint256 wNLP_USDT_Rate = wNLP.getNlpByWnlp(1e18);
 
         assertEq(int256(Math.mulDiv(usdtPrice, wNLP_USDT_Rate, 1e18)), answer);
+    }
+
+    function test_SyrupUSDTPriceFeed() public {
+        address syrupUSDT_USDT_PriceFeed = 0xac9962aAb7b8fe63fA3A5065c22D4Dd700B1C658;
+        SyrupUSDTPriceFeed feed = new SyrupUSDTPriceFeed(resilientOracle, syrupUSDT_USDT_PriceFeed);
+        (, int256 answer,,,) = feed.latestRoundData();
+
+        uint256 usdtPrice = IResilientOracle(resilientOracle).peek(feed.USDT_TOKEN_ADDR());
+        (, int256 syrupUSDT_USDT_Price,,,) = AggregatorV3Interface(syrupUSDT_USDT_PriceFeed).latestRoundData();
+
+        assertEq(int256(Math.mulDiv(uint256(syrupUSDT_USDT_Price), usdtPrice, 1e18)), answer);
     }
 }
