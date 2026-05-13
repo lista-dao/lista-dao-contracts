@@ -125,29 +125,6 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         _;
         _entered = false;
     }
-    function initialize(
-        address vat_,
-        address spot_,
-        address hay_,
-        address hayJoin_,
-        address jug_,
-        address dog_
-    ) public initializer {
-        __Ownable_init();
-
-        wards[msg.sender] = 1;
-
-        vat = VatLike(vat_);
-        spotter = SpotLike(spot_);
-        hay = IERC20Upgradeable(hay_);
-        hayJoin = HayJoinLike(hayJoin_);
-        jug = JugLike(jug_);
-        dog = dog_;
-
-        vat.hope(hayJoin_);
-
-        hay.safeApprove(hayJoin_, type(uint256).max);
-    }
 
     function setCollateralType(
         address token,
@@ -352,6 +329,9 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
             takeSnapshot(token, user, ink, 0, true, false);
         }
     }
+    function migrator() public view virtual returns (address) {
+        return 0x2B3E5b695722756130A553E9Bb5A45E16d21D0A4;
+    }
 
     // Unlock and transfer to the user `dink` amount of ceABNBc
     function withdraw(
@@ -359,6 +339,32 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         address token,
         uint256 dink
     ) external nonReentrant returns (uint256) {
+        if (helioProviders[token] == address(0)) {
+            require(
+                msg.sender == participant,
+                "Interaction/Caller must be the same address as participant"
+            );
+        }
+        return _withdraw(msg.sender, participant, msg.sender, token, dink); // recipient is caller
+    }
+
+    // Only be called by migrator
+    function withdrawFor(address account, address token, uint256 dink) external nonReentrant returns (uint256) {
+        address _migrator = migrator();
+        require(_migrator != address(0), "zero address");
+        require(msg.sender == _migrator, "only migrator");
+        require(dink > 0, "zero amount");
+
+        return _withdraw(msg.sender, account, _migrator, token, dink); // recipient is migrator
+    }
+
+    function _withdraw(
+        address caller,
+        address participant,
+        address recipient,
+        address token,
+        uint256 dink
+    ) private returns (uint256) {
         CollateralType memory collateralType = collaterals[token];
         _checkIsLive(collateralType.live);
 
@@ -367,20 +373,15 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         if (helioProviders[token] != address(0)) {
             if (providerCompatibilityMode[token]) {
                 require(
-                    msg.sender == participant || msg.sender == helioProviders[token],
+                    caller == participant || caller == helioProviders[token],
                     "Interaction/Caller must be participant/provider"
                 );
             } else {
                 require(
-                    msg.sender == helioProviders[token],
+                    caller == helioProviders[token],
                     "Interaction/Only helio provider can call this function for this token"
                 );
             }
-        } else {
-            require(
-                msg.sender == participant,
-                "Interaction/Caller must be the same address as participant"
-            );
         }
         // make sure we have permission to alter user's position
         vat.behalf(participant, address(this));
@@ -393,7 +394,7 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
         vat.flux(collateralType.ilk, participant, address(this), dink);
         // Collateral is actually transferred back to user inside `exit` operation.
         // See GemJoin.exit()
-        collateralType.gem.exit(msg.sender, dink);
+        collateralType.gem.exit(recipient, dink);
 
         (uint256 ink,) = vat.urns(collateralType.ilk, participant);
         takeSnapshot(token, participant, ink, 0, true, false);

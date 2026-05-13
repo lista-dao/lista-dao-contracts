@@ -206,6 +206,28 @@ ReentrancyGuardUpgradeable
         return realAmount;
     }
 
+    /**
+     * @dev called by migrator to release in slisBnb for migration
+     * @dev only migrator can call this function, and the migrator contract should be set after deployment
+     * @param account the account to migrate position for
+     * @param amount the amount of collateral to withdraw and migrate
+     */
+    function releaseInTokenFor(address account, uint256 amount)
+    external
+    whenNotPaused
+    nonReentrant
+    returns (uint256 realAmount)
+    {
+        address _migrator = _dao.migrator();
+        require(_migrator != address(0), "migrator address is not set");
+        require(msg.sender == _migrator, "only migrator can call this function");
+        _withdrawCollateral(account, amount);
+        address strategy = 0x6F28FeC449dbd2056b76ac666350Af8773E03873; // strategy to withdraw in slisBNB
+        realAmount = _masterVault.withdrawInTokenFromStrategy(strategy, _migrator, amount);
+        emit WithdrawalInToken(account, _migrator, amount);
+        return realAmount;
+    }
+
     //Estimate how much token(aBNBc/stkBNB/snBNB/BNBx) can get when call releaseInToken
     function estimateInToken(address strategy, uint256 amount) external view override returns(uint256) {
         return _masterVault.estimateInTokenFromStrategy(strategy, amount);

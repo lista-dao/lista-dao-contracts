@@ -665,4 +665,8 @@ contract Interaction is OwnableUpgradeable, IDao, IAuctionProxy {
 
     duty = dutyCalculator.calculateDuty(_collateral, currentDuty, false);
   }
+
+  function migrator() public view returns (address) {
+    return address(0);
+  }
 }

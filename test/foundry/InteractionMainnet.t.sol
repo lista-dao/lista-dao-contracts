@@ -22,9 +22,24 @@ import { ResilientOracle } from "../../contracts/oracle/ResilientOracle.sol";
 
 uint256 constant RAY = 10 ** 27;
 
+interface IProxyAdmin {
+  function upgrade(address proxy, address implementation) external;
+}
+
 contract DummyDutyCalculator {
   function calculateDuty(address, uint256 currentDuty, bool) external pure returns (uint256) {
     return currentDuty;
+  }
+}
+
+contract MockInteraction is Interaction {
+  address _migrator;
+  function set_migrator(address migrator) external {
+    _migrator = migrator;
+  }
+
+  function migrator() public view override returns (address) {
+    return _migrator;
   }
 }
 import { MockListaDistributor } from "./ceros/mock/MockListaDistributor.sol";
@@ -44,6 +59,7 @@ contract InteractionMainnetTest is Test {
 
   Interaction interaction;
   address wards = 0x8d388136d578dCD791D081c6042284CED6d9B0c6;
+  address admin = 0x07D274a68393E8b8a2CCf19A2ce4Ba3518735253; // timelock
 
   function setUp() public {
     mainnet = vm.createSelectFork("https://bsc-dataseed.binance.org");
@@ -69,6 +85,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_deposit_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     deal(address(FDUSD), user0, 1000 ether);
 
     vm.startPrank(user0);
@@ -81,6 +99,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_borrow_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_deposit_fdusd();
 
     vm.startPrank(user0);
@@ -97,6 +117,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_payback_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 101 ether);
@@ -112,6 +134,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 0);
@@ -128,6 +152,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd_self() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 101 ether);
@@ -143,6 +169,8 @@ contract InteractionMainnetTest is Test {
   }
 
   function test_paybackFor_fdusd_invalid_allowance() public {
+    // skipped: FDUSD is blacklisted on mainnet
+    vm.skip(true);
     test_borrow_fdusd();
 
     deal(address(interaction.hay()), user0, 0);
@@ -172,5 +200,28 @@ contract InteractionMainnetTest is Test {
 
     uint256 tvl = interaction.depositTVL(fdusd);
     assertEq(tvl, IERC20(fdusd).balanceOf(address(gem)), "TVL should be equal to gem balance");
+  }
+
+  function upgrade_Interaction() public {
+    MockInteraction mock_interaction = new MockInteraction();
+
+    address proxyAdmin = 0x1Fa3E4718168077975fF4039304CC2e19Ae58c4C;
+    vm.startPrank(admin);
+    IProxyAdmin(proxyAdmin).upgrade(address(interaction), address(mock_interaction));
+  }
+
+  function test_withdrawFor() public {
+    address _migrator = makeAddr("migrator");
+    address account = 0x52C96137b083385510f19bA7b79b1929E3c99bcA;
+    address btcb = 0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c;
+    uint amount = 0.1 ether;
+
+    upgrade_Interaction();
+    MockInteraction test_interaction = MockInteraction(address(interaction));
+
+    test_interaction.set_migrator(_migrator);
+    assertEq(test_interaction.migrator(), _migrator);
+    vm.startPrank(_migrator);
+    test_interaction.withdrawFor(account, btcb, amount);
   }
 }

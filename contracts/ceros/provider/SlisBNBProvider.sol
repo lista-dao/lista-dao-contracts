@@ -169,6 +169,23 @@ contract SlisBNBProvider is BaseTokenProvider {
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
+    function releaseFor(address _account, uint256 _amount)
+        external
+        whenNotPaused
+        nonReentrant
+        returns (uint256)
+    {
+        address _migrator = dao.migrator();
+        require(_migrator != address(0), "migrator not set");
+        require(msg.sender == _migrator, "only migrator can call");
+        require(_amount > 0, "zero withdrawal amount");
+
+        _withdrawLp(_account, _amount);
+        IERC20(token).safeTransfer(_migrator, _amount);
+        emit Withdrawal(_account, _migrator, _amount);
+        return _amount;
+    }
+
     /**
      * check if user lp token is synced with token balance
      *

@@ -3,18 +3,18 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
 
-import { CDPLiquidator } from "../contracts/CDPLiquidator.sol";
+import { SlisBNBProvider } from "../contracts/ceros/provider/SlisBNBProvider.sol";
 
 contract ImplDeploy is Script {
   function run() public {
-    uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+    uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address deployer = vm.addr(deployerPrivateKey);
     console.log("Deployer: ", deployer);
     vm.startBroadcast(deployerPrivateKey);
 
-    // Deploy CDPLiquidator implementation
-    CDPLiquidator impl = new CDPLiquidator();
-    console.log("CDPLiquidator implementation: ", address(impl));
+    // Deploy SlisBNBProvider implementation
+    SlisBNBProvider slisBNBImpl = new SlisBNBProvider();
+    console.log("SlisBNBProvider implementation: ", address(slisBNBImpl));
 
     vm.stopBroadcast();
   }

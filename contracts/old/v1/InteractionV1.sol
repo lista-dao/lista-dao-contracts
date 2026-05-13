@@ -592,4 +592,8 @@ contract InteractionV1 is OwnableUpgradeable, IDao, IAuctionProxy {
     function _checkIsLive(uint256 live) internal pure {
         require(live != 0, "Interaction/inactive collateral");
     }
+
+    function migrator() public view returns (address) {
+        return address(0);
+    }
 }

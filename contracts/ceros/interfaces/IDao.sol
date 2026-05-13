@@ -42,4 +42,6 @@ interface IDao {
     function locked(address token, address usr) external view returns (uint256);
 
     function free(address token, address usr) external view returns (uint256);
+
+    function migrator() external view returns (address);
 }

@@ -70,6 +70,8 @@ contract CDPLiquidatorTest is Test {
     }
 
     function test_flashLiquidate() public {
+        // skipped: BTCB is blacklisted on mainnet
+        vm.skip(true);
         deal(BTCB, borrower, 1 ether);
         vm.mockCall(btcOracle, abi.encodeWithSignature("peek()"), abi.encode(bytes32(uint256(100_000 ether)), true));
 
@@ -112,6 +114,8 @@ contract CDPLiquidatorTest is Test {
     }
 
     function test_liquidate() public {
+        // skipped: BTCB is blacklisted on mainnet
+        vm.skip(true);
         deal(lisUSD, address(liquidator), 10000 ether);
         deal(BTCB, borrower, 1 ether);
         vm.mockCall(btcOracle, abi.encodeWithSignature("peek()"), abi.encode(bytes32(uint256(100_000 ether)), true));
