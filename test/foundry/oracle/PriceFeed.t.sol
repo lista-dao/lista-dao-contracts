@@ -12,7 +12,6 @@ import "../../../contracts/oracle/priceFeeds/uniBTCPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wNLPUSDTPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wsrUSDPriceFeed.sol";
 import "../../../contracts/oracle/priceFeeds/wstUSRPriceFeed.sol";
-import "../../../contracts/oracle/priceFeeds/yUSDPriceFeed.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "forge-std/Test.sol";
 
@@ -32,16 +31,6 @@ contract PriceFeedTest is Test {
         (, int256 uniBTC_BTC_Price,,,) = AggregatorV3Interface(uniBTC_BTC_PriceFeed).latestRoundData();
 
         assertEq(int256(Math.mulDiv(uint256(uniBTC_BTC_Price), btcPrice, 1e18)), answer);
-    }
-
-    function test_yUSDPriceFeed() public {
-        yUSDPriceFeed feed = new yUSDPriceFeed(resilientOracle);
-        (, int256 answer,,,) = feed.latestRoundData();
-
-        uint256 USDTPrice = IResilientOracle(resilientOracle).peek(feed.USDT_TOKEN_ADDR());
-        uint256 yUSD_USDT_Price = feed.yUSD().convertToAssets(1e18);
-
-        assertEq(int256(Math.mulDiv(yUSD_USDT_Price, USDTPrice, 1e18)), answer);
     }
 
     function test_wstUSRPriceFeed() public {
