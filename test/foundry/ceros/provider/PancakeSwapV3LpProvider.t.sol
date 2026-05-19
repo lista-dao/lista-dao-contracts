@@ -277,6 +277,8 @@ contract PancakeSwapV3LpProviderTest is Test {
     // interaction: set listaDistributor
     MockListaDistributor listaDistributor = new MockListaDistributor();
     interaction.setListaDistributor(address(listaDistributor));
+    // Whitelist mode is enabled on mainnet Interaction; disable it so test users can deposit
+    interaction.disableWhitelist();
     vm.stopPrank();
 
     // ------ make user rich

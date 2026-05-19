@@ -87,6 +87,8 @@ contract SlisBNBProviderTest is Test {
 
     vm.startPrank(proxyAdminOwner);
     interaction.setHelioProvider(address(slisBnb), address(slisBNBLpProvider), true);
+    // Whitelist mode is enabled on mainnet Interaction; disable it so test users can deposit
+    interaction.disableWhitelist();
     vm.stopPrank();
 
     (, bytes32 ilk, , ) = interaction.collaterals(address(slisBnb));

@@ -133,6 +133,8 @@ contract PumpBTCProviderTest is Test {
     // 1) set lista distributor so takeSnapshot doesn't call zero address
     vm.startPrank(wards);
     interaction.setListaDistributor(address(new MockListaDistributor()));
+    // Whitelist mode is enabled on mainnet Interaction; disable it so test users can deposit
+    interaction.disableWhitelist();
     vm.stopPrank();
     // dutyCalculator is configured on mainnet; no override needed here
   }
