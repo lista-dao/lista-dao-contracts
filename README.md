@@ -20,38 +20,38 @@ To learn more about how to use Helio, please see the Helio documentation.
 * **spot** — oracle price fetch
 * **hay** — stable coin
 * **vat** — core cdp vault
-* **vow** — vault balance sheet. Keeps track of surplus&debt
+* **vow** — vault balance sheet. Keeps track of surplus & debt
 
 ### Rewards contracts
 * **HelioRewards** — rewards distribution module
 * **HelioToken** — rewards token
-* **HelioOracle** - rewards token oracle
+* **HelioOracle** — rewards token oracle
 
 ### Ceros contracts
 * **CerosRouter** — finds the best way to obtain aBNBc.
-* **CeToken** — underlying collateral token inside makerDao
+* **CeToken** — underlying collateral token inside MakerDAO
 * **CeVault** — stores obtained aBNBc
 * **HelioProvider** — wraps BNB into ceABNBc via _CerosRouter_
 
 ### Interaction contract
-* **Interaction** — proxy for makerDao contracts. 
+* **Interaction** — proxy for MakerDAO contracts. 
 Provide deposit&withdraw and borrow&payback functions for end users
 * **AuctionProxy** — entrypoint for auction methods.
 End users can start auctions and participate in it via this contract
 
 ### Unit Testing
-The core MakerDAO contracts are already battletested and the mock folders are excluded from tests.
+The core MakerDAO contracts are already battle-tested and the mock folders are excluded from tests.
 
 ## Installation
-To install Helio, clone the Helio repository and run the following commands:
+To install, clone this repository and run:
 ```
-git clone https://github.com/helio-money/helio-smart-contracts.git
+git clone https://github.com/AdekunleBamz/lista-dao-contracts.git
 
-cd helio-smart-contracts  
+cd lista-dao-contracts  
 
 npm install
 ```
-Install Hardhat :
+Install Hardhat:
 ```
 npm install --save-dev hardhat
 ```
@@ -70,7 +70,7 @@ npm install dotenv --save
 edit .env with your variables 
 
 ## Contributing
-Helio is an open source project, and we welcome contributions from the community. If you would like to contribute to Helio, please see the Helio contribution guidelines.
+Helio is an open source project, and we welcome contributions from the community. If you would like to contribute, please see DEVELOPING.md.
 
 ## License
 Helio is licensed under the ISC license.
