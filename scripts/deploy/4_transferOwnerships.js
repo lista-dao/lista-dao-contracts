@@ -116,16 +116,16 @@ async function main() {
 
   // MULTISIG 4
   await ceabnbc.transferOwnership(_multisig4);
-  console.log("ceabnbnc transfered to   : " + _multisig4);
+  console.log("ceabnbnc transferred to   : " + _multisig4);
 
   await cevault.transferOwnership(_multisig4);
-  console.log("cevault transfered to    : " + _multisig4);
+  console.log("cevault transferred to    : " + _multisig4);
 
   await hbnb.transferOwnership(_multisig4);
-  console.log("hbnb transfered to       : " + _multisig4);
+  console.log("hbnb transferred to       : " + _multisig4);
 
   await cerosrouter.transferOwnership(_multisig4);
-  console.log("cerosrouter transfered to: " + _multisig4);
+  console.log("cerosrouter transferred to: " + _multisig4);
 
   // MULTISIG 3
   await abaci.rely(_multisig3);
@@ -138,7 +138,7 @@ async function main() {
   await vat.deny(deployer.address);
   console.log("vat denied to            : " + deployer.address);
   await vat.transferOwnership(dead_address); // Dead Address
-  console.log("vat transfered to        : " + dead_address);
+  console.log("vat transferred to        : " + dead_address);
 
   await spot.rely(_multisig3);
   console.log("spot relied to           : " + _multisig3);
@@ -206,7 +206,7 @@ async function main() {
   console.log("Ownerships transfer complete...");
 
   // MULTISIG 1
-  // THE PROXY ADMIN OWNERSHIP WILL BE TRANSFERED FROM BSC-SCAN
+  // THE PROXY ADMIN OWNERSHIP WILL BE TRANSFERRED FROM BSC-SCAN
 }
 
 main()
